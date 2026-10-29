@@ -387,3 +387,6 @@ where not exists (select 1 from public.fotos);
 
 -- pronto. Para zerar os votos depois de um teste:  delete from public.votos;
 -- Para voltar o conteúdo ao data.js:              delete from public.conteudo;
+
+-- avisa a API do Supabase que há tabelas e funções novas
+notify pgrst, 'reload schema';

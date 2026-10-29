@@ -1562,9 +1562,13 @@
         toast(cod === 'chave_invalida' ? 'Salvei neste aparelho, mas a senha não confere com a do banco. Saia do painel e entre de novo.'
           : cod === 'conteudo_grande_demais' ? 'Salvei neste aparelho, mas o conteúdo ficou grande demais para publicar. Use a aba Trilha 2026 para fotos.'
           : 'Salvei neste aparelho, mas não consegui publicar. Tente salvar de novo.');
-      }).catch(function () {
+      }).catch(function (e) {
         conteudo.enviando = false;
-        toast('Salvei neste aparelho, mas não chegou ao banco. Confira a internet e salve de novo.');
+        var m = String(e && e.message || '');
+        // 404: a função salvar_conteudo não existe no banco (supabase.sql antigo)
+        toast(m === 'http 404' ? 'Salvei neste aparelho, mas o banco ainda não tem a função de publicar. Rode o supabase.sql mais recente no Supabase.'
+          : /^http /.test(m) ? 'Salvei neste aparelho, mas o banco recusou (' + m + '). Rode o supabase.sql mais recente e tente de novo.'
+          : 'Salvei neste aparelho, mas não chegou ao banco. Confira a internet e salve de novo.');
       });
     }, 900);
   }
