@@ -1336,3 +1336,15 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
   .sanfona > summary { padding: 18px 20px 18px 24px; }
   .sf-corpo { padding: 0 24px 24px; }
 }
+
+/* celular e tablet: a turma do topo de "Heróis & Projetos" é só ilustração
+   (os Heróis pequenos ficavam difíceis de tocar). No computador, continua
+   clicável. A escolha pelo celular fica na lista logo abaixo e no Início. */
+@media (max-width: 1023px) {
+  .turma-topo .turma-p { pointer-events: none; cursor: default; }
+  .topo-arte .turma-dica { display: none; }
+}
+/* celular, Início: entre as três fileiras, um respiro a mais embaixo */
+@media (max-width: 759px) {
+  .home-turma .turma-rolo.rola { padding-top: 8px; }
+}

@@ -3473,11 +3473,15 @@
     var n = ps.length;
     var S = 0.46;        // espaço de cada rosto, em fração da altura
     var SOBE = 0.32;     // quanto cada fileira de trás sobe
+    // celular, turma do Início: três fileiras bem separadas e Heróis maiores,
+    // para dar para tocar em cada um com folga (a foto desliza para o lado)
+    var celHome = t.classList.contains('turma-home') && window.innerWidth < 760;
+    if (celHome) { S = 0.66; SOBE = 0.56; }
     var hMax = +t.getAttribute('data-hmax') || 300;
     t.style.width = '';
     var W = (rolo && rolo.clientWidth) || t.clientWidth;
     if (!n || !W) return;
-    var r = n < 4 ? 1 : 2;
+    var r = n < 4 ? 1 : (celHome && n >= 7 ? 3 : 2);
     var maior = Math.ceil(n / r);
     var h = Math.min(hMax, W / (maior * S + S));
     // fora do início, a turma não desliza: no celular ganha uma terceira fileira e cabe inteira
@@ -3490,7 +3494,7 @@
     // deslizar para o lado, em vez de espremer os Heróis
     var rola = podeRolar && h < 150;
     if (rola) {
-      h = Math.min(hMax, 190);
+      h = Math.min(hMax, celHome ? 175 : 190);
       W = Math.ceil((maior * S + S) * h);
       t.style.width = W + 'px';
     }
