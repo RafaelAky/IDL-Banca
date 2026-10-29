@@ -2692,10 +2692,11 @@
       '<h3 class="h3">Palavra-chave do palco <span class="tiny" style="font-weight:400">(opcional)</span></h3>' +
       '<p class="small">Com uma palavra-chave definida, além do CPF o app pede a palavra anunciada no evento — só vota quem está na sala. ' +
       'Deixe em branco e salve para não exigir nada. Agora: <b>' + (remote.exigeChave ? 'exigindo palavra-chave' : 'só o CPF') + '</b>.</p>' +
-      '<form id="palavraAdminForm" class="row wrap" style="gap:8px;align-items:flex-end">' +
-      '<input id="palavraEvento" name="palavraEvento" type="text" autocapitalize="characters" autocomplete="off" ' +
-      'placeholder="ex.: DENTEDELEAO" style="flex:1 1 200px">' +
-      '<button class="btn btn-primary" type="submit">' + ico('i-save') + ' Salvar</button></form>' +
+      '<form id="palavraAdminForm" class="row wrap" style="gap:10px;align-items:flex-end">' +
+      '<div class="field" style="flex:1 1 220px"><label for="palavraEvento">Nova palavra-chave</label>' +
+      '<input id="palavraEvento" name="palavraEvento" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" ' +
+      'placeholder="ex.: DENTEDELEAO" style="text-transform:uppercase;letter-spacing:.06em;font-weight:600"></div>' +
+      '<button class="btn btn-primary" type="submit" style="min-height:53px">' + ico('i-save') + ' Salvar</button></form>' +
       '<p class="tiny">Por segurança a palavra atual não é exibida. Salvar substitui a anterior.</p>' +
       '</section>' +
 
