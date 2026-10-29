@@ -60,4 +60,4 @@ window.IDL_ADMIN = [
    Com o banco de dados ligado, quem manda é a chave_admin guardada no
    servidor, e esta linha deixa de valer.
    --------------------------------------------------------------------- */
-window.IDL_SENHA_HASH = 'c29cb289acaf83fb613739d4ea8a49efb4679052081e599f5279b39478537114';
+window.IDL_SENHA_HASH = '8adbf9f53cdb6fb403046650898b5b78a1f9dfd1b3c6853e5989c055cd77cc34';

@@ -63,6 +63,15 @@ create table if not exists public.fotos (
   check (dado is not null or src is not null)
 );
 
+-- conteúdo editado no painel (evento, programação, projetos, Heróis, textos)
+-- uma linha só; enquanto estiver vazia, o site usa o data.js
+create table if not exists public.conteudo (
+  id            int primary key default 1 check (id = 1),
+  dados         jsonb not null,
+  versao        bigint not null default 1,
+  atualizado_em timestamptz not null default now()
+);
+
 -- lista leve das fotos, sem o conteúdo pesado (o site busca o "dado" depois)
 create or replace view public.fotos_lista with (security_invoker = true) as
   select id, src, legenda, larga, capa, ordem, projeto_id, criado_em
@@ -76,6 +85,7 @@ alter table public.config_privada enable row level security;
 alter table public.projetos       enable row level security;
 alter table public.votos          enable row level security;
 alter table public.fotos          enable row level security;
+alter table public.conteudo       enable row level security;
 
 drop policy if exists leitura_publica on public.estado_votacao;
 create policy leitura_publica on public.estado_votacao for select to anon, authenticated using (true);
@@ -83,11 +93,13 @@ drop policy if exists leitura_publica on public.projetos;
 create policy leitura_publica on public.projetos for select to anon, authenticated using (true);
 drop policy if exists leitura_publica on public.fotos;
 create policy leitura_publica on public.fotos for select to anon, authenticated using (true);
+drop policy if exists leitura_publica on public.conteudo;
+create policy leitura_publica on public.conteudo for select to anon, authenticated using (true);
 -- votos e config_privada: nenhuma política = ninguém lê nem escreve direto
 
-revoke all on public.estado_votacao, public.config_privada, public.projetos, public.votos, public.fotos
-  from anon, authenticated;
-grant select on public.estado_votacao, public.projetos, public.fotos, public.fotos_lista
+revoke all on public.estado_votacao, public.config_privada, public.projetos, public.votos, public.fotos,
+  public.conteudo from anon, authenticated;
+grant select on public.estado_votacao, public.projetos, public.fotos, public.fotos_lista, public.conteudo
   to anon, authenticated;
 
 -- ---------------------------------------------------------------------
@@ -220,6 +232,23 @@ begin
   return jsonb_build_object('ok', true, 'exige_chave', n is not null);
 end $$;
 
+-- publica o conteúdo do painel para todo mundo
+create or replace function public.salvar_conteudo(p_chave text, p_dados jsonb)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare v bigint;
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if p_dados is null or jsonb_typeof(p_dados) <> 'object' or not (p_dados ? 'event') then
+    return jsonb_build_object('ok', false, 'erro', 'conteudo_invalido');
+  end if;
+  if length(p_dados::text) > 4000000 then return jsonb_build_object('ok', false, 'erro', 'conteudo_grande_demais'); end if;
+  insert into public.conteudo (id, dados, versao, atualizado_em) values (1, p_dados, 1, now())
+  on conflict (id) do update set dados = excluded.dados, versao = public.conteudo.versao + 1, atualizado_em = now()
+  returning versao into v;
+  return jsonb_build_object('ok', true, 'versao', v);
+end $$;
+
 -- ---- fotos -------------------------------------------------------------
 
 create or replace function public.adicionar_foto(
@@ -292,7 +321,7 @@ begin
   foreach f in array array[
     'registrar_voto(text,text,text)', 'consultar_voto(text)', 'resultado(text)',
     'entrar_admin(text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
-    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)',
+    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)',
     'adicionar_foto(text,text,text,text,boolean,text)', 'remover_foto(text,uuid)',
     'ordenar_fotos(text,uuid[])', 'definir_capa_foto(text,uuid)', 'atualizar_fotos(text,jsonb)']
   loop
@@ -308,7 +337,7 @@ end $$;
 -- senha do painel da organização. Para trocar, mude o texto entre aspas
 -- e rode só este bloco de novo (e peça o código novo para o config.js).
 insert into public.config_privada (id, chave_admin_hash)
-values (1, extensions.crypt('12345', extensions.gen_salt('bf')))
+values (1, extensions.crypt('idl2026', extensions.gen_salt('bf')))
 on conflict (id) do update set chave_admin_hash = excluded.chave_admin_hash;
 
 -- os 17 Heróis; os 5 candidatos de 9h15 já vêm marcados (o painel muda isso)
@@ -335,3 +364,4 @@ on conflict (id) do update set nome = excluded.nome;
 update public.estado_votacao set total_trilheiros = coalesce(total_trilheiros, 75) where id = 1;
 
 -- pronto. Para zerar os votos depois de um teste:  delete from public.votos;
+-- Para voltar o conteúdo ao data.js:              delete from public.conteudo;

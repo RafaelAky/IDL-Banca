@@ -32,3 +32,20 @@ Para a votação real, rode `backend/supabase.sql` no SQL Editor do Supabase
 `consultar_voto`, `resultado`, `entrar_admin`, `definir_votacao`, `definir_candidatos`,
 `definir_total_trilheiros`, `definir_chave_evento`).
 Use apenas a chave **anon/publishable** — nunca a `service_role`.
+
+## Conteúdo editado no painel
+Com o banco ligado, o que a organização salva no painel (evento, programação, projetos,
+Heróis, textos) vai para a tabela `conteudo` e aparece para todo mundo em até 30 segundos.
+Enquanto ninguém salvar nada, o site usa o `data.js`. Depois do primeiro salvamento, o banco
+passa a valer — para voltar ao `data.js`, rode `delete from public.conteudo;` no SQL Editor.
+
+## Telão
+Abra `#/telao` no computador do projetor (ou pelo painel → Votação → Abrir o telão).
+Mostra o QR Code da votação e uma animação **ilustrativa** de votos (não usa os votos reais).
+Para exibir a palavra-chave do palco: `#/telao/SUAPALAVRA`.
+
+## Prévia do link (WhatsApp)
+No `index.html`, troque `SEU-DOMINIO` pelo endereço final do site nas tags `og:url` e `og:image`.
+
+## Créditos
+`vendor/qrcode.js` — QR Code Generator, © Kazuhiko Arase, licença MIT.

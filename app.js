@@ -174,7 +174,7 @@
     if (!db.clock) db.clock = { simulated: false, baseReal: Date.now(), baseSim: Date.now() };
     return db;
   }
-  function save() { safeSet(KEY, JSON.stringify(db)); render(); }
+  function save() { safeSet(KEY, JSON.stringify(db)); render(); enviarConteudo(); }
 
   var localState = (function () {
     var raw = safeGet(LOCAL); var o = null;
@@ -1498,6 +1498,77 @@
   }
 
 
+  /* =========================== CONTEÚDO NA NUVEM ==========================
+     Com o banco ligado, o que a organização edita no painel (evento,
+     programação, projetos, Heróis, textos) é publicado na tabela
+     public.conteudo e vale para todo mundo. Os aparelhos conferem a cada
+     30 segundos se há versão nova (consulta leve: só o número da versão) e
+     só então baixam o conteúdo. Enquanto o banco não tiver conteúdo salvo,
+     vale o data.js. O relógio de ensaio continua sendo só do aparelho.     */
+  var conteudo = { versao: null, timer: null, enviando: false };
+
+  function aplicarConteudo(dados, versao) {
+    var clock = db && db.clock;
+    var voting = db && db.voting;
+    db = dados;
+    db.clock = clock || demoData().clock;
+    if (!db.voting) db.voting = voting || demoData().voting;
+    db._versaoNuvem = versao;
+    conteudo.versao = versao;
+    safeSet(KEY, JSON.stringify(db));
+    render();
+  }
+
+  function syncConteudo() {
+    if (!remote.on) return Promise.resolve();
+    // não troca o conteúdo debaixo de quem está editando ou enviando
+    if (admin.editor || conteudo.timer || conteudo.enviando) return Promise.resolve();
+    if (conteudo.versao == null && db && db._versaoNuvem != null) conteudo.versao = db._versaoNuvem;
+    return fetch(sbUrl('/rest/v1/conteudo?select=versao&id=eq.1'), { headers: sbHeaders() })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (rows) {
+        var v = rows && rows[0] ? rows[0].versao : null;
+        if (v == null || v === conteudo.versao) return;
+        return fetch(sbUrl('/rest/v1/conteudo?select=versao,dados&id=eq.1'), { headers: sbHeaders() })
+          .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+          .then(function (rows2) {
+            var row = rows2 && rows2[0];
+            if (!row || !row.dados || !row.dados.event) return;
+            if (admin.editor || conteudo.timer || conteudo.enviando) return;
+            aplicarConteudo(row.dados, row.versao);
+          });
+      })
+      .catch(function () { /* sem conexão: segue com o que já está no aparelho */ });
+  }
+
+  // publica o conteúdo do painel para todo mundo (agrupa edições seguidas)
+  function enviarConteudo() {
+    if (!remote.on || !localState.admin || !localState.adminKey) return;
+    clearTimeout(conteudo.timer);
+    conteudo.timer = setTimeout(function () {
+      conteudo.timer = null;
+      conteudo.enviando = true;
+      var dados = JSON.parse(JSON.stringify(db));
+      delete dados.clock; delete dados._versaoNuvem;
+      sbRpc('salvar_conteudo', { p_chave: localState.adminKey, p_dados: dados }).then(function (r) {
+        conteudo.enviando = false;
+        if (r && r.ok) {
+          conteudo.versao = r.versao; db._versaoNuvem = r.versao;
+          safeSet(KEY, JSON.stringify(db));
+          toast('Publicado para todo mundo.');
+          return;
+        }
+        var cod = r && r.erro;
+        toast(cod === 'chave_invalida' ? 'Salvei neste aparelho, mas a senha não confere com a do banco. Saia do painel e entre de novo.'
+          : cod === 'conteudo_grande_demais' ? 'Salvei neste aparelho, mas o conteúdo ficou grande demais para publicar. Use a aba Trilha 2026 para fotos.'
+          : 'Salvei neste aparelho, mas não consegui publicar. Tente salvar de novo.');
+      }).catch(function () {
+        conteudo.enviando = false;
+        toast('Salvei neste aparelho, mas não chegou ao banco. Confira a internet e salve de novo.');
+      });
+    }, 900);
+  }
+
   /* ============================ FOTOS NA NUVEM ============================
      Sem banco ligado: as fotos ficam em db.retro.photos, neste aparelho.
      Com banco: vêm da tabela public.fotos e valem para todo mundo — quem
@@ -2552,6 +2623,17 @@
   /* --- votação --- */
 
   function adminVotacao() {
+    var link = location.origin + location.pathname.replace(/index\.html$/, '') + '#/telao';
+    return '<div class="stack-lg">' +
+      '<section class="stack">' +
+      '<h2 class="h2">Telão</h2>' +
+      '<p class="small">Abra no computador ligado ao projetor: mostra o QR Code grande da votação e uma animação ilustrativa de votos chegando aos candidatos (não usa os votos reais). ' +
+      'Para mostrar também a palavra-chave do palco, coloque-a no fim do endereço: <b>#/telao/SUAPALAVRA</b>.</p>' +
+      '<div class="row wrap" style="gap:8px"><a class="btn btn-primary" href="#/telao" target="_blank" rel="noopener">' + ico('i-eye') + ' Abrir o telão</a></div>' +
+      '<p class="tiny">' + esc(link) + '</p>' +
+      '</section>' + adminVotacaoBase() + '</div>';
+  }
+  function adminVotacaoBase() {
     var v = db.voting, elig = opcoesDeVoto();
 
     // quem concorre: os Heróis marcados como candidatos
@@ -2958,6 +3040,131 @@
       '</div></div>';
   }
 
+  /* ================================ TELÃO ==================================
+     Tela para o projetor: o QR Code grande que leva direto à votação e uma
+     animação de votos chegando aos Heróis candidatos. A animação é
+     INTERPRETATIVA: os "votos" são sorteados aqui mesmo, não vêm do banco,
+     e ela nunca mostra números, posição nem quem está na frente — de tempos
+     em tempos as barras esvaziam e recomeçam. O aviso fica sempre na tela.
+     A palavra-chave do palco pode ir no endereço: #/telao/PALAVRA.         */
+  var telao = { timer: null, ciclo: null, niveis: {}, qrUrl: '', qrSvg: '', libPedida: false };
+
+  function telaoUrlVoto() {
+    return location.origin + location.pathname.replace(/index\.html$/, '') + '#/votacao';
+  }
+  function telaoQrSvg(texto) {
+    if (typeof window.qrcode !== 'function') return '';
+    var q = window.qrcode(0, 'M');
+    q.addData(texto); q.make();
+    var n = q.getModuleCount(), d = '';
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+    return '<svg viewBox="-2 -2 ' + (n + 4) + ' ' + (n + 4) + '" shape-rendering="crispEdges" role="img" aria-label="QR Code para a votação">' +
+      '<rect x="-2" y="-2" width="' + (n + 4) + '" height="' + (n + 4) + '" fill="#fff"/><path d="' + d + '" fill="#2e006a"/></svg>';
+  }
+  function telaoGarantirQr() {
+    var url = telaoUrlVoto();
+    if (telao.qrSvg && telao.qrUrl === url) return;
+    if (typeof window.qrcode === 'function') { telao.qrUrl = url; telao.qrSvg = telaoQrSvg(url); return; }
+    if (telao.libPedida) return;
+    telao.libPedida = true;
+    var sc = document.createElement('script');
+    sc.src = 'vendor/qrcode.js';
+    sc.onload = function () { telao.qrUrl = url; telao.qrSvg = telaoQrSvg(url); if (route.name === 'telao') render(); };
+    document.head.appendChild(sc);
+  }
+
+  function viewTelao() {
+    telaoGarantirQr();
+    var cs = candidatos();
+    if (!cs.length) cs = opcoesDeVoto().slice(0, 6);
+    var palavra = route.param ? decodeURIComponent(route.param).trim() : '';
+    var aberta = votacaoAberta();
+    var estado = aberta
+      ? '<span class="tl-estado is-aberta"><i></i>Votação aberta</span>'
+      : '<span class="tl-estado"><i></i>' + esc(db.event.votacaoAbre ? 'A votação abre às ' + db.event.votacaoAbre : 'A votação abre em breve') + '</span>';
+    var host = location.host || 'o site do evento';
+
+    var cartoes = cs.map(function (o) {
+      return '<li class="tl-cand" data-tl="' + esc(o.id) + '">' +
+        '<span class="tl-quadro">' + (o.image ? '<img src="' + esc(o.image) + '" alt="">' : sementeSvg()) + '</span>' +
+        '<span class="tl-nome">' + esc(o.name) + '</span>' +
+        '<span class="tl-tubo" aria-hidden="true"><span class="tl-enche"></span></span>' +
+        '</li>';
+    }).join('');
+
+    return '<div class="telao">' +
+      sementesNoAr(6, 'tl-sementes') +
+      '<header class="tl-topo">' +
+        '<span class="tl-logos"><img src="img/kv/trilhei.webp" alt="Trilhei"><i aria-hidden="true"></i><img src="img/kv/idltech.webp" alt="Programa IDL Tech"></span>' +
+        estado +
+      '</header>' +
+      '<div class="tl-corpo">' +
+        '<section class="tl-palco">' +
+          '<span class="eyebrow">' + esc(db.event.name || 'Banca Final IDL Tech') + '</span>' +
+          '<h1 class="tl-tit">Escolha o Herói da Trilha 2026</h1>' +
+          '<ol class="tl-cands" style="--n:' + cs.length + '">' + cartoes + '</ol>' +
+          '<p class="tl-aviso">' + ico('i-info') + '<span><b>Animação ilustrativa.</b> Os votos desta tela são simulados e não representam a apuração real. O resultado só é revelado no palco.</span></p>' +
+        '</section>' +
+        '<aside class="tl-qr">' +
+          '<span class="tl-qr-cab">Aponte a câmera do celular</span>' +
+          '<div class="tl-qr-img">' + (telao.qrSvg || '<span class="tl-qr-carrega">Gerando o QR Code…</span>') + '</div>' +
+          '<span class="tl-qr-url">' + esc(host) + '</span>' +
+          (palavra ? '<div class="tl-palavra"><span>Palavra-chave</span><b>' + esc(palavra) + '</b></div>' : '') +
+          '<p class="tl-qr-pe">Informe seu CPF, escolha o seu Herói e confirme. Um voto por pessoa.</p>' +
+        '</aside>' +
+      '</div>' +
+      '<button class="tl-tela-cheia" data-act="telaoTelaCheia" title="Tela cheia">Tela cheia</button>' +
+      '</div>';
+  }
+
+  // um "voto" simulado: a semente sobe até o Herói e a barra cresce um pouco
+  function telaoVoto() {
+    var itens = document.querySelectorAll('.tl-cand');
+    if (!itens.length) return;
+    var el = itens[Math.floor(Math.random() * itens.length)];
+    var id = el.getAttribute('data-tl');
+    var nv = Math.min(100, (telao.niveis[id] || 0) + 4 + Math.random() * 9);
+    telao.niveis[id] = nv;
+    var enche = el.querySelector('.tl-enche');
+    if (enche) enche.style.height = nv.toFixed(1) + '%';
+    el.classList.remove('tl-pulso'); void el.offsetWidth; el.classList.add('tl-pulso');
+    var sem = document.createElement('span');
+    sem.className = 'tl-voa';
+    sem.style.setProperty('--dx', ((Math.random() - .5) * 60).toFixed(0) + 'px');
+    sem.innerHTML = sementeSvg();
+    el.appendChild(sem);
+    setTimeout(function () { if (sem.parentNode) sem.parentNode.removeChild(sem); }, 1700);
+    // quando alguma barra quase enche, todas esvaziam e o ciclo recomeça:
+    // a tela nunca chega a sugerir um vencedor
+    if (nv >= 92) telaoEsvaziar();
+  }
+  function telaoEsvaziar() {
+    Object.keys(telao.niveis).forEach(function (k) { telao.niveis[k] = 6 + Math.random() * 10; });
+    Array.prototype.forEach.call(document.querySelectorAll('.tl-cand'), function (el) {
+      var e = el.querySelector('.tl-enche');
+      if (e) e.style.height = (telao.niveis[el.getAttribute('data-tl')] || 8).toFixed(1) + '%';
+    });
+  }
+  function telaoMontar() {
+    if (route.name !== 'telao') {
+      if (telao.timer) { clearTimeout(telao.timer); telao.timer = null; }
+      return;
+    }
+    // depois de cada redesenho, devolve às barras a altura em que estavam
+    Array.prototype.forEach.call(document.querySelectorAll('.tl-cand'), function (el) {
+      var id = el.getAttribute('data-tl');
+      if (telao.niveis[id] == null) telao.niveis[id] = 8 + Math.random() * 14;
+      var e = el.querySelector('.tl-enche');
+      if (e) e.style.height = telao.niveis[id].toFixed(1) + '%';
+    });
+    if (telao.timer) return;
+    (function proximo() {
+      if (route.name !== 'telao') { telao.timer = null; return; }
+      telaoVoto();
+      telao.timer = setTimeout(proximo, 380 + Math.random() * 900);
+    })();
+  }
+
   /* ================================ RENDER =============================== */
   var lastLiveId = null;
   var lastPhase = null;   // 'antes' · 'dia' · 'depois'
@@ -2974,6 +3181,7 @@
       case 'trilhei': return viewTrilhei();
       case 'resultado': return viewResultado(localState.admin);
       case 'admin': return viewAdmin();
+      case 'telao': return viewTelao();
       default: return viewHome();
     }
   }
@@ -3103,11 +3311,13 @@
   function render() {
     renderBrand(); renderNav();
     var app = $('#app');
-    var gated = !localState.code && route.name !== 'admin';
+    var ehTelao = route.name === 'telao';
+    var gated = !localState.code && route.name !== 'admin' && !ehTelao;
     document.body.classList.toggle('is-gated', gated);
+    document.body.classList.toggle('is-telao', ehTelao);
     var adminFull = route.name === 'admin' && localState.admin;
     document.body.classList.toggle('is-painel', adminFull);
-    app.className = gated ? '' : (adminFull ? '' : 'shell');
+    app.className = gated || ehTelao ? '' : (adminFull ? '' : 'shell');
     app.innerHTML = gated ? viewEntrada() : currentView();
     renderOverlay();
 
@@ -3118,6 +3328,8 @@
 
     countUp();
     tickLive();
+    telaoMontar();
+    if (ehTelao) return;
     revelar(app);
     ajustarTurmas(app);
 
@@ -3512,6 +3724,12 @@
     var act = el.getAttribute('data-act');
     if (!act || el.tagName === 'INPUT') return;
     var escFoto = el.getAttribute('data-esc') || 'geral';
+    if (act === 'telaoTelaCheia') {
+      var de = document.documentElement;
+      if (document.fullscreenElement) { if (document.exitFullscreen) document.exitFullscreen(); }
+      else if (de.requestFullscreen) de.requestFullscreen().catch(function () {});
+      return;
+    }
     if (act === 'hideBanner') { localState.bannerOff = true; saveLocal(); render(); }
     else if (act === 'hideAdmCard') { localState.admCardOff = true; saveLocal(); render(); }
     else if (act === 'closeSheet') closeSheet();
@@ -3706,7 +3924,7 @@
       renderOverlay();
     }
     else if (act === 'resetAll') {
-      admin.confirm = { title: 'Restaurar demonstração?', body: 'Todo o conteúdo deste aparelho volta ao estado inicial.', yes: 'Sim, restaurar', danger: true,
+      admin.confirm = { title: 'Restaurar demonstração?', body: remote.on ? 'Todo o conteúdo volta ao que está no data.js — e isso é publicado para todo mundo.' : 'Todo o conteúdo deste aparelho volta ao estado inicial.', yes: 'Sim, restaurar', danger: true,
         run: function () { db = demoData(); localState.voted = null; localState.unlocked = false; localState.code = null; localState.hash = null; localState.visited = []; saveLocal(); save(); toast('Demonstração restaurada.'); } };
       renderOverlay();
     }
@@ -3951,9 +4169,11 @@
     syncMeuVoto();
     syncFotos();
     syncOpcoes();
+    syncConteudo();
     setInterval(function () { syncEstado(); }, 12000);
     setInterval(function () { syncFotos(); }, 60000);
-    window.addEventListener('focus', function () { syncEstado(); syncFotos(); syncOpcoes(); });
+    setInterval(function () { syncConteudo(); }, 30000);
+    window.addEventListener('focus', function () { syncEstado(); syncFotos(); syncOpcoes(); syncConteudo(); });
   }
 
   // painel aberto: a apuração dos Heróis se atualiza sozinha a cada 15 segundos
