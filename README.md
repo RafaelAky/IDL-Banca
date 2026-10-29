@@ -45,7 +45,7 @@ Mostra o QR Code da votação e uma animação **ilustrativa** de votos (não us
 Para exibir a palavra-chave do palco: `#/telao/SUAPALAVRA`.
 
 ## Prévia do link (WhatsApp)
-No `index.html`, troque `SEU-DOMINIO` pelo endereço final do site nas tags `og:url` e `og:image`.
+As tags do `index.html` já apontam para https://idl-banca.vercel.app. Se o endereço mudar, troque-o ali e em `IDL_SITE_URL` no `config.js`.
 
 ## Créditos
 `vendor/qrcode.js` — QR Code Generator, © Kazuhiko Arase, licença MIT.

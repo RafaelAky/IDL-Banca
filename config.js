@@ -23,6 +23,10 @@ window.IDL_BACKEND = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2ZHB0ZXZ1anZ0bnZteGhjcWx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNDY0MzEsImV4cCI6MjEwODgyMjQzMX0.zvaHLS0qJvNX_SJ1aumxlNQWKpBZU4e4eKQacjq-9D4'
 };
 
+/* Endereço oficial do site: é para onde aponta o QR Code do telão,
+   mesmo que o telão seja aberto por outro endereço. */
+window.IDL_SITE_URL = 'https://idl-banca.vercel.app';
+
 /* ---------------------------------------------------------------------
    2. AS CONTAS DA ORGANIZAÇÃO
 

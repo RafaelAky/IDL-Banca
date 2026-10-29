@@ -1458,6 +1458,15 @@
     }).then(function (r) {
       if (!r.ok) throw new Error('http ' + r.status);
       return r.json();
+    }).then(function (j) {
+      // a senha guardada neste aparelho não vale mais (foi trocada no banco):
+      // sai do painel e pede a senha de novo, em vez de falhar em silêncio
+      if (j && j.erro === 'chave_invalida' && localState.admin) {
+        localState.admin = false; localState.adminKey = ''; saveLocal();
+        login.erro = 'A senha do painel mudou. Entre de novo com a senha atual.';
+        setTimeout(function () { go('admin'); render(); }, 0);
+      }
+      return j;
     });
   }
   function sbEstado() {
@@ -2640,12 +2649,12 @@
   /* --- votação --- */
 
   function adminVotacao() {
-    var link = location.origin + location.pathname.replace(/index\.html$/, '') + '#/telao';
+    var link = siteBase() + '/#/telao';
     return '<div class="stack-lg">' +
       '<section class="stack">' +
       '<h2 class="h2">Telão</h2>' +
       '<p class="small">Abra no computador ligado ao projetor: mostra o QR Code grande da votação e uma animação ilustrativa de votos chegando aos candidatos (não usa os votos reais). ' +
-      'Para mostrar também a palavra-chave do palco, coloque-a no fim do endereço: <b>#/telao/SUAPALAVRA</b>.</p>' +
+      'Se a palavra-chave do palco estiver ativa e este aparelho estiver com o painel aberto, ela aparece no telão sozinha. Em outro computador, coloque-a no fim do endereço: <b>#/telao/SUAPALAVRA</b>.</p>' +
       '<div class="row wrap" style="gap:8px"><a class="btn btn-primary" href="#/telao" target="_blank" rel="noopener">' + ico('i-eye') + ' Abrir o telão</a></div>' +
       '<p class="tiny">' + esc(link) + '</p>' +
       '</section>' + adminVotacaoBase() + '</div>';
@@ -3072,9 +3081,11 @@
      A palavra-chave do palco pode ir no endereço: #/telao/PALAVRA.         */
   var telao = { timer: null, raf: null, bolhas: null, ultimo: 0, anim: {}, qrUrl: '', qrSvg: '', libPedida: false };
 
-  function telaoUrlVoto() {
-    return location.origin + location.pathname.replace(/index\.html$/, '') + '#/votacao';
+  function siteBase() {
+    var oficial = String(window.IDL_SITE_URL || '').trim().replace(/\/+$/, '');
+    return oficial || (location.origin + location.pathname.replace(/index\.html$/, '').replace(/\/+$/, ''));
   }
+  function telaoUrlVoto() { return siteBase() + '/#/votacao'; }
   function telaoQrSvg(texto) {
     if (typeof window.qrcode !== 'function') return '';
     var q = window.qrcode(0, 'M');
@@ -3106,16 +3117,27 @@
     }
     return '<span class="tl-fundo" aria-hidden="true">' + out + '</span>';
   }
+  function telaoPalavraDoBanco() {
+    if (!remote.on || !localState.admin || !localState.adminKey || route.param) return;
+    if (telao.palavraEm && Date.now() - telao.palavraEm < 30000) return;
+    telao.palavraEm = Date.now();
+    sbRpc('ler_chave_evento', { p_chave: localState.adminKey }).then(function (r) {
+      var p = r && r.ok ? (r.palavra || '') : '';
+      if (p !== telao.palavra) { telao.palavra = p; if (route.name === 'telao') render(); }
+    }).catch(function () {});
+  }
   function viewTelao() {
     telaoGarantirQr();
     var cs = candidatos();
     if (!cs.length) cs = opcoesDeVoto().slice(0, 6);
-    var palavra = route.param ? decodeURIComponent(route.param).trim() : '';
+    // a palavra vem do endereço (#/telao/PALAVRA) ou, se este aparelho estiver
+    // com o painel aberto, do próprio banco
+    var palavra = route.param ? decodeURIComponent(route.param).trim() : (remote.exigeChave ? telao.palavra : '');
     var aberta = votacaoAberta();
     var estado = aberta
       ? '<span class="tl-estado is-aberta"><i></i>Votação aberta</span>'
       : '<span class="tl-estado"><i></i>' + esc(db.event.votacaoAbre ? 'A votação abre às ' + db.event.votacaoAbre : 'A votação abre em breve') + '</span>';
-    var host = location.host || 'o site do evento';
+    var host = siteBase().replace(/^https?:\/\//, '') || 'o site do evento';
 
     var cartoes = cs.map(function (o) {
       return '<li class="tl-cand" data-tl="' + esc(o.id) + '">' +
@@ -3228,6 +3250,7 @@
       return;
     }
     if (!telao.anim) telao.anim = {};
+    telaoPalavraDoBanco();
     if (!telao.raf) { telao.ultimo = 0; telao.raf = requestAnimationFrame(telaoQuadro); }
     if (!telao.bolhas) {
       telao.bolhas = setInterval(function () {
@@ -3388,17 +3411,26 @@
     turmaTimer = setTimeout(function () { ajustarTurmas(); }, 150);
   });
 
+  // chamada fixa para votar, em todas as telas, enquanto a votação estiver aberta
+  function ctaVotar() {
+    if (!votacaoAberta() || localState.voted) return '';
+    if (route.name === 'votacao' || route.name === 'admin' || route.name === 'telao' || route.name === 'resultado') return '';
+    return '<a class="cta-votar" href="#/votacao"><span class="cta-ponto" aria-hidden="true"></span>' +
+      '<span><b>A votação está aberta</b><span class="cta-sub">Toque para escolher o seu Herói</span></span>' + ico('i-chev') + '</a>';
+  }
+
   function render() {
     renderBrand(); renderNav();
     var app = $('#app');
     var ehTelao = route.name === 'telao';
-    var gated = !localState.code && route.name !== 'admin' && !ehTelao;
+    // o site é aberto a todos: o CPF só é pedido na tela de votação, quando ela abre
+    var gated = false;
     document.body.classList.toggle('is-gated', gated);
     document.body.classList.toggle('is-telao', ehTelao);
     var adminFull = route.name === 'admin' && localState.admin;
     document.body.classList.toggle('is-painel', adminFull);
     app.className = gated || ehTelao ? '' : (adminFull ? '' : 'shell');
-    app.innerHTML = gated ? viewEntrada() : currentView();
+    app.innerHTML = (gated ? viewEntrada() : currentView()) + ctaVotar();
     renderOverlay();
 
     // microanimação quando a atividade ao vivo muda
@@ -4148,7 +4180,10 @@
       if (!validCPF(cpf)) { login.erro = 'CPF inválido. Confira os números e tente de novo.'; render(); return; }
       login.ocupado = true; login.erro = ''; render();
       // o CPF vira código embaralhado aqui mesmo; o número não vai a lugar nenhum
-      sha256(onlyDigits(cpf) + '|' + SALT).then(comHash);
+      sha256(onlyDigits(cpf) + '|' + SALT).then(function (h) {
+        if (ehContaDaOrg(h) && !localState.hash) { localState.hash = h; localState.code = makeCode(h); saveLocal(); }
+        comHash(h);
+      });
       return;
     }
     if (f.id === 'eventForm') {

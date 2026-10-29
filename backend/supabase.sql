@@ -253,6 +253,15 @@ begin
   return jsonb_build_object('ok', true, 'rodada', r, 'apagados', n);
 end $$;
 
+-- a palavra-chave atual, só para a organização (o telão do painel a exibe)
+create or replace function public.ler_chave_evento(p_chave text)
+returns jsonb language plpgsql stable security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  return jsonb_build_object('ok', true, 'palavra', (select chave_evento from public.config_privada where id = 1));
+end $$;
+
 -- publica o conteúdo do painel para todo mundo
 create or replace function public.salvar_conteudo(p_chave text, p_dados jsonb)
 returns jsonb language plpgsql security definer
@@ -342,7 +351,7 @@ begin
   foreach f in array array[
     'registrar_voto(text,text,text)', 'consultar_voto(text)', 'resultado(text)',
     'entrar_admin(text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
-    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)',
+    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)', 'ler_chave_evento(text)',
     'adicionar_foto(text,text,text,text,boolean,text)', 'remover_foto(text,uuid)',
     'ordenar_fotos(text,uuid[])', 'definir_capa_foto(text,uuid)', 'atualizar_fotos(text,jsonb)']
   loop
@@ -408,6 +417,12 @@ where not exists (select 1 from public.fotos);
 
 -- pronto. Para zerar os votos depois de um teste:  delete from public.votos;
 -- Para voltar o conteúdo ao data.js:              delete from public.conteudo;
+
+-- palavra-chave do palco: começa ativa com SEMEAR. Troque pelo painel
+-- (aba Votação) — de preferência no próprio dia, para não vazar antes.
+update public.config_privada set chave_evento = coalesce(chave_evento, 'SEMEAR') where id = 1;
+update public.estado_votacao e set exige_chave = (c.chave_evento is not null)
+  from public.config_privada c where e.id = 1 and c.id = 1;
 
 -- avisa a API do Supabase que há tabelas e funções novas
 notify pgrst, 'reload schema';
