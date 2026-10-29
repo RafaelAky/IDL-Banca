@@ -2881,7 +2881,7 @@
         if (restantes) return;
         novas = lidas.filter(Boolean);
         if (!novas.length) { toast('Não consegui ler essas imagens.'); return; }
-        if (usaNuvem()) { enviarParaNuvem(novas, escopo); return; }
+        if (remote.on) { enviarParaNuvem(novas, escopo); return; }
         if (escopo !== 'geral') novas.forEach(function (n) { n[3] = null; n[4] = false; n[5] = escopo; });
         db.retro = db.retro || { photos: [] };
         db.retro.photos = (db.retro.photos || []).concat(novas);
@@ -3047,7 +3047,7 @@
      e ela nunca mostra números, posição nem quem está na frente — de tempos
      em tempos as barras esvaziam e recomeçam. O aviso fica sempre na tela.
      A palavra-chave do palco pode ir no endereço: #/telao/PALAVRA.         */
-  var telao = { timer: null, ciclo: null, niveis: {}, qrUrl: '', qrSvg: '', libPedida: false };
+  var telao = { timer: null, raf: null, bolhas: null, ultimo: 0, anim: {}, qrUrl: '', qrSvg: '', libPedida: false };
 
   function telaoUrlVoto() {
     return location.origin + location.pathname.replace(/index\.html$/, '') + '#/votacao';
@@ -3073,6 +3073,16 @@
     document.head.appendChild(sc);
   }
 
+  // sementes que atravessam o fundo devagar, de baixo para cima
+  function telaoFundo() {
+    var out = '';
+    for (var i = 0; i < 16; i++) {
+      var x = (i * 61) % 100, tam = 18 + (i * 13) % 30, dur = 16 + (i * 7) % 14, atraso = -((i * 5.3) % dur);
+      out += '<span class="tl-fundo-s" style="left:' + x + '%;--t:' + tam + 'px;--dur:' + dur + 's;--atr:' + atraso.toFixed(1) +
+        's;--balanco:' + (20 + (i * 11) % 50) + 'px">' + sementeSvg() + '</span>';
+    }
+    return '<span class="tl-fundo" aria-hidden="true">' + out + '</span>';
+  }
   function viewTelao() {
     telaoGarantirQr();
     var cs = candidatos();
@@ -3088,12 +3098,15 @@
       return '<li class="tl-cand" data-tl="' + esc(o.id) + '">' +
         '<span class="tl-quadro">' + (o.image ? '<img src="' + esc(o.image) + '" alt="">' : sementeSvg()) + '</span>' +
         '<span class="tl-nome">' + esc(o.name) + '</span>' +
-        '<span class="tl-tubo" aria-hidden="true"><span class="tl-enche"></span></span>' +
+        '<span class="tl-tubo" aria-hidden="true"><span class="tl-enche">' +
+          '<svg class="tl-onda" viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0 10 Q25 0 50 10 T100 10 T150 10 T200 10 V20 H0Z"/></svg>' +
+        '</span></span>' +
+        '<span class="tl-halo" aria-hidden="true"></span>' +
         '</li>';
     }).join('');
 
     return '<div class="telao">' +
-      sementesNoAr(6, 'tl-sementes') +
+      telaoFundo() +
       '<header class="tl-topo">' +
         '<span class="tl-logos"><img src="img/kv/trilhei.webp" alt="Trilhei"><i aria-hidden="true"></i><img src="img/kv/idltech.webp" alt="Programa IDL Tech"></span>' +
         estado +
@@ -3103,7 +3116,7 @@
           '<span class="eyebrow">' + esc(db.event.name || 'Banca Final IDL Tech') + '</span>' +
           '<h1 class="tl-tit">Escolha o Herói da Trilha 2026</h1>' +
           '<ol class="tl-cands" style="--n:' + cs.length + '">' + cartoes + '</ol>' +
-          '<p class="tl-aviso">' + ico('i-info') + '<span><b>Animação ilustrativa.</b> Os votos desta tela são simulados e não representam a apuração real. O resultado só é revelado no palco.</span></p>' +
+          '<p class="tl-aviso">' + ico('i-info') + '<span><b>Animação ilustrativa.</b> As barras sobem e descem ao acaso: não mostram os votos reais nem quem está na frente. O resultado só é revelado no palco.</span></p>' +
         '</section>' +
         '<aside class="tl-qr">' +
           '<span class="tl-qr-cab">Aponte a câmera do celular</span>' +
@@ -3117,51 +3130,95 @@
       '</div>';
   }
 
-  // um "voto" simulado: a semente sobe até o Herói e a barra cresce um pouco
-  function telaoVoto() {
+  /* A animação: cada Herói tem um "nível" que sobe e desce o tempo todo —
+     duas ondas lentas somadas, mais empurrões aleatórios para cima (semente
+     chegando) e para baixo (semente indo embora) que se desfazem sozinhos.
+     Nada acumula: ninguém fica na frente por muito tempo e não há números. */
+  function telaoAnimEstado(id) {
+    var a = telao.anim[id];
+    if (!a) {
+      a = telao.anim[id] = {
+        f1: .18 + Math.random() * .22, f2: .5 + Math.random() * .5,
+        p1: Math.random() * 6.3, p2: Math.random() * 6.3,
+        base: 42 + Math.random() * 12, imp: 0, nivel: 40
+      };
+    }
+    return a;
+  }
+  function telaoSemente(el, dir) {
+    var tubo = el.querySelector('.tl-tubo');
+    if (!tubo) return;
+    var sem = document.createElement('span');
+    sem.className = 'tl-voa ' + (dir > 0 ? 'tl-sobe' : 'tl-desce');
+    sem.style.setProperty('--dx', ((Math.random() - .5) * 90).toFixed(0) + 'px');
+    sem.style.setProperty('--gx', ((Math.random() < .5 ? -1 : 1) * (60 + Math.random() * 80)).toFixed(0) + 'px');
+    sem.innerHTML = sementeSvg();
+    el.appendChild(sem);
+    setTimeout(function () { if (sem.parentNode) sem.parentNode.removeChild(sem); }, 2300);
+  }
+  function telaoBolha(el) {
+    var enche = el.querySelector('.tl-enche');
+    if (!enche) return;
+    var bo = document.createElement('i');
+    bo.className = 'tl-bolha';
+    bo.style.left = (15 + Math.random() * 70).toFixed(0) + '%';
+    bo.style.setProperty('--s', (4 + Math.random() * 7).toFixed(0) + 'px');
+    bo.style.animationDuration = (1.6 + Math.random() * 1.6).toFixed(2) + 's';
+    enche.appendChild(bo);
+    setTimeout(function () { if (bo.parentNode) bo.parentNode.removeChild(bo); }, 3400);
+  }
+  // empurrão aleatório: na maioria das vezes para cima, às vezes para baixo
+  function telaoEmpurrao() {
     var itens = document.querySelectorAll('.tl-cand');
     if (!itens.length) return;
     var el = itens[Math.floor(Math.random() * itens.length)];
-    var id = el.getAttribute('data-tl');
-    var nv = Math.min(100, (telao.niveis[id] || 0) + 4 + Math.random() * 9);
-    telao.niveis[id] = nv;
-    var enche = el.querySelector('.tl-enche');
-    if (enche) enche.style.height = nv.toFixed(1) + '%';
-    el.classList.remove('tl-pulso'); void el.offsetWidth; el.classList.add('tl-pulso');
-    var sem = document.createElement('span');
-    sem.className = 'tl-voa';
-    sem.style.setProperty('--dx', ((Math.random() - .5) * 60).toFixed(0) + 'px');
-    sem.innerHTML = sementeSvg();
-    el.appendChild(sem);
-    setTimeout(function () { if (sem.parentNode) sem.parentNode.removeChild(sem); }, 1700);
-    // quando alguma barra quase enche, todas esvaziam e o ciclo recomeça:
-    // a tela nunca chega a sugerir um vencedor
-    if (nv >= 92) telaoEsvaziar();
+    var a = telaoAnimEstado(el.getAttribute('data-tl'));
+    var dir = Math.random() < .68 ? 1 : -1;
+    a.imp += dir * (9 + Math.random() * 14);
+    a.imp = Math.max(-30, Math.min(34, a.imp));
+    telaoSemente(el, dir);
+    if (dir > 0) { el.classList.remove('tl-pulso'); void el.offsetWidth; el.classList.add('tl-pulso'); }
+    else { el.classList.remove('tl-recua'); void el.offsetWidth; el.classList.add('tl-recua'); }
   }
-  function telaoEsvaziar() {
-    Object.keys(telao.niveis).forEach(function (k) { telao.niveis[k] = 6 + Math.random() * 10; });
+  function telaoQuadro(ts) {
+    if (route.name !== 'telao') { telao.raf = null; return; }
+    var t = ts / 1000, dt = telao.ultimo ? Math.min(.1, t - telao.ultimo) : .016;
+    telao.ultimo = t;
     Array.prototype.forEach.call(document.querySelectorAll('.tl-cand'), function (el) {
-      var e = el.querySelector('.tl-enche');
-      if (e) e.style.height = (telao.niveis[el.getAttribute('data-tl')] || 8).toFixed(1) + '%';
+      var a = telaoAnimEstado(el.getAttribute('data-tl'));
+      a.imp *= Math.pow(.55, dt);   // o empurrão some em poucos segundos
+      var alvo = a.base + 20 * Math.sin(t * a.f1 + a.p1) + 8 * Math.sin(t * a.f2 + a.p2) + a.imp;
+      alvo = Math.max(10, Math.min(94, alvo));
+      a.nivel += (alvo - a.nivel) * Math.min(1, dt * 3.2);
+      var enche = el.querySelector('.tl-enche');
+      if (enche) enche.style.transform = 'translateY(' + (100 - a.nivel).toFixed(2) + '%)';
+      var q = el.querySelector('.tl-quadro');
+      if (q) q.style.transform = 'translateY(' + ((50 - a.nivel) * .22).toFixed(1) + 'px) rotate(' + (Math.sin(t * a.f2 * 1.3 + a.p1) * 1.6).toFixed(2) + 'deg)';
+      el.style.setProperty('--brilho', (a.nivel / 100).toFixed(3));
     });
+    telao.raf = requestAnimationFrame(telaoQuadro);
   }
   function telaoMontar() {
     if (route.name !== 'telao') {
       if (telao.timer) { clearTimeout(telao.timer); telao.timer = null; }
+      if (telao.bolhas) { clearInterval(telao.bolhas); telao.bolhas = null; }
       return;
     }
-    // depois de cada redesenho, devolve às barras a altura em que estavam
-    Array.prototype.forEach.call(document.querySelectorAll('.tl-cand'), function (el) {
-      var id = el.getAttribute('data-tl');
-      if (telao.niveis[id] == null) telao.niveis[id] = 8 + Math.random() * 14;
-      var e = el.querySelector('.tl-enche');
-      if (e) e.style.height = telao.niveis[id].toFixed(1) + '%';
-    });
+    if (!telao.anim) telao.anim = {};
+    if (!telao.raf) { telao.ultimo = 0; telao.raf = requestAnimationFrame(telaoQuadro); }
+    if (!telao.bolhas) {
+      telao.bolhas = setInterval(function () {
+        if (route.name !== 'telao') return;
+        Array.prototype.forEach.call(document.querySelectorAll('.tl-cand'), function (el) {
+          if (Math.random() < .55) telaoBolha(el);
+        });
+      }, 420);
+    }
     if (telao.timer) return;
     (function proximo() {
       if (route.name !== 'telao') { telao.timer = null; return; }
-      telaoVoto();
-      telao.timer = setTimeout(proximo, 380 + Math.random() * 900);
+      telaoEmpurrao();
+      telao.timer = setTimeout(proximo, 260 + Math.random() * 640);
     })();
   }
 
@@ -3800,7 +3857,7 @@
         .filter(function (t) { return /^https?:\/\//i.test(t); });
       if (!urls.length) { toast('Nenhum endereço válido.'); return; }
       admin.copy = null; renderOverlay();
-      if (usaNuvem()) {
+      if (remote.on) {
         var falhaLink = '', feitosLink = 0, cadeiaLink = Promise.resolve();
         urls.forEach(function (u) {
           cadeiaLink = cadeiaLink.then(function () {
@@ -3831,7 +3888,7 @@
           ? 'Ela sai do site para todo mundo. Dá para acrescentar de novo depois.'
           : 'Ela sai do site neste aparelho. Dá para acrescentar de novo depois.', yes: 'Sim, remover', danger: true,
         run: function () {
-          if (usaNuvem()) {
+          if (remote.on) {
             rpcFoto('remover_foto', { p_id: alvoDel[3] })
               .then(function () { return depoisDeFoto('Foto removida para todo mundo.'); })
               .catch(function (e) { toast(erroFoto(e && e.message)); });
@@ -3854,7 +3911,7 @@
       var alvo = act === 'fotoSobe' ? iM - 1 : iM + 1;
       var doEsc = fotosDoEscopo(escFoto);
       if (alvo < 0 || alvo >= doEsc.length) return;
-      if (usaNuvem()) {
+      if (remote.on) {
         var ids = doEsc.map(function (f) { return f[3]; });
         var t2 = ids[iM]; ids[iM] = ids[alvo]; ids[alvo] = t2;
         // mostra a ordem nova na hora e confirma no banco
@@ -3877,7 +3934,7 @@
       var iC = +el.getAttribute('data-i');
       var fs = fotosGerais();
       if (!fs[iC]) return;
-      if (usaNuvem()) {
+      if (remote.on) {
         rpcFoto('definir_capa_foto', { p_id: fs[iC][3] })
           .then(function () { return depoisDeFoto('Foto de capa definida para todo mundo.'); })
           .catch(function (e) { toast(erroFoto(e && e.message)); });
@@ -3892,7 +3949,7 @@
         var cx = $('#cap' + i2), wx = document.querySelector('[name="w' + i2 + '"]');
         return { legenda: cx ? String(cx.value || '').trim() : (p2[2] || ''), larga: wx ? wx.checked : p2[1] === 2 };
       });
-      if (usaNuvem()) {
+      if (remote.on) {
         var itens = fotos2.map(function (p2, i2) { return { id: p2[3], legenda: lido[i2].legenda, larga: lido[i2].larga }; });
         rpcFoto('atualizar_fotos', { p_itens: itens })
           .then(function () { return depoisDeFoto(escFoto === 'geral' ? 'Descrições salvas para todo mundo.' : 'Legendas salvas para todo mundo.'); })

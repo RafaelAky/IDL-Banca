@@ -363,5 +363,27 @@ on conflict (id) do update set nome = excluded.nome;
 
 update public.estado_votacao set total_trilheiros = coalesce(total_trilheiros, 75) where id = 1;
 
+-- as 14 fotos da Trilha que já vêm com o site. Entram só se a tabela estiver
+-- vazia; depois o painel acrescenta, tira, reordena e troca a capa.
+insert into public.fotos (src, legenda, larga, capa, ordem)
+select v.* from (values
+  ('img/2026/t06.webp', 'A Trilha começa numa roda', true, false, 1),
+  ('img/2026/t08.webp', 'A vez de falar', false, false, 2),
+  ('img/2026/t05.webp', 'Risada no meio da aula', false, false, 3),
+  ('img/2026/t12.webp', 'Uma carta para o futuro', true, false, 4),
+  ('img/2026/t14.webp', 'O projeto tomando forma', false, false, 5),
+  ('img/2026/t07.webp', 'Escutar antes de propor', false, false, 6),
+  ('img/2026/t03.webp', 'Mãos na terra', true, true, 7),
+  ('img/2026/t04.webp', 'Nas comunidades', false, false, 8),
+  ('img/2026/t11.webp', 'A turma inteira junto', false, false, 9),
+  ('img/2026/t01.webp', 'As histórias viraram vídeo', false, false, 10),
+  ('img/2026/t02.webp', 'Cada trilheiro contou a sua', false, false, 11),
+  ('img/2026/t13.webp', 'Ensaio para a Banca', true, false, 12),
+  ('img/2026/t09.webp', 'Defendendo a ideia', false, false, 13),
+  ('img/2026/t10.webp', 'O grupo por perto', false, false, 14)
+) as v(src, legenda, larga, capa, ordem)
+where not exists (select 1 from public.fotos);
+
+
 -- pronto. Para zerar os votos depois de um teste:  delete from public.votos;
 -- Para voltar o conteúdo ao data.js:              delete from public.conteudo;

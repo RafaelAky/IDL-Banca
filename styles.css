@@ -1085,34 +1085,67 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
   list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0;
   display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 1.6vw; align-items: end;
 }
-.tl-cand { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1.2vh; }
+.tl-cand { position: relative; isolation: isolate; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1.2vh; }
 .tl-tubo {
   order: 1; position: relative; flex: 1; width: 34%; min-width: 26px; max-height: 40vh;
   border-radius: 999px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); overflow: hidden;
 }
 .tl-enche {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 10%;
-  border-radius: 999px;
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  transform: translateY(60%); will-change: transform;
   background: linear-gradient(0deg, var(--c-lilas) 0%, #e9dcfb 100%);
   box-shadow: 0 0 22px rgba(233,220,251,.55);
-  transition: height .9s cubic-bezier(.2,.8,.2,1);
+}
+/* a superfície do "líquido" ondula o tempo todo */
+.tl-onda { position: absolute; left: 0; top: -9px; width: 200%; height: 12px; fill: #e9dcfb; animation: tlOnda 2.2s linear infinite; }
+@keyframes tlOnda { to { transform: translateX(-50%); } }
+.tl-bolha {
+  position: absolute; bottom: 4%; width: var(--s, 6px); height: var(--s, 6px); border-radius: 50%;
+  background: rgba(255,255,255,.75); animation: tlBolha 2.4s ease-in forwards;
+}
+@keyframes tlBolha { 0% { transform: translateY(0) scale(.6); opacity: 0; } 20% { opacity: .9; } 100% { transform: translateY(-36vh) scale(1.1); opacity: 0; } }
+/* brilho atrás do tubo, acompanha o nível */
+.tl-halo {
+  position: absolute; left: 50%; bottom: 30%; width: 120%; aspect-ratio: 1; transform: translateX(-50%);
+  border-radius: 50%; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle, rgba(233,220,251,.35) 0%, rgba(233,220,251,0) 65%);
+  opacity: var(--brilho, .4); transition: opacity .3s;
 }
 .tl-quadro {
   order: 2; width: 100%; aspect-ratio: 4 / 5; max-height: 26vh;
   display: flex; align-items: flex-end; justify-content: center;
   background: var(--grad-quadro); border-radius: 18px; overflow: hidden;
   box-shadow: 0 10px 30px rgba(20,0,50,.35);
-  transition: transform .35s ease, box-shadow .35s ease;
+  will-change: transform;
 }
 .tl-quadro img { width: 92%; height: 96%; object-fit: contain; object-position: bottom; }
 .tl-quadro svg { width: 40%; color: var(--c-acao); }
 .tl-nome { order: 3; font-weight: 700; font-size: clamp(13px, 1.35vw, 26px); text-align: center; line-height: 1.15; min-height: 2.3em; }
-.tl-cand.tl-pulso .tl-quadro { animation: tlPulso .6s ease; }
-@keyframes tlPulso { 35% { transform: translateY(-6px) scale(1.035); box-shadow: 0 0 0 4px var(--c-laranja), 0 14px 34px rgba(20,0,50,.4); } }
+/* o quadro se move por transform (JS); o contorno pisca via box-shadow */
+.tl-cand.tl-pulso .tl-quadro { animation: tlPulso .7s ease; }
+@keyframes tlPulso { 35% { box-shadow: 0 0 0 5px var(--c-laranja), 0 0 40px rgba(249,114,24,.55); } }
+.tl-cand.tl-recua .tl-quadro { animation: tlRecua .7s ease; }
+@keyframes tlRecua { 35% { box-shadow: 0 0 0 4px rgba(255,255,255,.55), 0 14px 34px rgba(20,0,50,.4); filter: saturate(.75); } }
 .tl-voa {
   position: absolute; left: 50%; bottom: 30%; width: clamp(18px, 1.8vw, 34px); color: #fff; pointer-events: none;
   animation: tlVoa 1.6s cubic-bezier(.3,.6,.4,1) forwards;
 }
+/* semente que vai embora: sai do alto do tubo e cai para o lado */
+.tl-voa.tl-desce { bottom: auto; top: 18%; color: rgba(255,255,255,.75); animation: tlVai 2.2s cubic-bezier(.4,.1,.6,1) forwards; }
+@keyframes tlVai {
+  0%   { transform: translate(-50%, 0) rotate(0); opacity: 0; }
+  15%  { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--gx, 80px)), 22vh) rotate(160deg); opacity: 0; }
+}
+/* fundo: sementes subindo devagar, balançando */
+.tl-fundo { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.tl-fundo-s {
+  position: absolute; bottom: -12vh; width: var(--t, 24px); color: rgba(255,255,255,.22);
+  animation: tlFundo var(--dur, 20s) linear var(--atr, 0s) infinite;
+}
+.tl-fundo-s svg { display: block; width: 100%; height: auto; animation: tlBalanco 4.5s ease-in-out infinite alternate; }
+@keyframes tlFundo { to { transform: translateY(-125vh); } }
+@keyframes tlBalanco { from { transform: translateX(calc(var(--balanco, 30px) * -1)) rotate(-14deg); } to { transform: translateX(var(--balanco, 30px)) rotate(14deg); } }
 .tl-voa svg { display: block; width: 100%; height: auto; }
 @keyframes tlVoa {
   0%   { transform: translate(-50%, 0) rotate(-10deg); opacity: 0; }
