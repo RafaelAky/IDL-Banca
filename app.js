@@ -355,12 +355,50 @@
   }
   function go(path) { location.hash = '#/' + String(path).replace(/^\/+/, ''); }
 
+  /* Voltar para onde estava: cada lista guarda a posição da rolagem. Quem
+     abre um projeto ou um Herói e volta cai exatamente onde parou; nas
+     demais trocas de tela, a página começa do topo.                       */
+  var posicoes = {};
+  var LISTAS = { home: 1, projetos: 1, herois: 1, programacao: 1, trilha2026: 1, trilhei: 1 };
+  var DETALHES = { projeto: 1, heroi: 1 };
+  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* segue */ }
+  var guardando = false;
+  window.addEventListener('scroll', function () {
+    if (guardando || restaurando) return;
+    guardando = true;
+    requestAnimationFrame(function () { guardando = false; posicoes[location.hash || '#/'] = window.scrollY; });
+  }, { passive: true });
+  var restaurando = false;
+  function irPara(y) {
+    // 'instant' passa por cima do scroll-behavior: smooth do CSS (troca de tela é seca)
+    try { window.scrollTo({ top: y, behavior: 'instant' }); } catch (e) { window.scrollTo(0, y); }
+  }
+  function restaurarPosicao(chave) {
+    var y = posicoes[chave];
+    restaurando = true;
+    // a página ainda pode crescer enquanto as imagens carregam: confirma algumas vezes
+    var tentativas = [0, 80, 250, 600], mexeu = false;
+    function parar() { mexeu = true; }
+    window.addEventListener('touchstart', parar, { once: true, passive: true });
+    window.addEventListener('wheel', parar, { once: true, passive: true });
+    tentativas.forEach(function (ms, i) {
+      setTimeout(function () {
+        if (!mexeu && (location.hash || '#/') === chave) irPara(y);
+        if (i === tentativas.length - 1) { restaurando = false; posicoes[chave] = window.scrollY; }
+      }, ms);
+    });
+  }
+  var rotaAnterior = route.name;
   window.addEventListener('hashchange', function () {
     var r = parseHash();
+    var deDetalhe = !!DETALHES[rotaAnterior];
     route.name = r.name; route.param = r.param;
+    rotaAnterior = r.name;
     if (r.name === 'trilha2026' || r.name === 'admin') syncFotos();
     render();
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    var chave = location.hash || '#/';
+    if (deDetalhe && LISTAS[r.name] && posicoes[chave] > 0) restaurarPosicao(chave);
+    else irPara(0);
     var app = $('#app'); if (app) app.focus({ preventScroll: true });
   });
 
@@ -1111,6 +1149,37 @@
       }).join('') + '</div></section>';
   }
 
+  /* blocos recolhíveis da página de projeto: no celular começam fechados
+     (só o título e uma prévia); no computador, abertos. O que a pessoa
+     abre ou fecha é lembrado enquanto ela navega.                         */
+  var sfEstado = {};
+  function sfAberta(chave) {
+    if (sfEstado[chave] != null) return sfEstado[chave];
+    return !!(window.matchMedia && matchMedia('(min-width: 1024px)').matches);
+  }
+  function previa(txt, lista) {
+    var t = String(txt || '').trim();
+    if (!t) return '';
+    if (lista) {
+      var n = t.split(/\n+/).filter(function (x) { return x.trim(); }).length;
+      if (n > 1) return n + ' itens';
+    }
+    t = t.replace(/\s+/g, ' ');
+    return t.length > 86 ? t.slice(0, 84).replace(/\s+\S*$/, '') + '…' : t;
+  }
+  function sanfona(chave, label, corpo, resumo, cls) {
+    if (!corpo) return '';
+    return '<details class="sanfona ' + (cls || '') + '" data-sf="' + esc(chave) + '"' + (sfAberta(chave) ? ' open' : '') + '>' +
+      '<summary><span class="sf-cab"><span class="sf-tit">' + esc(label) + '</span>' +
+      (resumo ? '<span class="sf-res">' + esc(resumo) + '</span>' : '') + '</span>' +
+      '<span class="sf-ico" aria-hidden="true">' + ico('i-down') + '</span></summary>' +
+      '<div class="sf-corpo">' + corpo + '</div></details>';
+  }
+  document.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (d && d.classList && d.classList.contains('sanfona')) sfEstado[d.getAttribute('data-sf')] = d.open;
+  }, true);
+
   function viewProjeto(id) {
     var p = byId(id);
     if (!p) return notFound('Projeto não encontrado', 'projetos', 'Voltar aos projetos');
@@ -1121,11 +1190,16 @@
       if (!txt) return '';
       return '<section class="detail-sec ' + (cls || '') + '">' + sechead('', label) + (lista ? listaOuTexto(txt) : nl2p(txt)) + '</section>';
     };
+    // os demais blocos abrem com um toque
+    var bloco = function (k, label, txt, lista) {
+      if (!txt) return '';
+      return sanfona(p.id + ':' + k, label, lista ? listaOuTexto(txt) : nl2p(txt), previa(txt, lista));
+    };
     var equipes = p.teams || [];
 
     var pessoas;
     if (equipes.length > 1) {
-      pessoas = '<section class="detail-sec equipes">' + sechead('', 'As ' + extenso(equipes.length, true) + ' equipes') +
+      pessoas = '<section class="detail-sec equipes">' +
         '<p class="small">Cada equipe construiu o seu projeto e o seu Herói. As ' + extenso(equipes.length, true) + ' apresentam juntas na Banca.</p>' +
         '<div class="equipes-grade">' + equipes.map(function (t) {
           var h = (p.heroes || []).filter(function (x) { return x.id === t.hero; })[0];
@@ -1147,6 +1221,15 @@
         listaNomes(p.values, 'nomes-valores') + '</section>' : '';
       pessoas = heroes + grupo + valores;
     }
+    var nPessoas = equipes.length > 1
+      ? equipes.reduce(function (a, t) { return a + (t.members || []).length; }, 0)
+      : (p.members || []).length;
+    var tituloPessoas = equipes.length > 1 ? 'As ' + extenso(equipes.length, true) + ' equipes' : 'Herói e trilheiros';
+    var resumoPessoas = [
+      (p.heroes || []).map(function (h) { return h.name; }).join(' e '),
+      nPessoas ? nPessoas + ' trilheiros' : ''
+    ].filter(Boolean).join(' · ');
+    pessoas = sanfona(p.id + ':pessoas', tituloPessoas, pessoas, resumoPessoas, 'sf-pessoas');
 
     var gal = (p.gallery && p.gallery.length) ? '<section class="detail-sec">' + sechead('', 'Imagens do projeto') +
       '<div class="galeria">' + p.gallery.map(function (g) {
@@ -1198,13 +1281,18 @@
           (!hasStory(p) ? '<div class="empty"><h2 class="h3">Conteúdo a caminho</h2>' +
             '<p>Os trilheiros ainda estão preparando a apresentação deste projeto. Volte aqui no dia para conhecer a ideia por inteiro.</p></div>' : '') +
           sec('Significado', p.meaning, 'sec-significado') +
-          (equipes.length > 1 ? sec('Integração dos projetos', p.integration, 'sec-integracao') : '') +
-          sec('O problema identificado', p.problem) +
-          sec('Por que esse problema importa', p.why) +
-          sec('A solução proposta', p.solution) +
-          sec('Como funciona', p.how, '', true) +
-          sec('O impacto que pretende gerar', p.impact, '', true) +
-          pessoas + galeriaEquipe(p) + gal + vid +
+          '<div class="sanfonas">' +
+          (hasStory(p) ? '<div class="sf-topo"><span class="eyebrow">O projeto por partes</span>' +
+            '<button type="button" class="sf-tudo" data-act="sfTudo" data-p="' + esc(p.id) + '">' + (sfAberta(p.id + ':problema') ? 'Fechar tudo' : 'Abrir tudo') + '</button></div>' : '') +
+          (equipes.length > 1 ? bloco('integracao', 'Integração dos projetos', p.integration) : '') +
+          bloco('problema', 'O problema identificado', p.problem) +
+          bloco('porque', 'Por que esse problema importa', p.why) +
+          bloco('solucao', 'A solução proposta', p.solution) +
+          bloco('como', 'Como funciona', p.how, true) +
+          bloco('impacto', 'O impacto que pretende gerar', p.impact, true) +
+          pessoas +
+          '</div>' +
+          galeriaEquipe(p) + gal + vid +
           voteCta + nav +
         '</div>' +
         '<aside class="lateral">' +
@@ -3941,6 +4029,13 @@
     var act = el.getAttribute('data-act');
     if (!act || el.tagName === 'INPUT') return;
     var escFoto = el.getAttribute('data-esc') || 'geral';
+    if (act === 'sfTudo') {
+      var ds = document.querySelectorAll('details.sanfona');
+      var abrir = Array.prototype.some.call(ds, function (d) { return !d.open; });
+      Array.prototype.forEach.call(ds, function (d) { d.open = abrir; sfEstado[d.getAttribute('data-sf')] = abrir; });
+      el.textContent = abrir ? 'Fechar tudo' : 'Abrir tudo';
+      return;
+    }
     if (act === 'roloAnt' || act === 'roloProx') {
       var rl = el.parentNode && el.parentNode.querySelector('.turma-rolo');
       if (rl) rl.scrollBy({ left: (act === 'roloProx' ? 1 : -1) * rl.clientWidth * 0.8, behavior: 'smooth' });
@@ -4414,6 +4509,15 @@
   window.addEventListener('storage', function (e) {
     if (e.key === KEY) { load(); render(); }
   });
+
+  /* ----------------------- funcionar com internet fraca ------------------ */
+  // guarda páginas, textos e imagens no aparelho (sw.js). A votação, o painel
+  // e tudo que vem do banco continuam indo sempre à internet.
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* segue sem cache */ });
+    });
+  }
 
   /* --------------------------------- init -------------------------------- */
   load();

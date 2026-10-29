@@ -1296,3 +1296,43 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
 .chave-vis input:disabled + .cv-trilho { opacity: .6; }
 .cv-txt { display: grid; gap: 2px; }
 .cv-txt b { color: var(--c-roxo); font-size: 15px; }
+
+/* =================== PÁGINA DE PROJETO EM BLOCOS ===================
+   "O problema", "A solução", "Como funciona", "Impacto" e as equipes
+   abrem com um toque. No celular começam fechados; no computador, abertos. */
+.sanfonas { display: grid; gap: 10px; padding-block: var(--e-5) var(--e-6); border-top: 1px solid var(--c-linha); }
+.detalhe-texto > .sanfonas:first-child { border-top: 0; padding-top: 0; }
+.sf-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.sf-tudo { font: 600 13px var(--fonte); color: var(--c-acao); padding: 8px 4px; }
+.sanfona {
+  background: var(--c-branco); border: 1.5px solid var(--c-linha); border-radius: var(--r-2);
+  transition: border-color .2s, box-shadow .2s;
+}
+.sanfona[open] { border-color: var(--c-lilas-claro); box-shadow: 0 6px 20px rgba(46,0,106,.06); }
+.sanfona > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  padding: 16px 16px 16px 18px; min-height: 56px; border-radius: var(--r-2);
+}
+.sanfona > summary::-webkit-details-marker { display: none; }
+.sanfona > summary:focus-visible { outline: none; box-shadow: var(--anel); }
+.sf-cab { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.sf-tit { font-weight: 700; color: var(--c-roxo); font-size: 1.05rem; line-height: 1.25; }
+.sf-res { font-size: 13px; color: var(--c-texto-2); line-height: 1.4; }
+.sanfona[open] .sf-res { display: none; }
+.sf-ico {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--c-tint); color: var(--c-acao); transition: transform .25s, background .2s;
+}
+.sf-ico svg { width: 18px; height: 18px; }
+.sanfona[open] .sf-ico { transform: rotate(180deg); background: var(--c-acao); color: #fff; }
+.sf-corpo { padding: 0 18px 18px; }
+.sf-corpo > p, .sf-corpo .lista-kv { max-width: var(--maxw-texto); }
+.sf-corpo > p + p { margin-top: .8em; }
+.sf-corpo .detail-sec { padding-block: var(--e-4); }
+.sf-corpo .detail-sec:first-child { border-top: 0; padding-top: 0; }
+.sanfona[open] .sf-corpo { animation: sfAbre .3s ease; }
+@keyframes sfAbre { from { opacity: 0; transform: translateY(-4px); } }
+@media (min-width: 1024px) {
+  .sanfona > summary { padding: 18px 20px 18px 24px; }
+  .sf-corpo { padding: 0 24px 24px; }
+}

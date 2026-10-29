@@ -49,3 +49,9 @@ As tags do `index.html` já apontam para https://idl-banca.vercel.app. Se o ende
 
 ## Créditos
 `vendor/qrcode.js` — QR Code Generator, © Kazuhiko Arase, licença MIT.
+
+## Internet fraca (sw.js)
+O `sw.js` guarda no celular páginas, estilos, scripts e imagens depois do primeiro acesso.
+Páginas e scripts vêm da internet primeiro (versão nova); se a rede demorar mais de 3 s, usa a cópia.
+Votação, painel e tudo do banco sempre vêm da internet. Funciona só em https (na Vercel).
+Depois de uma mudança grande, aumente `VERSAO` no topo do `sw.js` para limpar as cópias antigas.
