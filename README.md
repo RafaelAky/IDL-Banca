@@ -27,7 +27,7 @@ git push -u origin main
 
 ## Banco de dados (votação compartilhada)
 Sem `url`/`anonKey` em `config.js`, o site roda em **modo prévia** (votos e fotos ficam só no aparelho).
-Para a votação real é preciso um projeto Supabase com o schema `backend/supabase.sql`
+Para a votação real, rode `backend/supabase.sql` no SQL Editor do Supabase
 (tabelas `estado_votacao`, `fotos`, `fotos_lista`, `projetos` e as funções RPC `registrar_voto`,
 `consultar_voto`, `resultado`, `entrar_admin`, `definir_votacao`, `definir_candidatos`,
 `definir_total_trilheiros`, `definir_chave_evento`).

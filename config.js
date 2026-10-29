@@ -38,7 +38,8 @@ window.IDL_ADMIN = [
   '0e4d09ac5db1d5f5567a7975bafc517dc2cdec8c6d6de53022a0126d4b524483',  // coordenação do evento
   '01b800df9a37e2d22d4a8737bb4fbc4dfa7c9b9cbcb91ce637f52f71eefd380b',  // organização
   'b56870de1da82b63cf3e1154253931af5f24e8bd8e295905206116b40e31ee24',  // organização
-  'ba4a4549e2d29e0673ad4710b164031fa5ee87d0a9960611ddb57604aaaccbb1'   // organização
+  'ba4a4549e2d29e0673ad4710b164031fa5ee87d0a9960611ddb57604aaaccbb1',  // organização
+  '6a7bb49e22c2bb68eb28c06987d50e8d908c809cfecd1ca30e8768d4d82233fb'   // Rafael Dutra
 ];
 
 /* ---------------------------------------------------------------------
@@ -59,4 +60,4 @@ window.IDL_ADMIN = [
    Com o banco de dados ligado, quem manda é a chave_admin guardada no
    servidor, e esta linha deixa de valer.
    --------------------------------------------------------------------- */
-window.IDL_SENHA_HASH = 'f6e41b1366788281bc4ceaac8181c9349aeae9c0be1b0960ea7902d554b68a0f';
+window.IDL_SENHA_HASH = 'c29cb289acaf83fb613739d4ea8a49efb4679052081e599f5279b39478537114';
