@@ -380,8 +380,18 @@
   function ehAdmin() {
     return !!localState.hash && ehContaDaOrg(localState.hash);
   }
+  /* A aba Votação só aparece para o público quando a organização liga a
+     chave "Mostrar a votação no site" no painel (abrir a votação também
+     liga). Quem está com o painel aberto neste aparelho sempre vê.
+     Sem banco (modo prévia), vale a data do evento.                       */
+  function mostraVotacao() {
+    if (localState.admin || localState.voted || votacaoAberta()) return true;
+    if (remote.on) return remote.visivel;
+    return eventPhase() !== 'antes';
+  }
   function navItens() {
-    return ehAdmin() ? NAV_BASE.concat([NAV_ADMIN]) : NAV_BASE;
+    var base = mostraVotacao() ? NAV_BASE : NAV_BASE.filter(function (n) { return n.id !== 'votacao'; });
+    return ehAdmin() ? base.concat([NAV_ADMIN]) : base;
   }
   function navGroup(cur) {
     if (cur === 'heroi' || cur === 'projeto' || cur === 'herois') return 'projetos';
@@ -796,6 +806,8 @@
         '<h2 class="titulo">Agora é com você</h2>' +
         '<p class="lead">' + (votoEmHerois() ? 'Escolha o Herói que mais te marcou entre os candidatos.' : 'Conheça os projetos e escolha aquele que mais te marcou.') + '</p>' +
         '<button class="btn btn-lg btn-laranja" data-nav="votacao">Votar agora</button></div></section>';
+    } else if (!mostraVotacao()) {
+      voteHtml = '';
     } else {
       var abre = String(db.event.votacaoAbre || '').trim();
       voteHtml = '<section class="faixa fx-escuro home-voto">' + sementesNoAr(4) + '<div class="cont voto-in">' +
@@ -1443,7 +1455,7 @@
 
   /* ============================ BANCO DE VOTOS ============================ */
   var BE = (window.IDL_BACKEND || {});
-  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
+  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
   var adminRes = { carregando: false, dados: null, erro: '' };
   var pubRes = { carregando: false, dados: null, erro: '', pediu: false };
 
@@ -1490,6 +1502,8 @@
       var mudou = (remote.aberta !== row.votacao_aberta) || (remote.resultadoPublico !== row.resultado_publico) ||
                   (remote.exigeChave !== !!row.exige_chave) || (remote.totalTrilheiros !== total) || !remote.carregou;
       if (remote.resultadoPublico !== !!row.resultado_publico) { pubRes.dados = null; pubRes.erro = ''; pubRes.pediu = false; }
+      if (remote.visivel !== !!row.votacao_visivel) mudou = true;
+      remote.visivel = !!row.votacao_visivel;
       remote.aberta = !!row.votacao_aberta;
       remote.resultadoPublico = !!row.resultado_publico;
       remote.exigeChave = !!row.exige_chave;
@@ -2703,6 +2717,17 @@
 
     return '<div class="stack-lg">' +
       '<section class="stack">' +
+      '<h2 class="h2">Votação no site</h2>' +
+      '<label class="chave-vis' + (remote.visivel ? ' is-on' : '') + '">' +
+      '<input type="checkbox" data-act="toggleVisivel"' + (remote.visivel ? ' checked' : '') + (remote.aberta ? ' disabled' : '') + '>' +
+      '<span class="cv-trilho" aria-hidden="true"><span></span></span>' +
+      '<span class="cv-txt"><b>' + (remote.visivel ? 'A aba Votação está visível para todos' : 'A aba Votação está escondida') + '</b>' +
+      '<span class="tiny">' + (remote.aberta ? 'Com a votação aberta, ela fica sempre visível.'
+        : remote.visivel ? 'Quem abrir o site vê a aba Votação e os candidatos. A votação em si continua fechada até você abrir.'
+        : 'Ninguém vê a aba Votação no site. Ligue quando quiser mostrar — abrir a votação também liga.') + '</span></span>' +
+      '</label>' +
+      '</section>' +
+      '<section class="stack">' +
       '<h2 class="h2">Controle da votação</h2>' +
       '<div class="statgrid">' +
       '<div class="stat"><div class="sv" style="font-size:20px">' + status + '</div><div class="sl">Estado agora</div></div>' +
@@ -3286,7 +3311,7 @@
       case 'herois': return viewProjetos('herois');
       case 'projeto': return viewProjeto(route.param);
       case 'heroi': return viewHeroi(route.param);
-      case 'votacao': return viewVotacao();
+      case 'votacao': return mostraVotacao() ? viewVotacao() : viewHome();
       case 'trilha2026': return viewRetro();
       case 'trilhei': return viewTrilhei();
       case 'resultado': return viewResultado(localState.admin);
@@ -4178,6 +4203,18 @@
     var act = t.getAttribute && t.getAttribute('data-act');
     if (act === 'filtroFotos') { filtFotos = t.value || 'todas'; render(); var sel = $('#filtroFotos'); if (sel) sel.focus({ preventScroll: true }); return; }
     if (act === 'setPalavra') { flow.palavra = t.value; }
+    else if (act === 'toggleVisivel') {
+      var quer = !!t.checked;
+      if (!remote.on) { toast('Disponível na versão publicada.'); t.checked = !quer; return; }
+      sbRpc('definir_visibilidade', { p_chave: localState.adminKey || '', p_visivel: quer }).then(function (r) {
+        if (r && r.ok) { remote.visivel = !!r.visivel; render(); toast(r.visivel ? 'A aba Votação agora aparece para todos.' : 'A aba Votação foi escondida do site.'); }
+        else { t.checked = !quer; if (!(r && r.erro === 'chave_invalida')) toast('Não consegui mudar agora. Tente de novo.'); }
+      }).catch(function (e) {
+        t.checked = !quer;
+        toast(String(e && e.message) === 'http 404' ? 'O banco ainda não tem essa opção. Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.');
+      });
+      return;
+    }
     else if (act === 'toggleClock') { db.clock.simulated = t.checked; db.clock.baseReal = Date.now(); if (!t.checked) db.clock.baseSim = Date.now(); save(); }
     else if (act === 'setClock') {
       var v = Date.parse(t.value);

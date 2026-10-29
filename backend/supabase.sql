@@ -30,6 +30,8 @@ insert into public.estado_votacao (id) values (1) on conflict (id) do nothing;
 -- rodada: sobe 1 cada vez que a organização zera os votos; os aparelhos
 -- que já tinham votado percebem a mudança e liberam o voto de novo
 alter table public.estado_votacao add column if not exists rodada int not null default 1;
+-- votacao_visivel: a aba Votação aparece no site para o público (chave do painel)
+alter table public.estado_votacao add column if not exists votacao_visivel boolean not null default false;
 
 -- segredos do servidor (ninguém de fora lê: RLS sem nenhuma política)
 create table if not exists public.config_privada (
@@ -200,9 +202,21 @@ begin
   update public.estado_votacao set
     votacao_aberta    = coalesce(p_aberta, votacao_aberta),
     resultado_publico = coalesce(p_resultado, resultado_publico),
+    -- abrir a votação também a mostra no site
+    votacao_visivel   = case when p_aberta then true else votacao_visivel end,
     atualizado_em     = now()
   where id = 1;
   return jsonb_build_object('ok', true);
+end $$;
+
+-- mostra ou esconde a aba Votação do site (sem abrir nem fechar a votação)
+create or replace function public.definir_visibilidade(p_chave text, p_visivel boolean)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.estado_votacao set votacao_visivel = coalesce(p_visivel, false), atualizado_em = now() where id = 1;
+  return jsonb_build_object('ok', true, 'visivel', coalesce(p_visivel, false));
 end $$;
 
 create or replace function public.definir_candidatos(p_chave text, p_ids text[])
@@ -351,7 +365,7 @@ begin
   foreach f in array array[
     'registrar_voto(text,text,text)', 'consultar_voto(text)', 'resultado(text)',
     'entrar_admin(text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
-    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)', 'ler_chave_evento(text)',
+    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)', 'definir_visibilidade(text,boolean)', 'ler_chave_evento(text)',
     'adicionar_foto(text,text,text,text,boolean,text)', 'remover_foto(text,uuid)',
     'ordenar_fotos(text,uuid[])', 'definir_capa_foto(text,uuid)', 'atualizar_fotos(text,jsonb)']
   loop
