@@ -368,7 +368,7 @@
   var NAV_BASE = [
     { id: 'home', label: 'Início', shortLabel: 'Início', icon: 'i-home' },
     { id: 'trilhei', label: 'Por que Trilhei?', shortLabel: 'Trilhei', icon: 'i-seed' },
-    { id: 'programacao', label: 'Programação', shortLabel: 'Programação', icon: 'i-clock' },
+    { id: 'programacao', label: 'Programação', shortLabel: 'Agenda', icon: 'i-clock' },
     { id: 'projetos', label: 'Heróis & Projetos', shortLabel: 'Heróis', icon: 'i-grid' },
     { id: 'trilha2026', label: 'A Trilha em 2026', midLabel: 'Fotos', shortLabel: 'Fotos', icon: 'i-eye' },
     { id: 'votacao', label: 'Votação', shortLabel: 'Votação', icon: 'i-vote' }
@@ -569,12 +569,17 @@
   function grupoHerois(cls, alturaMax) {
     var hs = allHeroes().filter(function (x) { return x.hero && x.hero.image; });
     if (!hs.length) return '';
-    return '<div class="turma-rolo"><div class="turma ' + (cls || '') + '" data-hmax="' + (alturaMax || 300) + '">' + hs.map(function (x) {
+    return '<div class="rolo-caixa"><div class="turma-rolo"><div class="turma ' + (cls || '') + '" data-hmax="' + (alturaMax || 300) + '">' + hs.map(function (x) {
       return '<button class="turma-p" data-go="heroi/' + esc(x.hero.id) + '" ' +
         'aria-label="' + esc(x.hero.name + ', Herói do projeto ' + x.project.name) + '" title="' + esc(x.hero.name) + '">' +
         '<img src="' + esc(x.hero.image) + '" alt="" loading="lazy"></button>';
     }).join('') + '</div></div>' +
-      '<p class="turma-dica">Arraste para o lado para ver todos os Heróis. Toque em um deles para conhecer a história.</p>';
+      '<button type="button" class="rolo-seta rolo-ant" data-act="roloAnt" aria-label="Ver os Heróis anteriores">' + ico('i-arrow-left') + '</button>' +
+      '<button type="button" class="rolo-seta rolo-prox" data-act="roloProx" aria-label="Ver mais Heróis">' + ico('i-chev') + '</button>' +
+      '<span class="rolo-convite" aria-hidden="true">Deslize para ver os ' + hs.length + ' Heróis <i>' + ico('i-chev') + ico('i-chev') + '</i></span>' +
+      '</div>' +
+      '<div class="rolo-trilho" aria-hidden="true"><span></span></div>' +
+      '<p class="turma-dica">Toque em um Herói para conhecer a história.</p>';
   }
 
   /* duas fileiras de Heróis atravessando a dobra, em sentidos opostos.
@@ -2258,7 +2263,9 @@
     }
 
     var tabs = '<div class="tabs" role="tablist">' + ADMIN_TABS.map(function (t) {
-      return '<button role="tab" data-atab="' + t[0] + '" aria-selected="' + (admin.tab === t[0]) + '">' + esc(t[1]) + '</button>';
+      var curto = { programacao: 'Agenda', retro: 'Fotos', geral: 'Geral' }[t[0]];
+      return '<button role="tab" data-atab="' + t[0] + '" aria-selected="' + (admin.tab === t[0]) + '">' +
+        (curto ? '<span class="tb-l">' + esc(t[1]) + '</span><span class="tb-c">' + esc(curto) + '</span>' : esc(t[1])) + '</button>';
     }).join('') + '</div>';
 
     return '<div class="adminbar"><div class="adminbar-in">' +
@@ -3360,15 +3367,25 @@
     var r = n < 4 ? 1 : 2;
     var maior = Math.ceil(n / r);
     var h = Math.min(hMax, W / (maior * S + S));
+    // fora do início, a turma não desliza: no celular ganha uma terceira fileira e cabe inteira
+    var podeRolar = t.classList.contains('turma-home');
+    if (!podeRolar && h < 150 && n >= 7) {
+      r = 3; maior = Math.ceil(n / r);
+      h = Math.min(hMax, W / (maior * S + S));
+    }
     // tela estreita: a foto mantém duas fileiras num tamanho bom e passa a
     // deslizar para o lado, em vez de espremer os Heróis
-    var rola = h < 150;
+    var rola = podeRolar && h < 150;
     if (rola) {
       h = Math.min(hMax, 190);
       W = Math.ceil((maior * S + S) * h);
       t.style.width = W + 'px';
     }
-    if (rolo) rolo.classList.toggle('rola', rola);
+    if (rolo) {
+      rolo.classList.toggle('rola', rola);
+      var cx0 = rolo.parentNode;
+      if (cx0 && cx0.classList.contains('rolo-caixa')) { cx0.classList.toggle('tem-rola', rola); roloEstado(rolo); }
+    }
     var filas = [];
     for (var k0 = 0; k0 < r; k0++) filas.push([]);
     ps.forEach(function (p, i) { filas[i % r].push(p); });
@@ -3397,6 +3414,48 @@
     t.style.height = Math.ceil(alturaTotal + 6) + 'px';
     t.classList.add('turma-pronta');
   }
+  // setas, sombras e trilho acompanham a posição do deslize
+  function roloEstado(rolo) {
+    var cx = rolo.parentNode;
+    if (!cx || !cx.classList.contains('rolo-caixa')) return;
+    var max = rolo.scrollWidth - rolo.clientWidth;
+    var x = rolo.scrollLeft;
+    cx.classList.toggle('no-inicio', x <= 4);
+    cx.classList.toggle('no-fim', x >= max - 4);
+    if (x > 24) cx.classList.add('ja-rolou');
+    var tr = cx.nextElementSibling;
+    if (tr && tr.classList.contains('rolo-trilho')) {
+      tr.style.display = cx.classList.contains('tem-rola') ? '' : 'none';
+      var b = tr.firstElementChild;
+      var vis = rolo.clientWidth / Math.max(1, rolo.scrollWidth);
+      if (b) { b.style.width = (vis * 100).toFixed(1) + '%'; b.style.left = (max > 0 ? (x / max) * (1 - vis) * 100 : 0).toFixed(1) + '%'; }
+    }
+  }
+  document.addEventListener('scroll', function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains('turma-rolo')) roloEstado(t);
+  }, true);
+  // na primeira vez que aparece, a foto "cutuca" para o lado, mostrando que desliza
+  var roloVisto = null;
+  function roloCutucar(raiz) {
+    if (!('IntersectionObserver' in window)) return;
+    if (roloVisto) roloVisto.disconnect();
+    roloVisto = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        roloVisto.unobserve(e.target);
+        var r = e.target, cx = r.parentNode;
+        if (!cx.classList.contains('tem-rola') || r.scrollLeft > 4) return;
+        if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        setTimeout(function () {
+          r.scrollTo({ left: 90, behavior: 'smooth' });
+          setTimeout(function () { r.scrollTo({ left: 0, behavior: 'smooth' }); setTimeout(function () { cx.classList.remove('ja-rolou'); }, 500); }, 650);
+        }, 500);
+      });
+    }, { threshold: 0.6 });
+    Array.prototype.forEach.call((raiz || document).querySelectorAll('.turma-rolo'), function (r) { roloVisto.observe(r); });
+  }
+
   function ajustarTurmas(raiz) {
     Array.prototype.forEach.call((raiz || document).querySelectorAll('.turma'), function (t) {
       Array.prototype.forEach.call(t.querySelectorAll('img'), function (im) {
@@ -3444,6 +3503,7 @@
     if (ehTelao) return;
     revelar(app);
     ajustarTurmas(app);
+    roloCutucar(app);
 
     // revelação das barras de resultado
     var bars = app.querySelectorAll('.track .bar');
@@ -3856,6 +3916,11 @@
     var act = el.getAttribute('data-act');
     if (!act || el.tagName === 'INPUT') return;
     var escFoto = el.getAttribute('data-esc') || 'geral';
+    if (act === 'roloAnt' || act === 'roloProx') {
+      var rl = el.parentNode && el.parentNode.querySelector('.turma-rolo');
+      if (rl) rl.scrollBy({ left: (act === 'roloProx' ? 1 : -1) * rl.clientWidth * 0.8, behavior: 'smooth' });
+      return;
+    }
     if (act === 'telaoTelaCheia') {
       var de = document.documentElement;
       if (document.fullscreenElement) { if (document.exitFullscreen) document.exitFullscreen(); }

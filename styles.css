@@ -1219,3 +1219,62 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
 .cta-ponto { width: 12px; height: 12px; border-radius: 50%; background: #fff; flex: none; animation: tlPisca 1.4s ease-in-out infinite; }
 @keyframes ctaEntra { from { transform: translate(-50%, 20px); opacity: 0; } }
 .toast { z-index: 60; }
+
+/* ===================== DESLIZE LATERAL BEM SINALIZADO =====================
+   Só a turma de Heróis do Início desliza para o lado no celular. Quando
+   desliza, a tela deixa isso evidente: sombras nas bordas, setas, um convite
+   "Deslize →" que some depois do primeiro gesto e um trilho de posição.   */
+.rolo-caixa { position: relative; }
+.rolo-seta, .rolo-convite { display: none; }
+.rolo-caixa.tem-rola::before, .rolo-caixa.tem-rola::after {
+  content: ""; position: absolute; top: 0; bottom: 6px; width: 46px; z-index: 600; pointer-events: none;
+  transition: opacity .3s;
+}
+.rolo-caixa.tem-rola::before { left: 0; background: linear-gradient(90deg, var(--rolo-fundo, #f6f2fc) 10%, transparent); }
+.rolo-caixa.tem-rola::after  { right: 0; background: linear-gradient(270deg, var(--rolo-fundo, #f6f2fc) 10%, transparent); }
+.fx-branco { --rolo-fundo: #ffffff; }
+.rolo-caixa.no-inicio::before, .rolo-caixa.no-fim::after { opacity: 0; }
+.rolo-caixa.tem-rola .rolo-seta {
+  display: grid; place-items: center; position: absolute; top: 50%; z-index: 700;
+  width: 44px; height: 44px; margin-top: -22px; border-radius: 50%;
+  background: var(--c-branco); color: var(--c-acao); border: 1.5px solid var(--c-lilas-claro);
+  box-shadow: 0 6px 18px rgba(46,0,106,.18); transition: opacity .25s, transform .25s;
+}
+.rolo-seta svg { width: 20px; height: 20px; }
+.rolo-ant { left: 8px; }
+.rolo-prox { right: 8px; animation: roloChama 1.6s ease-in-out infinite; }
+.rolo-caixa.ja-rolou .rolo-prox { animation: none; }
+.rolo-caixa.no-inicio .rolo-ant, .rolo-caixa.no-fim .rolo-prox { opacity: 0; pointer-events: none; transform: scale(.8); }
+@keyframes roloChama { 50% { transform: translateX(5px); } }
+.rolo-caixa.tem-rola .rolo-convite {
+  display: inline-flex; align-items: center; gap: 6px; position: absolute; left: 50%; bottom: 18px; z-index: 700;
+  transform: translateX(-50%); white-space: nowrap; pointer-events: none;
+  padding: 8px 14px; border-radius: 999px; background: var(--c-roxo); color: #fff;
+  font-size: 13px; font-weight: 600; box-shadow: 0 8px 22px rgba(46,0,106,.3);
+  transition: opacity .35s, transform .35s;
+}
+.rolo-convite i { display: inline-flex; font-style: normal; animation: roloChama 1.2s ease-in-out infinite; }
+.rolo-convite svg { width: 14px; height: 14px; margin-left: -6px; }
+.rolo-caixa.ja-rolou .rolo-convite { opacity: 0; transform: translate(-50%, 8px); }
+.rolo-trilho { position: relative; height: 4px; margin: 10px auto 0; width: min(180px, 50%); border-radius: 4px; background: var(--c-lilas-claro); overflow: hidden; }
+.rolo-trilho span { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: 4px; background: var(--c-acao); transition: left .12s linear; }
+.turma-dica { display: block; }
+
+/* ====================== PAINEL NO CELULAR ======================
+   As abas não deslizam: viram uma grade de botões, todas à vista.     */
+@media (max-width: 759px) {
+  .adminbar { position: static; }
+  .adminbar-in { padding: var(--e-3) 0; }
+  .tabs {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;
+    overflow: visible; padding: 2px 0 12px;
+  }
+  .tabs button {
+    min-height: 40px; padding: 4px 6px; border: 1.5px solid var(--c-linha-forte); border-radius: 12px;
+    font-size: 12px; line-height: 1.15; text-align: center; background: var(--c-branco);
+  }
+  .tabs button[aria-selected="true"] { background: var(--c-roxo); border-color: var(--c-roxo); color: #fff; }
+  .tabs button .tb-l { display: none; }
+  .tabs button .tb-c { display: inline; }
+}
+.tabs .tb-c { display: none; }
