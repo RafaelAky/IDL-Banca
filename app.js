@@ -1438,7 +1438,7 @@
 
   /* ============================ BANCO DE VOTOS ============================ */
   var BE = (window.IDL_BACKEND || {});
-  var remote = { on: !!(BE.url && BE.anonKey), aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
+  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
   var adminRes = { carregando: false, dados: null, erro: '' };
   var pubRes = { carregando: false, dados: null, erro: '', pediu: false };
 
@@ -1480,6 +1480,18 @@
       remote.resultadoPublico = !!row.resultado_publico;
       remote.exigeChave = !!row.exige_chave;
       remote.totalTrilheiros = total;
+      // votos zerados pela organização: este aparelho pode votar de novo
+      var rod = parseInt(row.rodada, 10) || 0;
+      if (rod && rod !== remote.rodada) {
+        remote.rodada = rod;
+        if (localState.rodada && localState.rodada !== rod && localState.voted) {
+          localState.voted = null;
+          flow.picked = null; flow.error = ''; flow.busy = false;
+          toast('A votação foi reiniciada pela organização. Você pode votar de novo.');
+          mudou = true;
+        }
+        if (localState.rodada !== rod) { localState.rodada = rod; saveLocal(); }
+      }
       remote.carregou = true; remote.erro = '';
       if (mudou && then !== false) render();
     }).catch(function () { remote.erro = 'offline'; });
@@ -1995,6 +2007,7 @@
 
     function sucesso() {
       localState.voted = { projectId: pid };
+      if (remote.rodada) localState.rodada = remote.rodada;
       saveLocal();
       flow.busy = false; flow.picked = null; flow.error = '';
       renderOverlay(); render(); seedBurst();
@@ -2688,6 +2701,11 @@
         : '<button class="btn btn-primary" data-act="askOpen">Abrir votação</button>') +
       '<button class="btn btn-outline" data-act="pubResult">' + (remote.resultadoPublico ? 'Ocultar resultado do público' : 'Publicar resultado') + '</button>' +
       '<button class="btn btn-outline" data-act="loadResult">Atualizar números</button>' +
+      '</div>' +
+      '<div class="zerar-votos">' +
+      '<div><b>Zerar votos</b><p class="tiny">Apaga todos os votos e libera todos os aparelhos para votar de novo. Use depois dos ensaios. ' +
+      (remote.aberta ? 'Para zerar, encerre a votação primeiro.' : 'Não dá para desfazer.') + '</p></div>' +
+      '<button class="btn btn-danger btn-sm" data-act="askZerar"' + (remote.aberta ? ' disabled' : '') + '>' + ico('i-trash') + ' Zerar votos</button>' +
       '</div>' +
       (remote.aberta ? '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">A votação está aberta para todo mundo. O resultado continua invisível para o público até você publicá-lo.</p></div>' : '') +
       '</section>' +
@@ -3705,6 +3723,26 @@
     }).catch(function () { toast('Sem conexão com o servidor.'); });
   }
 
+  function zerarVotos() {
+    var chave = localState.adminKey || '';
+    if (!chave) { toast('Entre de novo com a senha da organização.'); localState.admin = false; saveLocal(); go('admin'); return; }
+    sbRpc('zerar_votos', { p_chave: chave }).then(function (r) {
+      if (r && r.ok) {
+        remote.rodada = r.rodada || remote.rodada;
+        localState.rodada = remote.rodada; localState.voted = null; saveLocal();
+        adminRes.dados = null;
+        toast('Votos zerados. Os aparelhos são liberados para votar de novo em alguns segundos.');
+        loadResult();
+        return;
+      }
+      var cod = r && r.erro;
+      toast(cod === 'votacao_aberta' ? 'Encerre a votação antes de zerar os votos.'
+        : (ERROS[cod] || 'Não consegui zerar os votos.'));
+    }).catch(function (e) {
+      toast(String(e && e.message) === 'http 404' ? 'O banco ainda não tem a função de zerar. Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.');
+    });
+  }
+
   function loadResult() {
     if (!remote.on) { toast('Disponível na versão publicada.'); return; }
     adminRes.carregando = true; adminRes.erro = ''; render();
@@ -3827,6 +3865,25 @@
     else if (act === 'askClose') {
       admin.confirm = { title: 'Encerrar a votação?', body: 'Ninguém mais conseguirá votar. Os votos já registrados continuam guardados.', yes: 'Sim, encerrar', danger: true,
         run: function () { setVotacao(false, null); } };
+      renderOverlay();
+    }
+    else if (act === 'askZerar') {
+      if (!remote.on) { toast('Disponível na versão publicada.'); return; }
+      if (remote.aberta) { toast('Encerre a votação antes de zerar os votos.'); return; }
+      var tot = adminRes.dados && adminRes.dados.liberado ? (adminRes.dados.total || 0) : null;
+      admin.confirm = {
+        title: 'Zerar os votos?',
+        body: (tot != null ? 'Há ' + tot + (tot === 1 ? ' voto registrado' : ' votos registrados') + '. ' : '') +
+          'Todos serão apagados e cada aparelho poderá votar de novo. Use só para recomeçar depois de um ensaio.',
+        yes: 'Continuar', danger: true,
+        run: function () {
+          admin.confirm = {
+            title: 'Tem certeza?', body: 'Esta é a última confirmação. Os votos apagados não voltam.',
+            yes: 'Sim, apagar todos os votos', danger: true,
+            run: function () { zerarVotos(); }
+          };
+        }
+      };
       renderOverlay();
     }
     else if (act === 'pubResult') setVotacao(null, !remote.resultadoPublico);

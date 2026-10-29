@@ -27,6 +27,9 @@ create table if not exists public.estado_votacao (
   atualizado_em     timestamptz not null default now()
 );
 insert into public.estado_votacao (id) values (1) on conflict (id) do nothing;
+-- rodada: sobe 1 cada vez que a organização zera os votos; os aparelhos
+-- que já tinham votado percebem a mudança e liberam o voto de novo
+alter table public.estado_votacao add column if not exists rodada int not null default 1;
 
 -- segredos do servidor (ninguém de fora lê: RLS sem nenhuma política)
 create table if not exists public.config_privada (
@@ -232,6 +235,24 @@ begin
   return jsonb_build_object('ok', true, 'exige_chave', n is not null);
 end $$;
 
+-- apaga todos os votos (depois de um ensaio) e libera os aparelhos.
+-- Só funciona com a votação encerrada, para não zerar no meio do evento.
+create or replace function public.zerar_votos(p_chave text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare r int; n int;
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if (select votacao_aberta from public.estado_votacao where id = 1) then
+    return jsonb_build_object('ok', false, 'erro', 'votacao_aberta');
+  end if;
+  delete from public.votos where true;
+  get diagnostics n = row_count;
+  update public.estado_votacao set rodada = rodada + 1, resultado_publico = false, atualizado_em = now()
+   where id = 1 returning rodada into r;
+  return jsonb_build_object('ok', true, 'rodada', r, 'apagados', n);
+end $$;
+
 -- publica o conteúdo do painel para todo mundo
 create or replace function public.salvar_conteudo(p_chave text, p_dados jsonb)
 returns jsonb language plpgsql security definer
@@ -321,7 +342,7 @@ begin
   foreach f in array array[
     'registrar_voto(text,text,text)', 'consultar_voto(text)', 'resultado(text)',
     'entrar_admin(text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
-    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)',
+    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)',
     'adicionar_foto(text,text,text,text,boolean,text)', 'remover_foto(text,uuid)',
     'ordenar_fotos(text,uuid[])', 'definir_capa_foto(text,uuid)', 'atualizar_fotos(text,jsonb)']
   loop

@@ -1192,3 +1192,13 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
   .tl-logos { height: 48px; padding: 8px 12px; }
   .tl-nome { font-size: 11px; min-height: 3.5em; }
 }
+
+/* painel · zerar votos (zona de perigo) */
+.zerar-votos {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-top: 6px; padding: 14px 16px; border-radius: var(--r-2);
+  border: 1.5px dashed rgba(180, 35, 90, .35); background: rgba(180, 35, 90, .04);
+}
+.zerar-votos b { color: var(--c-perigo); }
+.zerar-votos p { margin: 2px 0 0; max-width: 46ch; }
+.zerar-votos .btn[disabled] { opacity: .45; cursor: not-allowed; }
