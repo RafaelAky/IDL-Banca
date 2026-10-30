@@ -8,7 +8,7 @@
    conteúdo editado sempre vêm da internet.
    Ao publicar uma mudança grande, aumente VERSAO para limpar as cópias.
    ===================================================================== */
-var VERSAO = 'idl-banca-v2';
+var VERSAO = 'idl-banca-v3';
 var BASE = VERSAO + '-base';
 var IMAGENS = VERSAO + '-imagens';
 
@@ -16,13 +16,15 @@ var ESSENCIAIS = [
   './', 'styles.css', 'config.js', 'data.js', 'app.js', 'vendor/qrcode.js',
   'favicon.ico', 'img/icon/favicon.svg', 'site.webmanifest',
   'img/kv/trilhei.webp', 'img/kv/idltech.webp', 'img/kv/dente.svg',
-  'img/kv/arvore-lilas.webp', 'img/kv/mao.webp', 'img/kv/mao-creme.webp', 'img/kv/flor-roxa.svg'
+  'img/kv/arvore-lilas.webp', 'img/kv/mao.webp', 'img/kv/mao-creme.webp', 'img/kv/flor-roxa.svg?v=3'
 ];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
-    caches.open(BASE).then(function (c) { return c.addAll(ESSENCIAIS); })
-      .then(function () { return self.skipWaiting(); })
+    // um arquivo que falte não impede o resto de ser guardado
+    caches.open(BASE).then(function (c) {
+      return Promise.all(ESSENCIAIS.map(function (u) { return c.add(u).catch(function () {}); }));
+    }).then(function () { return self.skipWaiting(); })
   );
 });
 

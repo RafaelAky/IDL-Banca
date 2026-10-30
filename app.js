@@ -183,12 +183,16 @@
   var CORRECOES = [
     ['prj_ouvir', 'problem', 'A falta da escuta compassiva', 'A falta de escuta compassiva']
   ];
+  // o "?v=3" no fim força o navegador a buscar de novo (ignora um "não
+  // encontrado" que tenha ficado guardado antes de as imagens subirem)
   var IMAGENS_NOVAS = {
-    'img/heroi-01.webp': 'img/heroi-01-v2.webp',    // Clara
-    'img/heroi-14.webp': 'img/heroi-14-v2.webp',    // Karol
-    'img/heroi-16.webp': 'img/heroi-16-v2.webp',    // Lydia
-    'img/heroi-17b.webp': 'img/heroi-17b-v2.webp'   // Neo
+    'img/heroi-01.webp': 'img/heroi-01-v2.webp?v=3',    // Clara
+    'img/heroi-14.webp': 'img/heroi-14-v2.webp?v=3',    // Karol
+    'img/heroi-16.webp': 'img/heroi-16-v2.webp?v=3',    // Lydia
+    'img/heroi-17b.webp': 'img/heroi-17b-v2.webp?v=3'   // Neo
   };
+  // conteúdo salvo antes com o endereço sem o "?v=3"
+  Object.keys(IMAGENS_NOVAS).forEach(function (k) { IMAGENS_NOVAS[IMAGENS_NOVAS[k].split('?')[0]] = IMAGENS_NOVAS[k]; });
   function corrigirTextos(d) {
     if (!d || !d.projects) return d;
     CORRECOES.forEach(function (c) {
@@ -1369,7 +1373,7 @@
      subindo devagar (a flor do Instituto gira atrás dos personagens)     */
   // a flor do Instituto, girando bem devagar atrás dos personagens
   function florGirando() {
-    return '<span class="df-flor" aria-hidden="true"><img src="img/kv/flor-roxa.svg" alt=""></span>';
+    return '<span class="df-flor" aria-hidden="true"><img src="img/kv/flor-roxa.svg?v=3" alt=""></span>';
   }
   function fundoDetalhe(nome) {
     // só o nome curto: "Miguel — Eco Mensageiro" vira "Miguel"
@@ -4571,12 +4575,15 @@
   /* rede de segurança para imagens novas: se o arquivo novo não estiver no
      servidor (ex.: não foi enviado ao repositório), usa a versão anterior   */
   var RESERVA_IMG = { 'img/kv/flor-roxa.svg': 'img/icon/favicon.svg' };
-  Object.keys(IMAGENS_NOVAS).forEach(function (velha) { RESERVA_IMG[IMAGENS_NOVAS[velha]] = velha; });
+  Object.keys(IMAGENS_NOVAS).forEach(function (velha) {
+    if (/-v2\.webp$/.test(velha)) return;
+    RESERVA_IMG[IMAGENS_NOVAS[velha].split('?')[0]] = velha;
+  });
   document.addEventListener('error', function (e) {
     var im = e.target;
     if (!im || im.tagName !== 'IMG' || im.getAttribute('data-reserva')) return;
     var src = im.getAttribute('src') || '';
-    var alt = RESERVA_IMG[src.replace(/^\.?\//, '')];
+    var alt = RESERVA_IMG[src.replace(/^\.?\//, '').split('?')[0]];
     if (alt) { im.setAttribute('data-reserva', '1'); im.setAttribute('src', alt); }
   }, true);
 
