@@ -690,7 +690,6 @@ fieldset.equipe-campos legend { padding: 0 .4rem; font-weight: 700; color: var(-
 .pb-go svg { width: 20px; height: 20px; }
 
 /* ------------------------------- detalhes -------------------------------- */
-.det-topo { padding-bottom: 0; }
 .det-topo-in { display: grid; gap: var(--e-5); align-items: end; }
 .det-txt { display: grid; gap: var(--e-3); justify-items: start; padding-bottom: var(--e-5); }
 .det-txt .voltar { margin-bottom: var(--e-2); }
@@ -699,8 +698,18 @@ fieldset.equipe-campos legend { padding: 0 .4rem; font-weight: 700; color: var(-
 .det-nota { font-size: var(--t-mini); color: var(--c-texto-2); }
 .det-candidato { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; color: var(--c-roxo); font-size: var(--t-peq); }
 .det-candidato svg { width: 18px; height: 18px; color: var(--c-laranja); }
-/* o Herói sobre o fundo claro da faixa, apoiado na borda de baixo */
-.det-figs { display: flex; justify-content: center; align-items: flex-end; height: clamp(260px, 70vw, 440px); gap: 0; }
+/* o Herói sobre o fundo claro da faixa, de pé num "chão" com sombra,
+   com folga embaixo para os pés nunca encostarem na borda */
+.det-topo { padding-bottom: clamp(28px, 4vw, 56px); }
+.det-figs { position: relative; display: flex; justify-content: center; align-items: flex-end; height: clamp(260px, 70vw, 440px); gap: 0; }
+.det-figs::after {
+  content: ""; position: absolute; left: 50%; bottom: -10px; z-index: 0; width: min(78%, 340px); height: 26px;
+  transform: translateX(-50%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(46, 0, 106, .22), rgba(46, 0, 106, 0));
+}
+.det-figs img { position: relative; z-index: 1; }
+/* ilustrações que já vêm cortadas nos pés: somem suavemente em vez de terminar numa linha reta */
+.det-figs img.pe-cortado { -webkit-mask-image: linear-gradient(to top, transparent 0, #000 9%); mask-image: linear-gradient(to top, transparent 0, #000 9%); }
 .det-figs img { height: 100%; width: auto; max-width: 100%; object-fit: contain; object-position: bottom; }
 .det-figs.n2 img { max-width: none; }
 .det-figs.n2 img + img { margin-left: -6%; }
@@ -1398,4 +1407,40 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: reduce) {
   .turma-pronta .turma-p, .turma-nome { transition: none; }
   .turma-pronta .turma-p:hover img { animation: none; }
+}
+
+/* =========== FUNDO DAS PÁGINAS DE HERÓI E PROJETO ===========
+   O nome do Herói em letras gigantes, quase apagado, atrás da
+   ilustração, e sementes de dente-de-leão subindo devagar.        */
+.det-topo-in { position: relative; z-index: 1; }
+.det-fundo { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.df-semente {
+  position: absolute; bottom: -60px; width: var(--t, 24px); color: var(--c-lilas); opacity: .7;
+  animation: dfSobe var(--dur, 28s) linear var(--atr, 0s) infinite;
+}
+.df-semente svg { display: block; width: 100%; height: auto; animation: dfBalanca 5.5s ease-in-out infinite alternate; }
+@keyframes dfSobe {
+  0% { transform: translateY(0); opacity: 0; }
+  8% { opacity: .7; }
+  85% { opacity: .55; }
+  100% { transform: translateY(calc(-100% - 720px)); opacity: 0; }
+}
+@keyframes dfBalanca {
+  from { transform: translateX(calc(var(--bal, 30px) * -1)) rotate(calc(var(--gir, 12deg) * -1)); }
+  to   { transform: translateX(var(--bal, 30px)) rotate(var(--gir, 12deg)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .df-semente, .df-semente svg, .df-flor img { animation: none; }
+  .df-semente { display: none; }
+}
+
+/* a flor do Instituto girando devagar atrás dos personagens */
+.df-flor {
+  position: absolute; left: 50%; top: 46%; z-index: 0; pointer-events: none;
+  width: min(72%, 330px); aspect-ratio: 1; transform: translate(-50%, -50%);
+}
+.df-flor img { width: 100%; height: 100%; opacity: .42; animation: florGira 90s linear infinite; }
+@keyframes florGira { to { transform: rotate(360deg); } }
+@media (max-width: 1023px) {
+  .df-flor { width: min(70%, 240px); }
 }
