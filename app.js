@@ -958,7 +958,7 @@
           '<span class="eyebrow">Instituto Dente de Leão</span>' +
           '<h2 class="inst-tit">Alcançamos<br>para transformar.</h2>' +
           '<p class="inst-lead">O Instituto Dente de Leão existe para gerar transformação na sociedade por meio das pessoas, reforçando a crença de que atitudes íntegras, compromisso com o bem e responsabilidade individual geram impacto real no coletivo.</p>' +
-          '<a class="btn btn-lg btn-laranja inst-btn" href="https://institutodentedeleao.com.br/" target="_blank" rel="noopener">Conheça o Instituto</a>' +
+          '<a class="btn btn-lg btn-laranja inst-btn" href="https://institutodentedeleao.com.br/">Conheça o Instituto</a>' +
         '</div>' +
       '</section>' +
       '</div>' +
