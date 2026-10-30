@@ -948,7 +948,7 @@
           '<div class="dobra-chamada">' +
             '<p>Cada projeto é uma ideia que nasceu na Trilha para transformar a comunidade. Conheça os ' +
               nProjetos() + ' projetos e os Heróis criados pelos trilheiros.</p>' +
-            '<button class="btn btn-lg btn-laranja" data-nav="projetos">Conheça os projetos ' + ico('i-chev') + '</button>' +
+            '<button class="btn btn-lg btn-laranja inst-btn" data-nav="projetos">Conheça os projetos</button>' +
           '</div>' +
         '</div>' +
       '</section>' +
