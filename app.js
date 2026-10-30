@@ -619,8 +619,10 @@
     if (!hs.length) return '';
     return '<div class="rolo-caixa"><div class="turma-rolo"><div class="turma ' + (cls || '') + '" data-hmax="' + (alturaMax || 300) + '">' + hs.map(function (x) {
       return '<button class="turma-p" data-go="heroi/' + esc(x.hero.id) + '" ' +
-        'aria-label="' + esc(x.hero.name + ', Herói do projeto ' + x.project.name) + '" title="' + esc(x.hero.name) + '">' +
-        '<img src="' + esc(x.hero.image) + '" alt="" loading="lazy"></button>';
+        'aria-label="' + esc(x.hero.name + ', Herói do projeto ' + x.project.name) + '">' +
+        '<img src="' + esc(x.hero.image) + '" alt="" loading="lazy">' +
+        '<span class="turma-nome" aria-hidden="true"><b>' + esc(x.hero.name) + '</b><small>' + esc(x.project.name) + '</small></span>' +
+        '</button>';
     }).join('') + '</div></div>' +
       '<button type="button" class="rolo-seta rolo-ant" data-act="roloAnt" aria-label="Ver os Heróis anteriores">' + ico('i-arrow-left') + '</button>' +
       '<button type="button" class="rolo-seta rolo-prox" data-act="roloProx" aria-label="Ver mais Heróis">' + ico('i-chev') + '</button>' +

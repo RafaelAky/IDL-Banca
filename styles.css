@@ -1348,3 +1348,54 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
 @media (max-width: 759px) {
   .home-turma .turma-rolo.rola { padding-top: 8px; }
 }
+
+/* ================= TURMA DE HERÓIS · ESCOLHA COM MOVIMENTO =================
+   Só em aparelhos com mouse. Ao passar o mouse, o Herói cresce, sobe e ganha
+   um brilho; os outros recuam um pouco; o nome aparece numa etiqueta.     */
+.turma-nome { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .turma-pronta .turma-p {
+    transform-origin: 50% 100%;
+    transition: transform .45s cubic-bezier(.34, 1.56, .64, 1), opacity .3s ease, filter .3s ease;
+  }
+  /* os outros recuam quando um é escolhido */
+  /* sem opacity: algumas ilustrações têm fundo branco, que apareceria como caixa cinza */
+  .turma-pronta:hover .turma-p:not(:hover) { filter: grayscale(.65) brightness(1.08) contrast(.8); transform: scale(.96); }
+  .turma-pronta .turma-p:hover, .turma-pronta .turma-p:focus-visible {
+    transform: translateY(-14px) scale(1.2); z-index: 900 !important;
+  }
+  .turma-pronta .turma-p:hover img {
+    filter: drop-shadow(0 0 0 rgba(255,255,255,0)) drop-shadow(0 14px 22px rgba(46, 0, 106, .28)) drop-shadow(0 0 18px rgba(185, 143, 232, .75));
+    animation: turmaRespira 1.8s ease-in-out .45s infinite;
+  }
+  @keyframes turmaRespira { 50% { margin-bottom: 4px; } }
+  /* sombra no chão que acompanha */
+  .turma-pronta .turma-p::after {
+    content: ""; position: absolute; left: 50%; bottom: -6px; width: 70%; height: 12px; transform: translateX(-50%) scale(.6);
+    border-radius: 50%; background: radial-gradient(closest-side, rgba(46,0,106,.28), rgba(46,0,106,0));
+    opacity: 0; transition: opacity .3s, transform .45s; pointer-events: none;
+  }
+  .turma-pronta .turma-p:hover::after { opacity: 1; transform: translateX(-50%) scale(1); }
+  /* etiqueta com o nome */
+  .turma-pronta .turma-nome {
+    display: grid; justify-items: center; gap: 1px; position: absolute; left: 50%; bottom: 100%;
+    transform: translate(-50%, 10px) scale(.85); opacity: 0; pointer-events: none; white-space: nowrap;
+    width: max-content; max-width: 260px;
+    padding: 7px 14px 8px; border-radius: 14px; background: var(--c-roxo); color: #fff;
+    box-shadow: 0 10px 24px rgba(46, 0, 106, .3);
+    transition: opacity .25s ease, transform .4s cubic-bezier(.34, 1.56, .64, 1);
+  }
+  .turma-nome b { font-size: 14px; line-height: 1.2; }
+  .turma-nome small { font-size: 10.5px; opacity: .85; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; }
+  .turma-nome::after {
+    content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: var(--c-roxo);
+  }
+  .turma-pronta .turma-p:hover .turma-nome, .turma-pronta .turma-p:focus-visible .turma-nome {
+    opacity: 1; transform: translate(-50%, -6px) scale(.84);
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: reduce) {
+  .turma-pronta .turma-p, .turma-nome { transition: none; }
+  .turma-pronta .turma-p:hover img { animation: none; }
+}
