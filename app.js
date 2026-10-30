@@ -72,7 +72,7 @@
       };
     });
     return {
-      version: 1, contentVersion: 10,
+      version: 1, contentVersion: 11,
       event: JSON.parse(JSON.stringify(seed.event || {})),
       avisos: JSON.parse(JSON.stringify(seed.avisos || [])),
       retro: JSON.parse(JSON.stringify(seed.retro || { title: '', lead: '', photos: [] })),
@@ -170,9 +170,38 @@
       db.contentVersion = 10;
       safeSet(KEY, JSON.stringify(db));
     }
+    corrigirTextos(db);
     if (!db.avisos) db.avisos = [];
     if (!db.clock) db.clock = { simulated: false, baseReal: Date.now(), baseSim: Date.now() };
     return db;
+  }
+
+  /* Correções de texto conferidas nos pôsteres mais recentes. Valem para o
+     conteúdo guardado no aparelho e para o que vem do banco, sem apagar o
+     que a organização editou no painel: só troca o trecho exato.
+     Versão 11 · "Projeto final 3" (30/10/2026).                          */
+  var CORRECOES = [
+    ['prj_ouvir', 'problem', 'A falta da escuta compassiva', 'A falta de escuta compassiva']
+  ];
+  var IMAGENS_NOVAS = {
+    'img/heroi-01.webp': 'img/heroi-01-v2.webp',    // Clara
+    'img/heroi-14.webp': 'img/heroi-14-v2.webp',    // Karol
+    'img/heroi-16.webp': 'img/heroi-16-v2.webp',    // Lydia
+    'img/heroi-17b.webp': 'img/heroi-17b-v2.webp'   // Neo
+  };
+  function corrigirTextos(d) {
+    if (!d || !d.projects) return d;
+    CORRECOES.forEach(function (c) {
+      d.projects.forEach(function (p) {
+        if (p.id === c[0] && typeof p[c[1]] === 'string' && p[c[1]].indexOf(c[2]) >= 0) p[c[1]] = p[c[1]].split(c[2]).join(c[3]);
+      });
+    });
+    // ilustrações novas (30/10/2026): troca só quem ainda usa a imagem antiga
+    d.projects.forEach(function (p) {
+      (p.heroes || []).forEach(function (h) { if (IMAGENS_NOVAS[h.image]) h.image = IMAGENS_NOVAS[h.image]; });
+    });
+    if ((d.contentVersion || 1) < 11) d.contentVersion = 11;
+    return d;
   }
   function save() { safeSet(KEY, JSON.stringify(db)); render(); enviarConteudo(); }
 
@@ -1262,12 +1291,13 @@
 
     var meta = [p.slot ? 'Apresenta às ' + p.slot : '', p.block, p.category].filter(Boolean).map(esc).join(' · ');
     var hs = (p.heroes || []).filter(function (h) { return h.image; });
-    var figs = hs.length ? '<div class="det-figs n' + hs.length + '">' + hs.map(function (h) {
-      return '<img src="' + esc(h.image) + '" alt="Ilustração do Herói ' + esc(h.name) + '">';
+    var figs = hs.length ? '<div class="det-figs n' + hs.length + '">' + florGirando() + hs.map(function (h) {
+      return '<img' + clsPe(h.image) + ' src="' + esc(h.image) + '" alt="Ilustração do Herói ' + esc(h.name) + '">';
     }).join('') + '</div>' : '';
 
     return '<div class="view detalhe">' +
       '<section class="faixa fx-tint det-topo">' +
+        fundoDetalhe((p.heroes || []).map(function (h) { return String(h.name || '').split(/\s+[—–-]\s+/)[0]; }).join(' · ')) +
         '<div class="cont det-topo-in">' +
           '<div class="det-txt">' +
             '<button class="voltar" data-go="projetos">' + ico('i-arrow-left') + 'Projetos</button>' +
@@ -1335,6 +1365,28 @@
       '</button></section>';
   }
 
+  /* fundo das páginas de Herói e de projeto: sementes de dente-de-leão
+     subindo devagar (a flor do Instituto gira atrás dos personagens)     */
+  // a flor do Instituto, girando bem devagar atrás dos personagens
+  function florGirando() {
+    return '<span class="df-flor" aria-hidden="true"><img src="img/kv/flor-roxa.svg" alt=""></span>';
+  }
+  function fundoDetalhe(nome) {
+    // só o nome curto: "Miguel — Eco Mensageiro" vira "Miguel"
+    nome = String(nome || '').split(/\s+[—–-]\s+/)[0].trim();
+    var sem = '';
+    for (var i = 0; i < 10; i++) {
+      var x = 4 + (i * 37) % 92, tam = 16 + (i * 11) % 26, dur = 22 + (i * 7) % 16;
+      var atraso = -((i * 6.7) % dur), bal = 18 + (i * 13) % 40;
+      sem += '<span class="df-semente" style="left:' + x + '%;--t:' + tam + 'px;--dur:' + dur + 's;--atr:' + atraso.toFixed(1) +
+        's;--bal:' + bal + 'px;--gir:' + (((i % 2) ? 1 : -1) * (10 + i * 3)) + 'deg">' + sementeSvg() + '</span>';
+    }
+    return '<span class="det-fundo" aria-hidden="true">' + sem + '</span>';
+  }
+
+  // ilustrações cujo arquivo já termina cortado nos pés (conferido nos arquivos)
+  var PE_CORTADO = { 'img/heroi-05.webp': 1, 'img/heroi-06.webp': 1 };
+  function clsPe(src) { return PE_CORTADO[src] ? ' class="pe-cortado"' : ''; }
   function viewHeroi(id) {
     var x = heroById(id);
     if (!x) return notFound('Herói não encontrado', 'herois', 'Voltar aos Heróis');
@@ -1356,7 +1408,7 @@
     var insp = h.inspiration || '';
 
     return '<div class="view detalhe">' +
-      '<section class="faixa fx-tint det-topo det-heroi">' +
+      '<section class="faixa fx-tint det-topo det-heroi">' + fundoDetalhe(h.name) +
         '<div class="cont det-topo-in">' +
           '<div class="det-txt">' +
             '<button class="voltar" data-go="herois">' + ico('i-arrow-left') + 'Heróis</button>' +
@@ -1366,8 +1418,8 @@
             '<p class="det-nota num">Herói ' + (hidx + 1) + ' de ' + list.length + '</p>' +
             (ehCandidato(h) ? '<p class="det-candidato">' + ico('i-vote') + ' Candidato na votação do público</p>' : '') +
           '</div>' +
-          '<div class="det-figs n1">' +
-            (h.image ? '<img src="' + esc(h.image) + '" alt="Ilustração do Herói ' + esc(h.name) + '">' : '') +
+          '<div class="det-figs n1">' + florGirando() +
+            (h.image ? '<img' + clsPe(h.image) + ' src="' + esc(h.image) + '" alt="Ilustração do Herói ' + esc(h.name) + '">' : '') +
           '</div>' +
         '</div>' +
       '</section>' +
@@ -1640,7 +1692,7 @@
   function aplicarConteudo(dados, versao) {
     var clock = db && db.clock;
     var voting = db && db.voting;
-    db = dados;
+    db = corrigirTextos(dados);
     db.clock = clock || demoData().clock;
     if (!db.voting) db.voting = voting || demoData().voting;
     db._versaoNuvem = versao;

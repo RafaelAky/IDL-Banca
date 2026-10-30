@@ -8,7 +8,7 @@
    conteúdo editado sempre vêm da internet.
    Ao publicar uma mudança grande, aumente VERSAO para limpar as cópias.
    ===================================================================== */
-var VERSAO = 'idl-banca-v1';
+var VERSAO = 'idl-banca-v2';
 var BASE = VERSAO + '-base';
 var IMAGENS = VERSAO + '-imagens';
 
@@ -16,7 +16,7 @@ var ESSENCIAIS = [
   './', 'styles.css', 'config.js', 'data.js', 'app.js', 'vendor/qrcode.js',
   'favicon.ico', 'img/icon/favicon.svg', 'site.webmanifest',
   'img/kv/trilhei.webp', 'img/kv/idltech.webp', 'img/kv/dente.svg',
-  'img/kv/arvore-lilas.webp', 'img/kv/mao.webp', 'img/kv/mao-creme.webp'
+  'img/kv/arvore-lilas.webp', 'img/kv/mao.webp', 'img/kv/mao-creme.webp', 'img/kv/flor-roxa.svg'
 ];
 
 self.addEventListener('install', function (e) {
