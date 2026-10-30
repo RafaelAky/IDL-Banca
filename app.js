@@ -4568,6 +4568,18 @@
     if (e.key === KEY) { load(); render(); }
   });
 
+  /* rede de segurança para imagens novas: se o arquivo novo não estiver no
+     servidor (ex.: não foi enviado ao repositório), usa a versão anterior   */
+  var RESERVA_IMG = { 'img/kv/flor-roxa.svg': 'img/icon/favicon.svg' };
+  Object.keys(IMAGENS_NOVAS).forEach(function (velha) { RESERVA_IMG[IMAGENS_NOVAS[velha]] = velha; });
+  document.addEventListener('error', function (e) {
+    var im = e.target;
+    if (!im || im.tagName !== 'IMG' || im.getAttribute('data-reserva')) return;
+    var src = im.getAttribute('src') || '';
+    var alt = RESERVA_IMG[src.replace(/^\.?\//, '')];
+    if (alt) { im.setAttribute('data-reserva', '1'); im.setAttribute('src', alt); }
+  }, true);
+
   /* ----------------------- funcionar com internet fraca ------------------ */
   // guarda páginas, textos e imagens no aparelho (sw.js). A votação, o painel
   // e tudo que vem do banco continuam indo sempre à internet.
