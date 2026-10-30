@@ -1505,3 +1505,23 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
   .car-slide, .car-slide.is-ativo { transition: none; }
   .car-pontos .is-ativo i { animation: none; width: 100%; }
 }
+
+/* ajustes dos banners: título do evento menor e os dois banners com o
+   conteúdo apoiado embaixo, na mesma altura, para os botões ficarem alinhados */
+.dobra .mega { font-size: clamp(2.3rem, 1.4rem + 3.2vw, 3.9rem); line-height: 1; }
+.dobra-inst { align-items: flex-end; padding-block: clamp(2.5rem, 6vh, 4.5rem); }
+.inst-tit { font-size: clamp(2.1rem, 1.35rem + 2.7vw, 3.4rem); }
+/* banner do Instituto só em laranja e branco */
+.dobra-inst { background: #121212; }
+.dobra-inst::after {
+  background: linear-gradient(90deg, rgba(10, 10, 10, .88) 0%, rgba(10, 10, 10, .7) 38%, rgba(10, 10, 10, .18) 72%, rgba(10, 10, 10, .04) 100%),
+              linear-gradient(0deg, rgba(10, 10, 10, .5), transparent 45%);
+}
+.inst-txt .eyebrow { color: var(--c-laranja); }
+.inst-btn, .inst-btn:hover { color: #fff; }
+.inst-btn:hover { background: #ff8432; }
+@media (max-width: 759px) {
+  .dobra-inst { padding-bottom: clamp(2.5rem, 6vh, 4.5rem); }
+  .inst-txt { margin-left: auto; margin-right: auto; max-width: none; }
+  .dobra-inst::after { background: linear-gradient(0deg, rgba(10, 10, 10, .94) 0%, rgba(10, 10, 10, .74) 48%, rgba(10, 10, 10, .2) 100%); }
+}
