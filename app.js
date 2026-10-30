@@ -749,6 +749,42 @@
     return { pct: pct, first: items[0].start, last: items[items.length - 1].end };
   }
 
+  /* carrossel da página inicial: troca sozinho a cada 8 s, pausa com o mouse
+     em cima ou com a aba em segundo plano; setas, pontos e deslize no celular */
+  var carrossel = { i: 0, n: 2, timer: null, pausado: false, TEMPO: 8000 };
+  function carIr(k, manual) {
+    carrossel.i = (k + carrossel.n) % carrossel.n;
+    var raiz = document.querySelector('.carrossel');
+    if (raiz) {
+      Array.prototype.forEach.call(raiz.querySelectorAll('.car-slide'), function (el, j) { el.classList.toggle('is-ativo', j === carrossel.i); });
+      Array.prototype.forEach.call(raiz.querySelectorAll('.car-pontos button'), function (b, j) {
+        var at = j === carrossel.i;
+        b.classList.remove('is-ativo'); void b.offsetWidth;   // reinicia a barrinha de tempo
+        if (at) { b.classList.add('is-ativo'); b.setAttribute('aria-current', 'true'); } else b.removeAttribute('aria-current');
+      });
+    }
+    if (manual) carAgendar();
+  }
+  function carAgendar() {
+    clearTimeout(carrossel.timer);
+    carrossel.timer = setTimeout(function () {
+      if (route.name === 'home' && !carrossel.pausado && document.visibilityState !== 'hidden' &&
+          !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) carIr(carrossel.i + 1);
+      carAgendar();
+    }, carrossel.TEMPO);
+  }
+  carAgendar();
+  document.addEventListener('mouseover', function (e) { carrossel.pausado = !!(e.target.closest && e.target.closest('.carrossel')); });
+  (function () {
+    var x0 = null;
+    document.addEventListener('touchstart', function (e) { x0 = (e.target.closest && e.target.closest('.car-slides')) ? e.touches[0].clientX : null; }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (x0 == null) return;
+      var dx = e.changedTouches[0].clientX - x0; x0 = null;
+      if (Math.abs(dx) > 50) carIr(carrossel.i + (dx < 0 ? 1 : -1), true);
+    }, { passive: true });
+  })();
+
   function viewHome() {
     var ev = db.event, live = liveItem(), nxt = live ? null : nextItem();
     var open = votacaoAberta();
@@ -896,8 +932,12 @@
 
     return '<div class="view home">' +
 
-      /* ---- a dobra: o nome do evento e os Heróis atravessando a tela ---- */
-      '<section class="faixa fx-escuro dobra">' +
+      /* ---- a dobra: banners que se alternam ----
+         1) o evento, com os Heróis atravessando a tela e a chamada para os projetos
+         2) o Instituto Dente de Leão, com o link para o site dele            */
+      '<section class="carrossel" aria-roledescription="carrossel" aria-label="Destaques">' +
+      '<div class="car-slides">' +
+      '<section class="faixa fx-escuro dobra car-slide' + (carrossel.i === 0 ? ' is-ativo' : '') + '" aria-roledescription="slide" aria-label="1 de 2">' +
         desfileHerois() +
         '<div class="cont dobra-txt">' +
           '<span class="eyebrow">' + (firstName(localState.name) ? 'Olá, ' + esc(firstName(localState.name)) : 'Formatura 2026') + '</span>' +
@@ -905,7 +945,29 @@
           '<p class="dobra-sub">' + esc(ev.subtitle) + '</p>' +
           '<p class="dobra-meta">' + meta + '</p>' +
           rail +
+          '<div class="dobra-chamada">' +
+            '<p>Cada projeto é uma ideia que nasceu na Trilha para transformar a comunidade. Conheça os ' +
+              nProjetos() + ' projetos e os Heróis criados pelos trilheiros.</p>' +
+            '<button class="btn btn-lg btn-laranja" data-nav="projetos">Conheça os projetos ' + ico('i-chev') + '</button>' +
+          '</div>' +
         '</div>' +
+      '</section>' +
+      '<section class="faixa dobra-inst car-slide' + (carrossel.i === 1 ? ' is-ativo' : '') + '" aria-roledescription="slide" aria-label="2 de 2">' +
+        '<img class="inst-foto" src="img/banner-instituto.webp" alt="" loading="lazy">' +
+        '<div class="cont inst-txt">' +
+          '<span class="eyebrow">Instituto Dente de Leão</span>' +
+          '<h2 class="inst-tit">Alcançamos<br>para transformar.</h2>' +
+          '<p class="inst-lead">O Instituto Dente de Leão existe para gerar transformação na sociedade por meio das pessoas, reforçando a crença de que atitudes íntegras, compromisso com o bem e responsabilidade individual geram impacto real no coletivo.</p>' +
+          '<a class="btn btn-lg btn-laranja inst-btn" href="https://institutodentedeleao.com.br/" target="_blank" rel="noopener">Conheça o Instituto</a>' +
+        '</div>' +
+      '</section>' +
+      '</div>' +
+      '<button type="button" class="car-seta car-ant" data-act="carAnt" aria-label="Banner anterior">' + ico('i-arrow-left') + '</button>' +
+      '<button type="button" class="car-seta car-prox" data-act="carProx" aria-label="Próximo banner">' + ico('i-chev') + '</button>' +
+      '<div class="car-pontos">' + [0, 1].map(function (k) {
+        return '<button type="button" data-act="carIr" data-i="' + k + '" aria-label="Banner ' + (k + 1) + '"' +
+          (carrossel.i === k ? ' class="is-ativo" aria-current="true"' : '') + '><i></i></button>';
+      }).join('') + '</div>' +
       '</section>' +
 
       ((banner || avisoAdmin) ? '<div class="cont home-avisos">' + banner + avisoAdmin + '</div>' : '') +
@@ -4100,6 +4162,8 @@
       el.textContent = abrir ? 'Fechar tudo' : 'Abrir tudo';
       return;
     }
+    if (act === 'carAnt' || act === 'carProx') { carIr(carrossel.i + (act === 'carProx' ? 1 : -1), true); return; }
+    if (act === 'carIr') { carIr(+el.getAttribute('data-i'), true); return; }
     if (act === 'roloAnt' || act === 'roloProx') {
       var rl = el.parentNode && el.parentNode.querySelector('.turma-rolo');
       if (rl) rl.scrollBy({ left: (act === 'roloProx' ? 1 : -1) * rl.clientWidth * 0.8, behavior: 'smooth' });

@@ -1444,3 +1444,64 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
 @media (max-width: 1023px) {
   .df-flor { width: min(70%, 240px); }
 }
+
+/* ========================= CARROSSEL DA PÁGINA INICIAL =========================
+   Os banners ficam empilhados na mesma célula da grade (a altura é a do maior)
+   e trocam com um esmaecer suave.                                             */
+.carrossel { position: relative; }
+.car-slides { display: grid; }
+.car-slide { grid-area: 1 / 1; opacity: 0; visibility: hidden; transition: opacity .7s ease, visibility 0s linear .7s; }
+.car-slide.is-ativo { opacity: 1; visibility: visible; transition: opacity .7s ease; z-index: 1; }
+
+/* chamada para os projetos no banner do evento */
+.dobra-chamada { display: grid; gap: .9rem; justify-items: start; margin-top: 1.1rem; }
+.dobra-chamada p { max-width: 46ch; color: rgba(255,255,255,.88); font-size: clamp(.98rem, .92rem + .3vw, 1.12rem); line-height: 1.55; }
+.dobra-chamada .btn svg { width: 18px; height: 18px; }
+
+/* banner do Instituto: foto, sombra escura à esquerda e o texto por cima */
+.dobra-inst {
+  min-height: clamp(460px, 64vh, 580px); display: flex; align-items: center;
+  background: #1c1230; color: #fff; overflow: hidden;
+}
+.dobra-inst .inst-foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; z-index: 0; }
+.dobra-inst::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(14, 8, 28, .9) 0%, rgba(14, 8, 28, .72) 38%, rgba(14, 8, 28, .2) 72%, rgba(14, 8, 28, .05) 100%),
+              linear-gradient(0deg, rgba(14, 8, 28, .55), transparent 45%);
+}
+.dobra-inst > .cont { position: relative; z-index: 2; }
+.inst-txt { display: grid; gap: 1rem; justify-items: start; max-width: 560px; margin-left: max(var(--gut), calc((100% - var(--maxw)) / 2)); margin-right: auto; }
+.inst-txt .eyebrow { color: #f9b26b; }
+.inst-tit { font-size: clamp(2.1rem, 1.4rem + 2.6vw, 3.4rem); font-weight: 700; line-height: 1.05; letter-spacing: -.02em; color: #fff; }
+.inst-lead { color: rgba(255,255,255,.9); font-size: clamp(.98rem, .92rem + .3vw, 1.1rem); line-height: 1.6; max-width: 48ch; }
+.inst-btn { text-transform: uppercase; letter-spacing: .04em; margin-top: .4rem; }
+
+/* setas e pontos */
+.car-seta {
+  position: absolute; top: 50%; z-index: 5; width: 46px; height: 46px; margin-top: -23px;
+  display: grid; place-items: center; border-radius: 50%;
+  color: #fff; background: rgba(255,255,255,.06); border: 1.5px solid rgba(255,255,255,.75);
+  transition: background .2s, transform .2s;
+}
+.car-seta:hover { background: rgba(255,255,255,.18); transform: scale(1.06); }
+.car-seta svg { width: 20px; height: 20px; }
+.car-ant { left: 18px; }
+.car-prox { right: 18px; }
+.car-pontos { position: absolute; left: 50%; bottom: 16px; z-index: 5; transform: translateX(-50%); display: flex; gap: 8px; }
+.car-pontos button { position: relative; width: 46px; height: 18px; display: grid; align-items: center; }
+.car-pontos button::before { content: ""; height: 4px; border-radius: 4px; background: rgba(255,255,255,.4); grid-area: 1 / 1; }
+.car-pontos i { grid-area: 1 / 1; height: 4px; width: 0; border-radius: 4px; background: var(--c-laranja); }
+.car-pontos .is-ativo i { animation: carTempo 8s linear forwards; }
+@keyframes carTempo { from { width: 0; } to { width: 100%; } }
+@media (max-width: 759px) {
+  .car-seta { display: none; }
+  .car-pontos { bottom: 10px; }
+  .dobra-inst { align-items: flex-end; padding-bottom: 3.2rem; }
+  .dobra-inst .inst-foto { object-position: 78% 30%; }
+  .dobra-inst::after { background: linear-gradient(0deg, rgba(14, 8, 28, .95) 0%, rgba(14, 8, 28, .78) 48%, rgba(14, 8, 28, .25) 100%); }
+  .inst-txt { margin-left: var(--gut); margin-right: var(--gut); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .car-slide, .car-slide.is-ativo { transition: none; }
+  .car-pontos .is-ativo i { animation: none; width: 100%; }
+}
