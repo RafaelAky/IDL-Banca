@@ -3392,6 +3392,7 @@
         '<section class="tl-palco">' +
           '<h1 class="tl-tit">Escolha o Herói da Trilha 2026</h1>' +
           '<ol class="tl-cands" style="--n:' + cs.length + '">' + cartoes + '</ol>' +
+          '<p class="tl-aviso">' + ico('i-info') + '<span><b>Animação ilustrativa.</b> Os +1 desta tela não representam os votos reais. O resultado só é revelado no palco.</span></p>' +
         '</section>' +
         '<aside class="tl-qr">' +
           '<span class="tl-qr-cab">Aponte a câmera do celular</span>' +
