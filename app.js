@@ -2884,7 +2884,7 @@
     return '<div class="stack-lg">' +
       '<section class="stack">' +
       '<h2 class="h2">Telão</h2>' +
-      '<p class="small">Abra no computador ligado ao projetor: mostra o QR Code grande da votação e uma animação ilustrativa de votos chegando aos candidatos (não usa os votos reais). ' +
+      '<p class="small">Abra no computador ligado ao projetor: mostra os Heróis candidatos e o QR Code grande da votação, com um selo do horário ("Abre às…" / "Vote agora"). Os "+1" que sobem em volta dos Heróis são só um convite a votar: passam por todos igualmente e não usam os votos reais. ' +
       'Se a palavra-chave do palco estiver ativa e este aparelho estiver com o painel aberto, ela aparece no telão sozinha. Em outro computador, coloque-a no fim do endereço: <b>#/telao/SUAPALAVRA</b>.</p>' +
       '<div class="row wrap" style="gap:8px"><a class="btn btn-primary" href="#/telao" target="_blank" rel="noopener">' + ico('i-eye') + ' Abrir o telão</a></div>' +
       '<p class="tiny">' + esc(link) + '</p>' +
@@ -3375,41 +3375,29 @@
     // a palavra vem do endereço (#/telao/PALAVRA) ou, se este aparelho estiver
     // com o painel aberto, do próprio banco
     var palavra = route.param ? decodeURIComponent(route.param).trim() : (remote.exigeChave ? telao.palavra : '');
-    var aberta = votacaoAberta();
-    var estado = aberta
-      ? '<span class="tl-estado is-aberta"><i></i>Votação aberta</span>'
-      : '<span class="tl-estado"><i></i>' + esc(db.event.votacaoAbre ? 'A votação abre às ' + db.event.votacaoAbre : 'A votação abre em breve') + '</span>';
+    // logo abaixo de "Aponte a câmera": a palavra-chave anunciada no palco
+    var selo = palavra ? '<div class="tl-palavra tl-palavra-topo"><span>Palavra-chave</span><b>' + esc(palavra) + '</b></div>' : '';
     var host = siteBase().replace(/^https?:\/\//, '') || 'o site do evento';
 
     var cartoes = cs.map(function (o) {
       return '<li class="tl-cand" data-tl="' + esc(o.id) + '">' +
         '<span class="tl-quadro">' + (o.image ? '<img src="' + esc(o.image) + '" alt="">' : sementeSvg()) + '</span>' +
-        '<span class="tl-nome">' + esc(o.name) + '</span>' +
-        '<span class="tl-tubo" aria-hidden="true"><span class="tl-enche">' +
-          '<svg class="tl-onda" viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0 10 Q25 0 50 10 T100 10 T150 10 T200 10 V20 H0Z"/></svg>' +
-        '</span></span>' +
-        '<span class="tl-halo" aria-hidden="true"></span>' +
+        '<span class="tl-nome"><span>' + esc(String(o.name).split(/\s+[—–-]\s+/)[0]) + '</span></span>' +
         '</li>';
     }).join('');
 
-    return '<div class="telao">' +
+    return '<div class="telao tl-c tl-estilo-' + (telao.estilo || 'portal') + '">' +
       telaoFundo() +
-      '<header class="tl-topo">' +
-        '<span class="tl-logos"><img src="img/kv/trilhei.webp" alt="Trilhei"><i aria-hidden="true"></i><img src="img/kv/idltech.webp" alt="Programa IDL Tech"></span>' +
-        estado +
-      '</header>' +
       '<div class="tl-corpo">' +
         '<section class="tl-palco">' +
-          '<span class="eyebrow">' + esc(db.event.name || 'Banca Final IDL Tech') + '</span>' +
           '<h1 class="tl-tit">Escolha o Herói da Trilha 2026</h1>' +
           '<ol class="tl-cands" style="--n:' + cs.length + '">' + cartoes + '</ol>' +
-          '<p class="tl-aviso">' + ico('i-info') + '<span><b>Animação ilustrativa.</b> As barras sobem e descem ao acaso: não mostram os votos reais nem quem está na frente. O resultado só é revelado no palco.</span></p>' +
         '</section>' +
         '<aside class="tl-qr">' +
           '<span class="tl-qr-cab">Aponte a câmera do celular</span>' +
+          selo +
           '<div class="tl-qr-img">' + (telao.qrSvg || '<span class="tl-qr-carrega">Gerando o QR Code…</span>') + '</div>' +
           '<span class="tl-qr-url">' + esc(host) + '</span>' +
-          (palavra ? '<div class="tl-palavra"><span>Palavra-chave</span><b>' + esc(palavra) + '</b></div>' : '') +
           '<p class="tl-qr-pe">Informe seu CPF, escolha o seu Herói e confirme. Um voto por pessoa.</p>' +
         '</aside>' +
       '</div>' +
@@ -3417,96 +3405,91 @@
       '</div>';
   }
 
-  /* A animação: cada Herói tem um "nível" que sobe e desce o tempo todo —
-     duas ondas lentas somadas, mais empurrões aleatórios para cima (semente
-     chegando) e para baixo (semente indo embora) que se desfazem sozinhos.
-     Nada acumula: ninguém fica na frente por muito tempo e não há números. */
-  function telaoAnimEstado(id) {
-    var a = telao.anim[id];
-    if (!a) {
-      a = telao.anim[id] = {
-        f1: .18 + Math.random() * .22, f2: .5 + Math.random() * .5,
-        p1: Math.random() * 6.3, p2: Math.random() * 6.3,
-        base: 42 + Math.random() * 12, imp: 0, nivel: 40
-      };
-    }
-    return a;
-  }
-  function telaoSemente(el, dir) {
-    var tubo = el.querySelector('.tl-tubo');
-    if (!tubo) return;
-    var sem = document.createElement('span');
-    sem.className = 'tl-voa ' + (dir > 0 ? 'tl-sobe' : 'tl-desce');
-    sem.style.setProperty('--dx', ((Math.random() - .5) * 90).toFixed(0) + 'px');
-    sem.style.setProperty('--gx', ((Math.random() < .5 ? -1 : 1) * (60 + Math.random() * 80)).toFixed(0) + 'px');
-    sem.innerHTML = sementeSvg();
-    el.appendChild(sem);
-    setTimeout(function () { if (sem.parentNode) sem.parentNode.removeChild(sem); }, 2300);
-  }
-  function telaoBolha(el) {
-    var enche = el.querySelector('.tl-enche');
-    if (!enche) return;
-    var bo = document.createElement('i');
-    bo.className = 'tl-bolha';
-    bo.style.left = (15 + Math.random() * 70).toFixed(0) + '%';
-    bo.style.setProperty('--s', (4 + Math.random() * 7).toFixed(0) + 'px');
-    bo.style.animationDuration = (1.6 + Math.random() * 1.6).toFixed(2) + 's';
-    enche.appendChild(bo);
-    setTimeout(function () { if (bo.parentNode) bo.parentNode.removeChild(bo); }, 3400);
-  }
-  // empurrão aleatório: na maioria das vezes para cima, às vezes para baixo
-  function telaoEmpurrao() {
-    var itens = document.querySelectorAll('.tl-cand');
+  /* A animação: só "+1" subindo em volta dos Heróis, como um convite a votar.
+     Não há barras, números acumulados nem ranking: os +1 passam por todos os
+     candidatos em rodízio embaralhado, então todos recebem a mesma quantidade
+     e ninguém parece estar na frente.                                       */
+  var telaoFila = [];
+  function telaoMaisUm() {
+    var itens = Array.prototype.slice.call(document.querySelectorAll('.tl-cand'));
     if (!itens.length) return;
-    var el = itens[Math.floor(Math.random() * itens.length)];
-    var a = telaoAnimEstado(el.getAttribute('data-tl'));
-    var dir = Math.random() < .68 ? 1 : -1;
-    a.imp += dir * (9 + Math.random() * 14);
-    a.imp = Math.max(-30, Math.min(34, a.imp));
-    telaoSemente(el, dir);
-    if (dir > 0) { el.classList.remove('tl-pulso'); void el.offsetWidth; el.classList.add('tl-pulso'); }
-    else { el.classList.remove('tl-recua'); void el.offsetWidth; el.classList.add('tl-recua'); }
+    if (!telaoFila.length) {
+      telaoFila = itens.map(function (_, i) { return i; });
+      for (var i = telaoFila.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = telaoFila[i]; telaoFila[i] = telaoFila[j]; telaoFila[j] = t; }
+    }
+    var el = itens[telaoFila.shift() % itens.length];
+    var q = el.querySelector('.tl-quadro');
+    if (!q) return;
+    var b = document.createElement('span');
+    b.className = 'tl-mais';
+    b.textContent = '+1';
+    b.style.left = (18 + Math.random() * 64).toFixed(0) + '%';
+    b.style.top = (25 + Math.random() * 45).toFixed(0) + '%';
+    b.style.setProperty('--dx', ((Math.random() - .5) * 50).toFixed(0) + 'px');
+    b.style.setProperty('--esc', (0.85 + Math.random() * 0.4).toFixed(2));
+    q.appendChild(b);
+    el.classList.remove('tl-pulso'); void el.offsetWidth; el.classList.add('tl-pulso');
+    setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 2200);
   }
-  function telaoQuadro(ts) {
-    if (route.name !== 'telao') { telao.raf = null; return; }
-    var t = ts / 1000, dt = telao.ultimo ? Math.min(.1, t - telao.ultimo) : .016;
-    telao.ultimo = t;
-    Array.prototype.forEach.call(document.querySelectorAll('.tl-cand'), function (el) {
-      var a = telaoAnimEstado(el.getAttribute('data-tl'));
-      a.imp *= Math.pow(.55, dt);   // o empurrão some em poucos segundos
-      var alvo = a.base + 20 * Math.sin(t * a.f1 + a.p1) + 8 * Math.sin(t * a.f2 + a.p2) + a.imp;
-      alvo = Math.max(10, Math.min(94, alvo));
-      a.nivel += (alvo - a.nivel) * Math.min(1, dt * 3.2);
-      var enche = el.querySelector('.tl-enche');
-      if (enche) enche.style.transform = 'translateY(' + (100 - a.nivel).toFixed(2) + '%)';
-      var q = el.querySelector('.tl-quadro');
-      if (q) q.style.transform = 'translateY(' + ((50 - a.nivel) * .22).toFixed(1) + 'px) rotate(' + (Math.sin(t * a.f2 * 1.3 + a.p1) * 1.6).toFixed(2) + 'deg)';
-      el.style.setProperty('--brilho', (a.nivel / 100).toFixed(3));
+
+  // todos os Heróis com a mesma altura: a maior que caiba na largura disponível,
+  // considerando a proporção real de cada ilustração (o Lumen é mais largo)
+  function telaoMedir() {
+    var lista = document.querySelector('.tl-c .tl-cands');
+    if (!lista) return;
+    // estilo portal: todos os portais com a mesma largura e altura e o mesmo
+    // espaço entre eles; o Herói mais largo (proporcionalmente) define a altura
+    if (lista.closest('.tl-estilo-portal')) {
+      var cs = lista.querySelectorAll('.tl-cand'), n = cs.length || 1, maior = 0.4, falta = false;
+      Array.prototype.forEach.call(cs, function (c) {
+        var im = c.querySelector('.tl-quadro img');
+        if (im && im.naturalWidth) maior = Math.max(maior, im.naturalWidth / im.naturalHeight);
+        else falta = true;
+      });
+      var g = parseFloat(getComputedStyle(lista).columnGap) || 0;
+      var w = Math.floor((lista.parentNode.clientWidth - g * (n - 1) - 4) / n);
+      var hh = Math.floor(Math.min(window.innerHeight * 0.5, (w * 0.9) / maior));
+      // o portal fica um pouco mais alto que o Herói mais alto e com a mesma largura para todos
+      lista.style.setProperty('--w', w + 'px');
+      lista.style.setProperty('--h', Math.max(120, hh) + 'px');
+      if (falta) Array.prototype.forEach.call(lista.querySelectorAll('img'), function (im) {
+        if (!im.complete) im.addEventListener('load', telaoMedir, { once: true });
+      });
+      return;
+    }
+    var cands = lista.querySelectorAll('.tl-cand');
+    var soma = 0, folga = 0, faltam = false;
+    Array.prototype.forEach.call(cands, function (c) {
+      var im = c.querySelector('.tl-quadro img');
+      if (!im || !im.naturalWidth) { faltam = true; soma += 0.4; }
+      else soma += im.naturalWidth / im.naturalHeight;
+      // margens que o estilo põe em volta da ilustração (o nome não conta: ele não alarga o Herói)
+      var cc = getComputedStyle(c), qq = getComputedStyle(c.querySelector('.tl-quadro') || c);
+      folga += parseFloat(cc.paddingLeft) + parseFloat(cc.paddingRight) + parseFloat(qq.paddingLeft) + parseFloat(qq.paddingRight);
     });
-    telao.raf = requestAnimationFrame(telaoQuadro);
+    var gap = parseFloat(getComputedStyle(lista).columnGap) || 0;
+    // "folga" = espaço que cada estilo põe em volta da ilustração (margens, cartão, arco)
+    var livre = lista.parentNode.clientWidth - gap * Math.max(0, cands.length - 1) - folga - 8;
+    var h = Math.min(window.innerHeight * 0.5, livre / Math.max(0.1, soma));
+    lista.style.setProperty('--h', Math.max(120, Math.floor(h)) + 'px');
+    if (faltam) Array.prototype.forEach.call(lista.querySelectorAll('img'), function (im) {
+      if (!im.complete) im.addEventListener('load', telaoMedir, { once: true });
+    });
   }
+  window.addEventListener('resize', function () { if (route.name === 'telao') telaoMedir(); });
+
   function telaoMontar() {
     if (route.name !== 'telao') {
       if (telao.timer) { clearTimeout(telao.timer); telao.timer = null; }
-      if (telao.bolhas) { clearInterval(telao.bolhas); telao.bolhas = null; }
       return;
     }
-    if (!telao.anim) telao.anim = {};
+    telaoMedir();
     telaoPalavraDoBanco();
-    if (!telao.raf) { telao.ultimo = 0; telao.raf = requestAnimationFrame(telaoQuadro); }
-    if (!telao.bolhas) {
-      telao.bolhas = setInterval(function () {
-        if (route.name !== 'telao') return;
-        Array.prototype.forEach.call(document.querySelectorAll('.tl-cand'), function (el) {
-          if (Math.random() < .55) telaoBolha(el);
-        });
-      }, 420);
-    }
     if (telao.timer) return;
     (function proximo() {
       if (route.name !== 'telao') { telao.timer = null; return; }
-      telaoEmpurrao();
-      telao.timer = setTimeout(proximo, 260 + Math.random() * 640);
+      telaoMaisUm();
+      telao.timer = setTimeout(proximo, 450 + Math.random() * 700);
     })();
   }
 

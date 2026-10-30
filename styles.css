@@ -1525,3 +1525,125 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
   .inst-txt { margin-left: auto; margin-right: auto; max-width: none; }
   .dobra-inst::after { background: linear-gradient(0deg, rgba(10, 10, 10, .94) 0%, rgba(10, 10, 10, .74) 48%, rgba(10, 10, 10, .2) 100%); }
 }
+
+/* ===================== TELÃO · VERSÃO LIMPA (opção C) =====================
+   Sem cabeçalho e sem barras: o título, os Heróis candidatos grandes e o
+   cartão do QR Code com o selo do horário. Os "+1" sobem em volta dos
+   Heróis, em rodízio, só como convite a votar.                            */
+.tl-c { gap: 0; padding-top: 5vh; }
+.tl-c .tl-corpo { align-items: center; }
+.tl-c .tl-palco { justify-content: center; height: 100%; }
+.tl-c .tl-tit { font-size: clamp(28px, 3.5vw, 70px); margin: 0 0 5vh; }
+.tl-c .tl-cands { flex: none; align-items: start; gap: 1.8vw; }
+.tl-c .tl-cand { height: auto; justify-content: flex-start; gap: 1.6vh; }
+.tl-c .tl-quadro {
+  order: 0; position: relative; overflow: visible; max-height: none; height: 48vh; aspect-ratio: auto; width: 100%;
+  border-radius: 22px; box-shadow: 0 14px 40px rgba(20,0,50,.35);
+}
+.tl-c .tl-quadro img { width: 92%; height: 96%; position: absolute; left: 4%; bottom: 0; border-radius: 0 0 22px 22px; }
+.tl-c .tl-nome { order: 1; font-size: clamp(15px, 1.6vw, 32px); }
+.tl-c .tl-cand.tl-pulso .tl-quadro { animation: tlPulsoC .8s ease; }
+@keyframes tlPulsoC { 30% { transform: translateY(-6px); box-shadow: 0 0 0 4px var(--c-laranja), 0 18px 44px rgba(20,0,50,.4); } }
+
+/* os +1 */
+.tl-mais {
+  position: absolute; z-index: 3; pointer-events: none;
+  padding: .18em .55em; border-radius: 999px;
+  font-weight: 800; font-size: clamp(16px, 1.7vw, 34px); line-height: 1;
+  color: #fff; background: var(--c-laranja); box-shadow: 0 6px 16px rgba(249,114,24,.45);
+  transform: translate(-50%, 0) scale(var(--esc, 1));
+  animation: tlMais 2.1s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes tlMais {
+  0%   { opacity: 0; transform: translate(-50%, 10px) scale(calc(var(--esc, 1) * .6)); }
+  15%  { opacity: 1; transform: translate(-50%, 0) scale(var(--esc, 1)); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), -16vh) scale(var(--esc, 1)); }
+}
+
+/* selo do horário dentro do cartão do QR */
+.tl-selo {
+  display: inline-flex; align-items: center; gap: .55em; margin-top: 1.2vh;
+  padding: .45em 1.2em; border-radius: 999px; background: var(--c-roxo); color: #fff;
+  font-weight: 600; font-size: clamp(14px, 1.4vw, 28px);
+}
+.tl-selo i { width: .6em; height: .6em; border-radius: 50%; background: var(--c-lilas); }
+.tl-selo.is-aberta { background: var(--c-laranja); }
+.tl-selo.is-aberta i { background: #fff; animation: tlPisca 1.4s ease-in-out infinite; }
+.tl-c .tl-qr-img { margin-top: 1.6vh; }
+
+@media (max-width: 860px), (max-aspect-ratio: 1/1) {
+  .tl-c .tl-quadro { height: 26vh; }
+  .tl-c .tl-tit { margin-bottom: 3vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-mais { animation-duration: .01s; }
+}
+
+/* ============== TELÃO · Heróis do mesmo tamanho + estilos de apresentação ==============
+   A altura (--h) é calculada no app.js para todos caberem lado a lado.          */
+.tl-c .tl-corpo { grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr); gap: 3vw; }
+.tl-c .tl-cands { display: flex; justify-content: center; align-items: flex-start; gap: 1.6vw; --extra: 0px; }
+.tl-c .tl-cand { flex: none; height: auto; }
+.tl-c .tl-quadro {
+  height: var(--h, 44vh); width: auto; max-height: none; aspect-ratio: auto;
+  display: flex; align-items: flex-end; justify-content: center; position: relative; overflow: visible;
+  background: none; box-shadow: none; border-radius: 0; padding: 0;
+}
+.tl-c .tl-quadro img { position: relative; left: auto; bottom: auto; width: auto; height: 100%; max-width: none; border-radius: 0; object-fit: contain; }
+.tl-c .tl-cand.tl-pulso .tl-quadro { animation: none; }
+.tl-c .tl-cand.tl-pulso .tl-quadro img { animation: tlPulsoImg .8s ease; }
+@keyframes tlPulsoImg { 30% { transform: translateY(-8px); filter: drop-shadow(0 0 14px rgba(249,114,24,.7)); } }
+/* QR um pouco menor para dar espaço aos Heróis */
+.tl-c .tl-qr { padding: 2.6vh 1.8vw; }
+.tl-c .tl-qr-img { width: min(20vw, 42vh); }
+.tl-palavra-topo { margin: 1.4vh 0 0; }
+
+/* A · palco: Heróis soltos, com uma luz suave atrás e sombra no chão */
+.tl-estilo-palco .tl-quadro::before {
+  content: ""; position: absolute; left: 50%; bottom: 8%; z-index: -1; width: 150%; aspect-ratio: 1; transform: translateX(-50%);
+  border-radius: 50%; background: radial-gradient(closest-side, rgba(233,220,251,.32), rgba(233,220,251,0));
+}
+.tl-estilo-palco .tl-quadro::after {
+  content: ""; position: absolute; left: 50%; bottom: -10px; width: 90%; height: 22px; transform: translateX(-50%); z-index: -1;
+  border-radius: 50%; background: radial-gradient(closest-side, rgba(10,0,30,.55), rgba(10,0,30,0));
+}
+.tl-estilo-palco .tl-quadro img { filter: drop-shadow(0 10px 18px rgba(10,0,30,.35)); }
+
+/* B · medalhão: um círculo lilás atrás de cada Herói */
+.tl-estilo-medalhao .tl-cands { --extra: 5vw; }
+.tl-estilo-medalhao .tl-cand { padding-inline: 2.5vw; }
+.tl-estilo-medalhao .tl-quadro::before {
+  content: ""; position: absolute; left: 50%; top: 4%; z-index: -1; width: calc(var(--h) * .5); aspect-ratio: 1; transform: translateX(-50%);
+  border-radius: 50%; background: linear-gradient(160deg, rgba(232,219,247,.95), rgba(185,143,232,.75));
+  box-shadow: 0 0 0 6px rgba(255,255,255,.12);
+}
+.tl-estilo-medalhao .tl-nome { margin-top: .4vh; }
+.tl-estilo-medalhao .tl-nome > span { background: #fff; color: var(--c-roxo); padding: .25em .9em; border-radius: 999px; }
+
+/* C · portal: um arco translúcido atrás, com o Herói saindo por cima */
+.tl-estilo-portal .tl-cands { --extra: 3.4vw; }
+.tl-estilo-portal .tl-cand { padding-inline: 1.7vw; }
+.tl-estilo-portal .tl-quadro::before {
+  content: ""; position: absolute; left: -1.2vw; right: -1.2vw; bottom: 0; top: 18%; z-index: -1;
+  border-radius: 999px 999px 18px 18px;
+  background: linear-gradient(180deg, rgba(185,143,232,.32), rgba(185,143,232,.08));
+  border: 1.5px solid rgba(232,219,247,.55);
+}
+
+/* D · cartões (versão anterior), agora todos da mesma altura */
+.tl-estilo-cartao .tl-cands { --extra: 2.4vw; }
+.tl-estilo-cartao .tl-quadro { background: var(--grad-quadro); border-radius: 22px; padding: 0 1vw; box-shadow: 0 14px 40px rgba(20,0,50,.35); }
+.tl-estilo-cartao .tl-quadro img { height: 96%; }
+
+.tl-c .tl-qr-cab { font-size: clamp(14px, 1.35vw, 28px); white-space: nowrap; }
+/* o nome não alarga o Herói (os mais estreitos continuam do tamanho certo) */
+.tl-c .tl-cand { align-items: center; }
+.tl-c .tl-nome { width: 0; display: flex; justify-content: center; white-space: nowrap; min-height: 0; }
+
+/* C · portal (escolhido): portais idênticos, mesma largura, altura e espaçamento */
+.tl-estilo-portal .tl-cands { gap: 1.6vw; justify-content: center; }
+.tl-estilo-portal .tl-cand { width: var(--w, 180px); padding-inline: 0; }
+.tl-estilo-portal .tl-quadro { width: 100%; height: calc(var(--h, 300px) * 1.06); align-items: flex-end; }
+.tl-estilo-portal .tl-quadro img { height: calc(100% / 1.06); }
+.tl-estilo-portal .tl-quadro::before { left: 0; right: 0; top: 14%; bottom: 0; }
