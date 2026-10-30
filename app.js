@@ -3489,7 +3489,7 @@
     (function proximo() {
       if (route.name !== 'telao') { telao.timer = null; return; }
       telaoMaisUm();
-      telao.timer = setTimeout(proximo, 450 + Math.random() * 700);
+      telao.timer = setTimeout(proximo, 1500 + Math.random() * 1300);
     })();
   }
 

@@ -1647,3 +1647,11 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
 .tl-estilo-portal .tl-quadro { width: 100%; height: calc(var(--h, 300px) * 1.06); align-items: flex-end; }
 .tl-estilo-portal .tl-quadro img { height: calc(100% / 1.06); }
 .tl-estilo-portal .tl-quadro::before { left: 0; right: 0; top: 14%; bottom: 0; }
+
+/* +1 menores, só em branco e mais espaçados no tempo */
+.tl-mais {
+  padding: 0; background: none; box-shadow: none;
+  font-size: clamp(13px, 1.15vw, 24px); font-weight: 700; color: #fff;
+  text-shadow: 0 1px 6px rgba(20, 0, 50, .55);
+}
+@keyframes tlPulsoImg { 30% { transform: translateY(-5px); filter: drop-shadow(0 0 10px rgba(255,255,255,.45)); } }
