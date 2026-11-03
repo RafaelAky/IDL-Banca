@@ -2228,3 +2228,4 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .bottomnav[data-n="8"] ul { --n: 8; }
 .bottomnav[data-n="7"] .navbtn .lbl, .bottomnav[data-n="8"] .navbtn .lbl { font-size: 10px; letter-spacing: -.01em; }
 .bottomnav[data-n="8"] .navbtn svg { width: 20px; height: 20px; }
+.rank-auto { display: inline-flex; align-items: center; color: var(--c-texto-2); }

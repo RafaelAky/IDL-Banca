@@ -4141,7 +4141,7 @@
     adminBancaDados.carregando = true; render();
     sbRpc('avaliacoes_banca', { p_chave: localState.adminKey || '' }).then(function (r) {
       adminBancaDados.carregando = false;
-      if (r && r.ok) { adminBancaDados.itens = r.itens || []; adminBancaDados.decisao = r.decisao || []; adminBancaDados.erro = ''; }
+      if (r && r.ok) { adminBancaDados.itens = r.itens || []; adminBancaDados.decisao = r.decisao || []; adminBancaDados.erro = ''; adminBancaDados.em = Date.now(); }
       else adminBancaDados.erro = 'Não consegui buscar as avaliações.';
       render();
     }).catch(function (e) {
@@ -4166,6 +4166,30 @@
                media: ms.length ? ms.reduce(function (a, b) { return a + b; }, 0) / ms.length : null };
     }).sort(function (a, b) { return (b.media == null ? -1 : b.media) - (a.media == null ? -1 : a.media); });
   }
+  // ranking da aba Banca: atualiza sozinho e lembra quais projetos estavam abertos
+  var rankAberto = {};
+  document.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (d && d.classList && d.classList.contains('banca-linha')) rankAberto[d.getAttribute('data-pid')] = d.open;
+  }, true);
+  function rankingAtualizar() {
+    if (!remote.on || !localState.adminKey) return;
+    var antes = JSON.stringify([adminBancaDados.itens, adminBancaDados.decisao]);
+    sbRpc('avaliacoes_banca', { p_chave: localState.adminKey }).then(function (r) {
+      if (!r || !r.ok) return;
+      adminBancaDados.itens = r.itens || []; adminBancaDados.decisao = r.decisao || []; adminBancaDados.erro = ''; adminBancaDados.em = Date.now();
+      if (route.name !== 'admin' || admin.tab !== 'banca') return;
+      var a = document.activeElement, digitando = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+      if (JSON.stringify([adminBancaDados.itens, adminBancaDados.decisao]) !== antes && !digitando && !admin.confirm && !admin.editor) {
+        var y = window.scrollY; render(); window.scrollTo(0, y);
+      } else {
+        var h = document.querySelector('.rank-auto'); if (h) h.innerHTML = '<i class="tab-ponto"></i>Atualiza sozinho a cada 10 s · ' + horaCurta(adminBancaDados.em);
+      }
+    }).catch(function () {});
+  }
+  setInterval(function () {
+    if (route.name === 'admin' && admin.tab === 'banca' && localState.admin && document.visibilityState !== 'hidden') { syncEstado(); rankingAtualizar(); }
+  }, 10000);
   function adminBanca() {
     if (!remote.on) return '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow"><b>Modo prévia.</b> A área da banca funciona na versão publicada, com o banco ligado.</p></div>';
     if (adminBancaDados.itens == null && !adminBancaDados.carregando && !adminBancaDados.erro) setTimeout(carregarAdminBanca, 0);
@@ -4176,7 +4200,7 @@
     var venc = vencedorDecisao(linhas, linhas.reduce(function (o, l) { o[l.p.id] = l.votos; return o; }, {}));
     var tabela = adminBancaDados.itens == null ? '<p class="small">' + (adminBancaDados.erro ? esc(adminBancaDados.erro) : 'Buscando as avaliações…') + '</p>' :
       '<div class="banca-tab">' + linhas.map(function (l, i) {
-        return '<details class="sanfona banca-linha">' +
+        return '<details class="sanfona banca-linha" data-pid="' + esc(l.p.id) + '"' + (rankAberto[l.p.id] ? ' open' : '') + '>' +
           '<summary><span class="bl-pos num">' + (l.media == null ? '–' : (i + 1) + 'º') + '</span><span class="sf-cab"><span class="sf-tit">' + esc(l.p.name) + '</span>' +
           '<span class="sf-res">' + esc([l.p.group ? 'Grupo ' + l.p.group : '', l.n + (l.n === 1 ? ' jurado' : ' jurados'), remote.decisao || nVot ? l.votos + (l.votos === 1 ? ' voto na decisão' : ' votos na decisão') : ''].filter(Boolean).join(' · ')) + '</span></span>' +
           '<span class="bl-media num">' + fmt1(l.media) + '</span>' +
@@ -4204,6 +4228,7 @@
       (nVot ? '<p class="small">Votos: ' + (adminBancaDados.decisao || []).map(function (v) { var p = byId(v.projeto); return '<b>' + esc(v.jurado) + '</b> → ' + esc(p ? p.name : v.projeto); }).join(' · ') + '</p>' : '') +
       '</section>' +
       '<section class="stack"><div class="row wrap" style="gap:8px;justify-content:space-between;align-items:center"><h3 class="h3">Ranking pelas médias <span class="tiny" style="font-weight:400">(1 a 5)</span></h3>' +
+        '<span class="tiny rank-auto"><i class="tab-ponto"></i>Atualiza sozinho a cada 10 s' + (adminBancaDados.em ? ' · ' + horaCurta(adminBancaDados.em) : '') + '</span>' +
         '<div class="row wrap" style="gap:8px"><button class="btn btn-outline btn-sm" data-act="bancaAtualizar">Atualizar</button>' +
         '<button class="btn btn-outline btn-sm" data-act="bancaPlanilha">' + ico('i-save') + ' Baixar planilha</button></div></div>' +
         tabela + '</section>' +
