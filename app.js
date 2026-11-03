@@ -1393,13 +1393,21 @@
 
     var meta = [p.slot ? 'Apresenta às ' + p.slot : '', p.block, p.category].filter(Boolean).map(esc).join(' · ');
     var hs = (p.heroes || []).filter(function (h) { return h.image; });
-    var figs = hs.length ? '<div class="det-figs n' + hs.length + '">' + florGirando() + hs.map(function (h) {
+    // setas nas pontas (e deslizar o dedo / teclado), como nos Heróis
+    var setasP = db.projects.length > 1 ?
+      '<button class="det-seta esq" data-heroi-passo="-1" data-go="projeto/' + esc(prev.id) + '" aria-label="Projeto anterior: ' + esc(prev.name) + '">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>' + esc(prev.name) + '</span></button>' +
+      '<button class="det-seta dir" data-heroi-passo="1" data-go="projeto/' + esc(next.id) + '" aria-label="Próximo projeto: ' + esc(next.name) + '">' +
+        '<span>' + esc(next.name) + '</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>' : '';
+    var entraP = heroiEntrada; heroiEntrada = '';
+    var figs = hs.length ? '<div class="det-figs n' + hs.length + '">' + florGirando() + setasP.replace(/det-seta /g, 'det-seta no-cel ') + hs.map(function (h) {
       return '<img' + clsPe(h.image) + ' src="' + esc(h.image) + '" alt="Ilustração do Herói ' + esc(h.name) + '">';
     }).join('') + '</div>' : '';
 
-    return '<div class="view detalhe">' +
-      '<section class="faixa fx-tint det-topo">' +
+    return '<div class="view detalhe view-passa' + (entraP ? ' entra-' + entraP : '') + '" data-prev="projeto/' + esc(prev.id) + '" data-next="projeto/' + esc(next.id) + '">' +
+      '<section class="faixa fx-tint det-topo det-projeto">' +
         fundoDetalhe((p.heroes || []).map(function (h) { return String(h.name || '').split(/\s+[—–-]\s+/)[0]; }).join(' · ')) +
+        (hs.length ? setasP.replace(/det-seta /g, 'det-seta no-pc ') : setasP) +
         '<div class="cont det-topo-in">' +
           '<div class="det-txt">' +
             '<button class="voltar" data-go="projetos">' + ico('i-arrow-left') + 'Projetos</button>' +
@@ -1495,12 +1503,12 @@
   /* passar de Herói: setas nas pontas, deslizar o dedo no celular e as setas do teclado */
   var heroiEntrada = '';
   function passarHeroi(passo) {
-    var v = document.querySelector('.view-heroi');
+    var v = document.querySelector('.view-passa');
     if (!v) return;
-    var id = v.getAttribute(passo > 0 ? 'data-next' : 'data-prev');
-    if (!id) return;
+    var destino = v.getAttribute(passo > 0 ? 'data-next' : 'data-prev');
+    if (!destino) return;
     heroiEntrada = passo > 0 ? 'dir' : 'esq';
-    go('heroi/' + id);
+    go(destino);
   }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('[data-heroi-passo]');
@@ -1510,7 +1518,7 @@
     var x0 = null, y0 = 0;
     document.addEventListener('touchstart', function (e) {
       x0 = null;
-      if (!document.querySelector('.view-heroi') || e.touches.length !== 1) return;
+      if (!document.querySelector('.view-passa') || e.touches.length !== 1) return;
       if (e.target.closest && e.target.closest('input, textarea, select, video, iframe, .pagenav')) return;
       x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
     }, { passive: true });
@@ -1554,7 +1562,7 @@
         '<span>' + esc(hnext.hero.name) + '</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>' : '';
     var entra = heroiEntrada; heroiEntrada = '';
 
-    return '<div class="view detalhe view-heroi' + (entra ? ' entra-' + entra : '') + '" data-prev="' + esc(hprev.hero.id) + '" data-next="' + esc(hnext.hero.id) + '">' +
+    return '<div class="view detalhe view-heroi view-passa' + (entra ? ' entra-' + entra : '') + '" data-prev="heroi/' + esc(hprev.hero.id) + '" data-next="heroi/' + esc(hnext.hero.id) + '">' +
       '<section class="faixa fx-tint det-topo det-heroi">' + fundoDetalhe(h.name) + setas.replace(/det-seta /g, 'det-seta no-pc ') +
         '<div class="cont det-topo-in">' +
           '<div class="det-txt">' +

@@ -2079,3 +2079,8 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
   .mesa { flex-direction: column; gap: 22px; }
   .mesa-print { position: relative; right: auto; bottom: auto; z-index: 1; }
 }
+/* projetos: as mesmas setas e a mesma entrada "virando a página" dos Heróis */
+.det-projeto { position: relative; }
+.view-passa.entra-dir .det-topo-in { animation: heroiEntraDir .42s cubic-bezier(.2,.8,.2,1) both; }
+.view-passa.entra-esq .det-topo-in { animation: heroiEntraEsq .42s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .view-passa .det-topo-in { animation: none !important; } }
