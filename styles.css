@@ -1981,3 +1981,36 @@ body.is-banca .toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
   .banca-dec .banca-corpo { padding-bottom: 150px; }
   body.is-banca.tem-dec .toast { bottom: 140px; }
 }
+
+/* ================= rodapé institucional (Instituto Dente de Leão) ================= */
+.rodape-idl { background: #f9f4f1; color: #6b6460; margin-top: 0; }
+.rf-in { display: grid; grid-template-columns: 1.1fr 1fr 1.1fr; gap: 40px; padding-block: 44px 40px; }
+.rf-logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.rf-flor { width: 54px; height: 54px; flex: none; }
+.rf-nome { display: grid; line-height: 1; color: #f39a1f; }
+.rf-inst { font-size: 12px; letter-spacing: .62em; font-weight: 400; color: #8a817c; margin-left: 2px; }
+.rf-dl { font-size: 29px; font-weight: 700; letter-spacing: -.01em; margin-top: 4px; }
+.rf-dl span { font-weight: 300; }
+.rf-marca p { margin: 18px 0 0; font-size: 1rem; line-height: 1.5; max-width: 34ch; color: #6b6460; }
+.rf-col h2 { font-size: .95rem; font-weight: 600; color: #5d5753; margin: 6px 0 18px; }
+.rf-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rf-col a { color: #6b6460; text-decoration: none; transition: color .15s; }
+.rf-col a:hover { color: #f39a1f; }
+.rf-contato { display: grid; gap: 4px; margin: 0; font-size: 1rem; }
+.rf-contato b { color: #5d5753; font-size: 1.05rem; }
+.rf-contato a, .rf-contato span { word-break: break-word; }
+.rf-redes { display: flex; gap: 12px; margin-top: 28px; }
+.rf-redes a { color: #f6a93b; display: inline-flex; }
+.rf-redes a:hover { color: #e8860f; }
+.rf-redes svg { width: 20px; height: 20px; }
+.rf-base { background: #a6865e; color: #fff; font-size: .92rem; }
+.rf-base .cont { padding-block: 16px; }
+@media (max-width: 860px) {
+  .rf-in { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .rf-marca { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .rf-in { grid-template-columns: 1fr; gap: 28px; padding-block: 36px 32px; }
+  .rf-base .cont { text-align: center; font-size: .85rem; }
+}
+@media (max-width: 520px) { .rf-col ul { grid-template-columns: 1fr 1fr; gap: 10px 16px; } .rf-col h2 { margin-bottom: 12px; } .rf-redes { margin-top: 18px; } }

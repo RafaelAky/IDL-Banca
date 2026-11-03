@@ -573,19 +573,49 @@
       '<span class="kv-forte">' + esc(p.slice(p.length - n).join(' ')) + '</span>';
   }
 
-  function idlFooter() {
-    return '<footer class="faixa fx-claro rodape">' +
-      '<div class="cont rodape-in">' +
-      '<span class="footlogos">' +
-      '<img class="f-tri" src="img/kv/trilhei.webp" alt="Trilhei">' +
-      '<i aria-hidden="true"></i>' +
-      '<img class="f-idl" src="img/kv/idltech.webp" alt="Programa IDL Tech">' +
-      '</span>' +
-      '<span class="eyebrow">De sementes a raízes · Formatura 2026</span>' +
-      '<p>Os protagonistas são os trilheiros, seus Heróis e a transformação construída ao longo da Trilha.</p>' +
-      '<span class="credito">Um programa do Instituto Dente de Leão</span>' +
-      '</div></footer>';
+  /* rodapé institucional (igual ao do site do Instituto), no fim de todas
+     as páginas públicas; os links rápidos levam às páginas desta Banca.   */
+  var IDL_REDES = [
+    { n: 'Instagram', u: 'https://www.instagram.com/institutodentedeleao/',
+      d: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1" fill="currentColor" stroke="none"/>' },
+    { n: 'YouTube', u: 'https://www.youtube.com/@Institutodentedele%C3%A3oIDL',
+      d: '<rect x="2" y="5" width="20" height="14" rx="4" fill="currentColor" stroke="none"/><path d="M10 9l5 3-5 3z" fill="#fff" stroke="none"/>' },
+    { n: 'LinkedIn', u: 'https://www.linkedin.com/company/institutodentedele%C3%A3o',
+      d: '<rect x="2.5" y="2.5" width="19" height="19" rx="3" fill="currentColor" stroke="none"/><path d="M7.5 10.2v6.6M7.5 7.3v.1M11 16.8v-6.6M11 13c0-1.7 1-2.9 2.6-2.9s2.4 1.1 2.4 2.9v3.8" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/>' }
+  ];
+  function florInstituto() {
+    var p = '';
+    for (var i = 0; i < 16; i++) p += '<path d="M50 50 L46 14 L50 2 L54 14 Z" transform="rotate(' + (i * 22.5) + ' 50 50)" fill="' + (i % 2 ? '#f6b54a' : '#f39a1f') + '"/>';
+    return '<svg class="rf-flor" viewBox="0 0 100 100" aria-hidden="true">' + p +
+      '<circle cx="50" cy="50" r="15" fill="#e8860f"/>' +
+      '<path d="M50 40v20M40 50h20M43 43l14 14M57 43L43 57" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>';
   }
+  function idlFooter() {
+    var links = navItens().filter(function (n) { return !n.admin; }).map(function (n) {
+      return '<li><a href="#/' + (n.id === 'home' ? '' : n.id) + '">' + esc(n.label) + '</a></li>';
+    }).join('');
+    return '<footer class="rodape-idl">' +
+      '<div class="cont rf-in">' +
+        '<div class="rf-marca">' +
+          '<a class="rf-logo" href="https://institutodentedeleao.com.br/" aria-label="Instituto Dente de Leão">' + florInstituto() +
+            '<span class="rf-nome"><span class="rf-inst">INSTITUTO</span><span class="rf-dl">DENTE<span>DE</span>LEÃO</span></span></a>' +
+          '<p>Instituto Dente de Leão. Fortalecendo pessoas, semeando consciência e transformando realidades.</p>' +
+        '</div>' +
+        '<nav class="rf-col" aria-label="Links rápidos"><h2>Links rápidos</h2><ul>' + links + '</ul></nav>' +
+        '<div class="rf-col"><h2>Siga-nos</h2>' +
+          '<p class="rf-contato"><b>Contato</b>' +
+          '<a href="mailto:contato@institutodentedeleao.com.br">contato@institutodentedeleao.com.br</a>' +
+          '<a href="https://wa.me/5511917041808" target="_blank" rel="noopener">+55 11 91704-1808</a>' +
+          '<span>Curitiba, Paraná – Brasil</span></p>' +
+          '<div class="rf-redes">' + IDL_REDES.map(function (r) {
+            return '<a href="' + r.u + '" target="_blank" rel="noopener" aria-label="' + r.n + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' + r.d + '</svg></a>';
+          }).join('') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="rf-base"><div class="cont">© ' + new Date().getFullYear() + ' Instituto Dente de Leão. Todos os direitos reservados.</div></div>' +
+      '</footer>';
+  }
+  function comRodape() { return !/^(telao|mesa|admin|banca|decisao)$/.test(route.name); }
 
   /* faixa de abertura das páginas internas
      tom: 'escuro' (degradê roxo → lilás) ou 'claro'
@@ -998,7 +1028,6 @@
       sepTrilhei() +
       fotos +
       voteHtml +
-      idlFooter() +
       '</div>';
   }
 
@@ -1626,7 +1655,6 @@
       (t.lema ? '<p class="tr-lema-txt">“' + esc(t.lema) + '”</p>' : '') +
       '<button class="btn btn-primary btn-lg" data-nav="projetos">Conhecer os projetos e os Heróis ' + ico('i-chev') + '</button>' +
       '</div></section>' +
-      idlFooter() +
       '</div>';
   }
 
@@ -1709,7 +1737,6 @@
         '<p class="lead">Conheça os projetos e os Heróis construídos ao longo do ano.</p>' +
         '<button class="btn btn-lg btn-claro" data-go="projetos">Conhecer os projetos ' + ico('i-chev') + '</button>' +
       '</div></section>' +
-      idlFooter() +
       '</div>';
   }
 
@@ -4438,7 +4465,7 @@
     var adminFull = route.name === 'admin' && localState.admin;
     document.body.classList.toggle('is-painel', adminFull);
     app.className = gated || ehTelao || ehMesa ? '' : (adminFull ? '' : 'shell');
-    app.innerHTML = (gated ? viewEntrada() : currentView()) + ctaVotar();
+    app.innerHTML = (gated ? viewEntrada() : currentView()) + (!gated && comRodape() ? idlFooter() : '') + ctaVotar();
     renderOverlay();
 
     // microanimação quando a atividade ao vivo muda
