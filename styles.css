@@ -2014,3 +2014,8 @@ body.is-banca .toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
   .rf-base .cont { text-align: center; font-size: .85rem; }
 }
 @media (max-width: 520px) { .rf-col ul { grid-template-columns: 1fr 1fr; gap: 10px 16px; } .rf-col h2 { margin-bottom: 12px; } .rf-redes { margin-top: 18px; } }
+/* rodapé: faixa final no laranja do site, texto centralizado; redes no roxo */
+.rf-base { background: var(--c-laranja); }
+.rf-base .cont { text-align: center; font-weight: 500; }
+.rf-redes a { color: var(--c-roxo-2); }
+.rf-redes a:hover { color: var(--c-laranja); }
