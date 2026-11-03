@@ -2229,3 +2229,10 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .bottomnav[data-n="7"] .navbtn .lbl, .bottomnav[data-n="8"] .navbtn .lbl { font-size: 10px; letter-spacing: -.01em; }
 .bottomnav[data-n="8"] .navbtn svg { width: 20px; height: 20px; }
 .rank-auto { display: inline-flex; align-items: center; color: var(--c-texto-2); }
+/* tela QR de login: roxo bem escuro com detalhe lilás */
+.mesa.mesa-entrar { background: radial-gradient(1100px 700px at 80% 10%, #3b1475 0%, #1d0045 55%, #0f0026 100%); }
+.mesa-entrar .mesa-status.on { background: var(--c-lilas); color: #1d0045; }
+.mesa-entrar .mesa-status.on i { background: #1d0045; }
+.mesa-entrar .mesa-passos li::before { background: var(--c-lilas); color: #1d0045; }
+.mesa-entrar .mesa-qr { border: 6px solid var(--c-lilas); }
+.mesa-entrar .mesa-qr-tag { background: #1d0045; }

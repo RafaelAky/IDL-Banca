@@ -4111,6 +4111,7 @@
     return '';
   }
   function viewMesa() {
+    if (route.param === 'entrar') return viewMesaEntrar();
     var dec = route.param === 'decisao';
     var url = siteBase() + (dec ? '/#/decisao' : '/#/banca');
     var svg = qrPara(url, dec ? '#7a2c06' : '#2e006a');
@@ -4127,6 +4128,27 @@
           (dec ? '' : '<p class="mesa-crit">' + CRITERIOS.map(function (c) { return esc(c.t); }).join(' · ') + '</p>') +
         '</div>' +
         '<div class="mesa-qr"><span class="mesa-qr-tag">' + (dec ? '★ Decisão final' : '✎ Avaliação dos projetos') + '</span><span class="mesa-qr-cab">Aponte a câmera do celular</span>' +
+          '<div class="mesa-qr-img">' + (svg || '<span class="tl-qr-carrega">Gerando o QR Code…</span>') + '</div>' +
+          '<span class="mesa-url">' + esc(url.replace(/^https?:\/\//, '')) + '</span></div>' +
+      '</div>' +
+      '<button class="mesa-print" data-act="mesaImprimir">Imprimir</button>' +
+      '</div>';
+  }
+
+  // QR que abre a tela Entrar (organização e banca)
+  function viewMesaEntrar() {
+    var url = siteBase() + '/#/entrar';
+    var svg = qrPara(url, '#2e006a');
+    var passos = ['Aponte a câmera do celular para o QR Code', 'Digite o seu nome completo e a senha que você recebeu', 'A senha leva você direto para a sua área: banca ou organização'];
+    return '<div class="mesa mesa-entrar">' + telaoFundo() +
+      '<div class="mesa-in">' +
+        '<div class="mesa-txt">' +
+          '<span class="mesa-eyebrow">IDL Formatura · Trilha 2026</span>' +
+          '<h1>Acesso<br>da equipe</h1>' +
+          '<span class="mesa-status on"><i></i>Banca e organização</span>' +
+          '<ol class="mesa-passos">' + passos.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
+        '</div>' +
+        '<div class="mesa-qr"><span class="mesa-qr-tag">● Entrar</span><span class="mesa-qr-cab">Aponte a câmera do celular</span>' +
           '<div class="mesa-qr-img">' + (svg || '<span class="tl-qr-carrega">Gerando o QR Code…</span>') + '</div>' +
           '<span class="mesa-url">' + esc(url.replace(/^https?:\/\//, '')) + '</span></div>' +
       '</div>' +
@@ -4215,6 +4237,7 @@
       '<section class="stack"><h2 class="h2">Banca</h2>' +
       '<p class="small">Os jurados entram em <b>' + esc(base + '/#/banca') + '</b> com nome e sobrenome e a senha da banca, abrem o card de cada projeto e dão uma nota de 1 a 5 em 6 critérios: ' + esc(CRITERIOS.map(function (c) { return c.t; }).join(', ')) + '.</p>' +
       '<div class="row wrap" style="gap:8px">' +
+        '<a class="btn btn-outline" href="#/mesa/entrar" target="_blank" rel="noopener">' + ico('i-key') + ' Tela QR · entrar (login)</a>' +
         '<a class="btn btn-outline" href="#/mesa" target="_blank" rel="noopener">' + ico('i-grid') + ' Tela QR · avaliação</a>' +
         '<a class="btn btn-outline" href="#/mesa/decisao" target="_blank" rel="noopener">' + ico('i-grid') + ' Tela QR · decisão final</a>' +
         '<a class="btn btn-ghost" href="#/banca" target="_blank" rel="noopener">' + ico('i-eye') + ' Abrir a área da banca</a></div>' +
@@ -4379,6 +4402,7 @@
         : '<button class="btn btn-primary btn-block btn-lg" data-act="askRevelar">' + ico('i-spark') + ' Revelar o Herói no telão</button>') +
       (remote.aberta && !remote.revelar ? '<p class="tiny av-obs">Dica: encerre a votação antes de revelar.</p>' : '') +
       '<div class="av-linha"><a class="btn btn-ghost btn-sm" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
+        '<a class="btn btn-ghost btn-sm" href="#/mesa/entrar" target="_blank" rel="noopener">QR de login</a>' +
         '<a class="btn btn-ghost btn-sm" href="#/mesa" target="_blank" rel="noopener">QR da banca</a>' +
         '<a class="btn btn-ghost btn-sm" href="#/mesa/decisao" target="_blank" rel="noopener">QR da decisão</a></div>' +
       '</section>';
