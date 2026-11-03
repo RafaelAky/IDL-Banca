@@ -1801,7 +1801,7 @@
       remote.visivel = !!row.votacao_visivel;
       if (remote.decisao !== !!row.decisao_aberta) { remote.decisao = !!row.decisao_aberta; mudou = true; banca.dec.dados = null; if (route.name === 'decisao') carregarDecisao(); }
       var palcoNovo = row.palco || null;
-      if (remote.palco !== palcoNovo) { remote.palco = palcoNovo; mudou = true; }
+      if (remote.palco !== palcoNovo) { var tinhaPalco = remote.carregou; remote.palco = palcoNovo; mudou = true; if (tinhaPalco && palcoNovo) bancaAvisoPalco(palcoNovo); }
       if (remote.revelar !== !!row.revelar_telao) {
         remote.revelar = !!row.revelar_telao; mudou = true;
         telao.revelInicio = remote.revelar ? Date.now() : 0; telao.vencedores = null;
@@ -3700,12 +3700,18 @@
      #/mesa           tela com QR Code para a mesa da banca (avaliação)
      #/mesa/decisao   tela com QR Code da decisão final                      */
   var CRITERIOS = [
-    { k: 'ideia',        t: 'Ideia geral',                d: 'Clareza e força da proposta.' },
-    { k: 'problema',     t: 'Problema real',              d: 'O grupo identificou bem uma necessidade concreta da comunidade.' },
-    { k: 'impacto',      t: 'Impacto',                    d: 'O quanto o projeto transforma a vida das pessoas atendidas.' },
-    { k: 'viabilidade',  t: 'Viabilidade e continuidade', d: 'Dá para executar e manter depois da trilha.' },
-    { k: 'protagonismo', t: 'Protagonismo e equipe',      d: 'Os trilheiros conduziram o projeto juntos.' },
-    { k: 'apresentacao', t: 'Apresentação',               d: 'Comunicação no palco e defesa diante da banca.' }
+    { k: 'ideia',        t: 'Ideia geral',                d: 'Clareza e força da proposta.',
+      g: ['Proposta confusa ou genérica; não fica claro o que o projeto quer fazer.', 'Proposta compreensível, mas com pontos vagos ou pouco definidos.', 'Proposta clara, bem definida e com identidade própria.'] },
+    { k: 'problema',     t: 'Problema real',              d: 'O grupo identificou bem uma necessidade concreta da comunidade.',
+      g: ['Problema pouco claro ou sem ligação com a comunidade.', 'Problema real, mas pouco investigado ou explicado.', 'Necessidade concreta, bem investigada e explicada com exemplos.'] },
+    { k: 'impacto',      t: 'Impacto',                    d: 'O quanto o projeto transforma a vida das pessoas atendidas.',
+      g: ['Pouca mudança para quem é atendido.', 'Benefício perceptível, mas pontual ou limitado.', 'Transforma de forma clara a vida de quem é atendido.'] },
+    { k: 'viabilidade',  t: 'Viabilidade e continuidade', d: 'Dá para executar e manter depois da trilha.',
+      g: ['Difícil de executar ou sem plano para continuar.', 'Executável, mas a continuidade é incerta.', 'Plano realista, com recursos e caminho para seguir depois da trilha.'] },
+    { k: 'protagonismo', t: 'Protagonismo e equipe',      d: 'Os trilheiros conduziram o projeto juntos.',
+      g: ['Pouca participação dos trilheiros; dependeu de adultos.', 'Parte do grupo conduziu; participação desigual.', 'Todos conduziram juntos, com autonomia e papéis claros.'] },
+    { k: 'apresentacao', t: 'Apresentação',               d: 'Comunicação no palco e defesa diante da banca.',
+      g: ['Comunicação confusa e pouco preparo.', 'Apresentação clara, com respostas parciais às perguntas.', 'Comunicação envolvente e boa defesa diante da banca.'] }
   ];
   var ESCALA = ['', 'Insuficiente', 'Regular', 'Bom', 'Muito bom', 'Excelente'];
   var banca = { itens: {}, rascunho: {}, carregou: false, erro: '', salvando: false, renderPendente: false, loginNome: '',
@@ -3806,7 +3812,10 @@
     var crit = CRITERIOS.map(function (c, i) {
       var v = d.notas[c.k] || 0;
       return '<fieldset class="crit' + (v ? ' tem' : '') + '" data-crit="' + c.k + '">' +
-        '<legend><span class="crit-n num">' + (i + 1) + '</span><span><b>' + esc(c.t) + '</b><span class="tiny">' + esc(c.d) + '</span></span></legend>' +
+        '<legend><span class="crit-n num">' + (i + 1) + '</span><span class="grow"><b>' + esc(c.t) + '</b><span class="tiny">' + esc(c.d) + '</span></span></legend>' +
+        '<details class="crit-guia"><summary aria-label="Como dar a nota em ' + esc(c.t) + '"><span>?</span> Como dar a nota</summary>' +
+          '<ul>' + [[1, 0], [3, 1], [5, 2]].map(function (x) { return '<li><b class="num">' + x[0] + '</b><span>' + esc(c.g[x[1]]) + '</span></li>'; }).join('') + '</ul>' +
+          '<p class="tiny">2 e 4 ficam entre esses pontos.</p></details>' +
         '<div class="crit-escala" role="radiogroup" aria-label="' + esc(c.t) + '">' +
         [1, 2, 3, 4, 5].map(function (n) {
           return '<button type="button" class="crit-b' + (v === n ? ' on' : '') + '" role="radio" aria-checked="' + (v === n) + '" data-act="bancaNota" data-k="' + c.k + '" data-v="' + n + '" aria-label="' + n + ' — ' + ESCALA[n] + '">' + n + '</button>';
@@ -3824,6 +3833,7 @@
           '<p class="small">' + esc(nomesHerois(p)) + '</p></div></div>' +
       '</div></section>' +
       '<div class="cont banca-corpo">' +
+        bancaResumo(p) +
         '<form class="bp-form" data-aval="' + esc(id) + '" novalidate>' + crit +
         '<div class="field"><label for="bpCom">Comentário <span class="tiny">(opcional)</span></label>' +
           '<textarea id="bpCom" rows="4" maxlength="4000" data-aval-campo="comentario" placeholder="Pontos fortes, sugestões, observações…">' + esc(d.comentario) + '</textarea></div>' +
@@ -3834,6 +3844,40 @@
         '<button class="btn btn-primary btn-lg" data-act="bancaConfirmar" data-id="' + esc(id) + '"' + (banca.salvando ? ' disabled' : '') + '>' + (banca.salvando ? 'Salvando…' : 'Confirmar avaliação') + '</button>' +
       '</div></div></div>';
   }
+  // resumo do projeto para o jurado, recolhido por padrão (abre com um toque)
+  function bancaResumo(p) {
+    var item = function (rot, txt, lista) { return txt ? '<div class="br-item"><span class="eyebrow">' + esc(rot) + '</span>' + (lista ? listaOuTexto(txt) : nl2p(txt)) + '</div>' : ''; };
+    var eqs = p.teams || [];
+    var pessoas = eqs.length > 1
+      ? eqs.map(function (t) { return '<div class="br-eq"><b>' + esc(t.label) + '</b> ' + esc((t.members || []).join(', ')) + '</div>'; }).join('')
+      : ((p.members || []).length ? '<p>' + esc(p.members.join(', ')) + '</p>' : '');
+    var corpo = (p.tagline ? '<p class="br-lead">' + esc(p.tagline) + '</p>' : '') +
+      item('O problema', p.problem) + item('A proposta', p.solution) + item('Impacto esperado', p.impact, true) +
+      (eqs.length > 1 ? item('Integração', p.integration) : '') +
+      '<div class="br-item"><span class="eyebrow">Heróis e trilheiros</span><p><b>' + esc((p.heroes || []).map(function (h) { return h.name; }).join(' · ')) + '</b></p>' + pessoas + '</div>' +
+      '<a class="btn btn-ghost btn-sm" href="#/projeto/' + esc(p.id) + '" target="_blank" rel="noopener">Abrir a página completa do projeto</a>';
+    return '<details class="banca-resumo"><summary><span>' + ico('i-info') + ' Sobre o projeto</span><span class="tiny">problema, proposta, impacto e equipe</span></summary>' +
+      '<div class="br-corpo">' + corpo + '</div></details>';
+  }
+  // 4. aviso quando a equipe no palco muda (com vibração, onde o celular permite)
+  var bancaAvisoTimer = null;
+  function bancaAvisoPalco(id) {
+    var p = byId(id);
+    if (!p || !bancaLogada() || !/^(banca|decisao)$/.test(route.name)) return;
+    if (route.name === 'banca' && route.param === id) return;
+    var velho = $('#bancaAviso'); if (velho) velho.remove();
+    var a = document.createElement('a');
+    a.id = 'bancaAviso'; a.className = 'banca-aviso-flut'; a.href = '#/banca/' + id; a.setAttribute('role', 'status');
+    a.innerHTML = '<span class="bc-noar"><i></i>NO AR</span><span class="grow"><b>Agora no palco</b><span>' + esc(p.name) + '</span></span><span class="baf-ir">Avaliar ' + ico('i-chev') + '</span>';
+    a.addEventListener('click', function () { a.remove(); });
+    document.body.appendChild(a);
+    try { if (navigator.vibrate) navigator.vibrate([180, 90, 180]); } catch (e) { /* sem vibração */ }
+    clearTimeout(bancaAvisoTimer);
+    bancaAvisoTimer = setTimeout(function () { var x = $('#bancaAviso'); if (x) { x.classList.add('sai'); setTimeout(function () { x.remove(); }, 400); } }, 15000);
+  }
+  window.addEventListener('hashchange', function () {
+    var x = $('#bancaAviso'); if (x && !/^#\/(banca|decisao)\/?$/.test(location.hash)) x.remove();
+  });
   function bancaMarcar(btn) {
     var f = btn.closest('form.bp-form'); if (!f) return;
     var id = f.getAttribute('data-aval'), d = bancaDraft(id);

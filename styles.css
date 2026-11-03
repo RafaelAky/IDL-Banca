@@ -2153,3 +2153,46 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .av-card, .av-card > * { min-width: 0; }
 .av-linha select { width: 100%; max-width: 100%; text-overflow: ellipsis; }
 .av-nome { overflow-wrap: anywhere; }
+
+/* banca: resumo do projeto, guia de notas e aviso de equipe nova */
+.banca-resumo { max-width: 760px; border-radius: 18px; background: #fff; border: 1.5px solid var(--c-lilas-claro); overflow: hidden; }
+.banca-resumo > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 18px; font-weight: 700; color: var(--c-roxo); }
+.banca-resumo > summary::-webkit-details-marker { display: none; }
+.banca-resumo > summary > span:first-child { display: inline-flex; align-items: center; gap: 8px; }
+.banca-resumo > summary svg { width: 18px; height: 18px; color: var(--c-acao); }
+.banca-resumo > summary::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--c-acao); border-bottom: 2px solid var(--c-acao); transform: rotate(45deg); transition: transform .2s; margin-left: 6px; flex: none; }
+.banca-resumo[open] > summary::after { transform: rotate(-135deg); }
+.banca-resumo > summary .tiny { margin-left: auto; color: var(--c-texto-2); font-weight: 400; }
+.br-corpo { display: grid; gap: 14px; padding: 0 18px 18px; border-top: 1px solid var(--c-linha); padding-top: 14px; }
+.br-lead { margin: 0; font-size: 1.02rem; color: var(--c-roxo); font-weight: 600; }
+.br-item { display: grid; gap: 4px; }
+.br-item p, .br-item ul { margin: 0; color: var(--c-texto-2); font-size: .95rem; }
+.br-item ul { padding-left: 1.1em; }
+.br-eq { font-size: .92rem; color: var(--c-texto-2); }
+.br-eq b { color: var(--c-roxo); }
+.br-corpo .btn { justify-self: start; }
+@media (max-width: 520px) { .banca-resumo > summary .tiny { display: none; } }
+
+.crit-guia { margin-top: -4px; }
+.crit-guia > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--c-acao); }
+.crit-guia > summary::-webkit-details-marker { display: none; }
+.crit-guia > summary span { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--c-lilas-claro); color: var(--c-roxo); font-weight: 800; font-size: 13px; }
+.crit-guia[open] > summary span { background: var(--c-roxo); color: #fff; }
+.crit-guia ul { list-style: none; margin: 10px 0 4px; padding: 10px 12px; border-radius: 12px; background: var(--c-fundo); display: grid; gap: 8px; }
+.crit-guia li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; font-size: 13.5px; color: var(--c-texto-2); line-height: 1.35; }
+.crit-guia li b { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: #fff; border: 1.5px solid var(--c-lilas); color: var(--c-roxo); font-size: 14px; }
+.crit-guia .tiny { margin: 0; color: var(--c-texto-2); }
+
+.banca-aviso-flut {
+  position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); z-index: 95; transform: translateX(-50%);
+  width: min(94vw, 520px); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px;
+  background: #fff; color: var(--c-roxo); text-decoration: none; border: 2px solid #e5262a;
+  box-shadow: 0 18px 40px rgba(46,0,106,.28); animation: bafEntra .45s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.banca-aviso-flut b { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #e5262a; }
+.banca-aviso-flut .grow span { display: block; font-weight: 700; font-size: 1.02rem; line-height: 1.2; }
+.baf-ir { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 9px 14px; border-radius: 99px; background: var(--c-roxo); color: #fff; font-weight: 700; font-size: 14px; }
+.baf-ir svg { width: 16px; height: 16px; }
+.banca-aviso-flut.sai { animation: bafSai .35s ease forwards; }
+@keyframes bafEntra { from { opacity: 0; transform: translate(-50%, -30px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes bafSai { to { opacity: 0; transform: translate(-50%, -24px); } }
