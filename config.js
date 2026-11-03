@@ -28,40 +28,15 @@ window.IDL_BACKEND = {
 window.IDL_SITE_URL = 'https://idl-banca.vercel.app';
 
 /* ---------------------------------------------------------------------
-   2. AS CONTAS DA ORGANIZAÇÃO
+   2. ACESSO DA ORGANIZAÇÃO E DA BANCA
 
-   O painel administrativo abre só para os CPFs da organização. Os números
-   não estão escritos aqui: cada linha guarda um código embaralhado e
-   irreversível, do qual não dá para voltar ao CPF. Quem digitar um CPF
-   da lista gera o mesmo código e entra; qualquer outro CPF não abre nada.
+   Não há mais lista de CPFs. A entrada é uma tela só (4 toques na logo,
+   ou o QR "Entrar"): nome completo + senha. Com o banco ligado, quem
+   confere a senha é o servidor (senhas trocáveis no painel → aba Banca):
+     · senha da organização (começa como trilhei2026) → painel
+     · senha da banca (começa como banca2026) → área da banca
 
-   Uma linha por pessoa. Para incluir ou tirar alguém, me peça o código
-   do CPF novo — ele é gerado a partir do número e colado aqui.
-   --------------------------------------------------------------------- */
-window.IDL_ADMIN = [
-  '0e4d09ac5db1d5f5567a7975bafc517dc2cdec8c6d6de53022a0126d4b524483',  // coordenação do evento
-  '01b800df9a37e2d22d4a8737bb4fbc4dfa7c9b9cbcb91ce637f52f71eefd380b',  // organização
-  'b56870de1da82b63cf3e1154253931af5f24e8bd8e295905206116b40e31ee24',  // organização
-  'ba4a4549e2d29e0673ad4710b164031fa5ee87d0a9960611ddb57604aaaccbb1',  // organização
-  '6a7bb49e22c2bb68eb28c06987d50e8d908c809cfecd1ca30e8768d4d82233fb'   // Rafael Dutra
-];
-
-/* ---------------------------------------------------------------------
-   3. SENHA DO PAINEL
-
-   O CPF diz QUEM é. A senha confirma que é mesmo a pessoa — porque um
-   CPF circula em ficha de matrícula e lista de presença, e não guarda
-   segredo sozinho. É a mesma senha para todas as contas da lista acima,
-   e ela é pedida uma vez só em cada aparelho.
-
-   A senha NÃO está escrita aqui. Este arquivo fica visível na internet
-   depois que o site é publicado — qualquer pessoa pode abri-lo — então
-   o que fica guardado é um código embaralhado e irreversível dela.
-   Quem digita a senha certa gera o mesmo código e entra.
-
-   Para trocar a senha, me peça o código novo.
-
-   Com o banco de dados ligado, quem manda é a chave_admin guardada no
-   servidor, e esta linha deixa de valer.
+   A linha abaixo só vale no MODO PRÉVIA (sem banco): é o código
+   embaralhado e irreversível da senha da organização (trilhei2026).
    --------------------------------------------------------------------- */
 window.IDL_SENHA_HASH = '7ccf95047238df2ecb6dd15d1e0cbc7216efac5671642efe15ca19a2c50951cb';   // trilhei2026 (só vale sem o banco)

@@ -1,11 +1,11 @@
-# Banca Final IDL Tech · Trilha 2026
+# IDL · Banca Final IDL Tech · Trilha 2026
 
 Site estático (HTML + CSS + JS puro, sem build) do evento de 14/11/2026 no Sebrae.
 
 ## Estrutura
 - `index.html` – página principal
 - `styles.css` – estilos
-- `config.js` – **único arquivo a configurar** (Supabase, contas e senha do painel)
+- `config.js` – **único arquivo a configurar** (endereço e chave pública do Supabase, endereço do site)
 - `data.js` – conteúdo do evento (programação, projetos, heróis, fotos)
 - `app.js` – lógica do aplicativo
 - `img/` – fotos, pôsteres e identidade visual
@@ -14,7 +14,7 @@ Site estático (HTML + CSS + JS puro, sem build) do evento de 14/11/2026 no Sebr
 ```bash
 git init
 git add .
-git commit -m "Banca Final IDL Tech"
+git commit -m "IDL - Banca Final"
 git branch -M main
 git remote add origin https://github.com/SEU-USUARIO/banca-idl-tech.git
 git push -u origin main
@@ -27,11 +27,21 @@ git push -u origin main
 
 ## Banco de dados (votação compartilhada)
 Sem `url`/`anonKey` em `config.js`, o site roda em **modo prévia** (votos e fotos ficam só no aparelho).
-Para a votação real, rode `backend/supabase.sql` no SQL Editor do Supabase
-(tabelas `estado_votacao`, `fotos`, `fotos_lista`, `projetos` e as funções RPC `registrar_voto`,
-`consultar_voto`, `resultado`, `entrar_admin`, `definir_votacao`, `definir_candidatos`,
-`definir_total_trilheiros`, `definir_chave_evento`).
+Para a votação real, rode `backend/supabase.sql` no SQL Editor do Supabase (cria tabelas e funções;
+pode ser rodado de novo a cada atualização — votos, notas, senhas trocadas e palavra-chave são mantidos).
 Use apenas a chave **anon/publishable** — nunca a `service_role`.
+
+## Acesso (organização e banca)
+Não há botão de login à vista: **4 toques na logo** ou o QR da tela `#/mesa/entrar` abrem a tela **Entrar**
+(nome completo + senha). A senha decide o papel:
+- senha da organização (começa como `trilhei2026`) → painel;
+- senha da banca (começa como `banca2026`) → área da banca (nome e sobrenome obrigatórios).
+As duas são trocadas no painel → aba **Banca** → *Senhas de acesso*. O voto do público é pelo CPF, sem login.
+
+## Dois prêmios
+- **Herói da Trilha** (voto do público, por CPF) → revelação no telão.
+- **Projeto destaque** (banca: notas de 1 a 5 em 6 critérios + decisão final) → revelação no telão (laranja).
+Os dois botões ficam no painel → aba **Ao vivo** → card *Telão*.
 
 ## Conteúdo editado no painel
 Com o banco ligado, o que a organização salva no painel (evento, programação, projetos,
@@ -40,8 +50,10 @@ Enquanto ninguém salvar nada, o site usa o `data.js`. Depois do primeiro salvam
 passa a valer — para voltar ao `data.js`, rode `delete from public.conteudo;` no SQL Editor.
 
 ## Telão
-Abra `#/telao` no computador do projetor (ou pelo painel → Votação → Abrir o telão).
+Abra `#/telao` no computador do projetor (ou pelo painel → Ao vivo → Abrir o telão).
 Mostra o QR Code da votação e uma animação **ilustrativa** de votos (não usa os votos reais).
+Para as revelações, esse computador precisa estar conectado como organização (tela Entrar).
+Telas de QR para a mesa: `#/mesa` (banca), `#/mesa/decisao` (decisão final), `#/mesa/entrar` (login).
 Para exibir a palavra-chave do palco: `#/telao/SUAPALAVRA`.
 
 ## Prévia do link (WhatsApp)

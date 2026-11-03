@@ -1,5 +1,5 @@
 /* =====================================================================
-   Banca Final IDL Tech — Encerramento da Trilha 2026
+   IDL — Encerramento da Trilha 2026 (Banca Final IDL Tech)
    Prévia navegável. Estrutura de dados espelha o modelo previsto para o
    backend (events, schedule_items, projects, heroes, project_members,
    project_members, voting_sessions, voting_codes, votes, admins).
@@ -1761,7 +1761,7 @@
 
   /* ============================ BANCO DE VOTOS ============================ */
   var BE = (window.IDL_BACKEND || {});
-  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, decisao: false, avaliacoes: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
+  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, revelarBanca: false, decisao: false, avaliacoes: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
   var adminRes = { carregando: false, dados: null, erro: '' };
   var pubRes = { carregando: false, dados: null, erro: '', pediu: false };
 
@@ -1810,6 +1810,10 @@
       if (remote.resultadoPublico !== !!row.resultado_publico) { pubRes.dados = null; pubRes.erro = ''; pubRes.pediu = false; }
       if (remote.visivel !== !!row.votacao_visivel) mudou = true;
       remote.visivel = !!row.votacao_visivel;
+      if (row.revelar_banca != null && remote.revelarBanca !== !!row.revelar_banca) {
+        remote.revelarBanca = !!row.revelar_banca; mudou = true;
+        telao.revelInicio = remote.revelarBanca ? Date.now() : 0; telao.vencBanca = null;
+      }
       if (row.avaliacoes_abertas != null && remote.avaliacoes !== !!row.avaliacoes_abertas) { remote.avaliacoes = !!row.avaliacoes_abertas; mudou = true; }
       if (remote.decisao !== !!row.decisao_aberta) { remote.decisao = !!row.decisao_aberta; mudou = true; banca.dec.dados = null; if (route.name === 'decisao') carregarDecisao(); }
       var palcoNovo = row.palco || null;
@@ -2487,7 +2491,7 @@
         // para o público: só quem venceu, sem números
         var vs = (pubRes.dados.vencedores || []).map(function (v) { return opcaoPorId(v.id) || { name: v.nome, id: v.id }; });
         return '<div class="view view-faixa">' +
-          faixaTopo('escuro', 'Banca Final IDL Tech · Trilha 2026', vs.length > 1 ? 'Os Heróis da Trilha 2026' : 'O Herói da Trilha 2026',
+          faixaTopo('escuro', 'IDL · Trilha 2026', vs.length > 1 ? 'Os Heróis da Trilha 2026' : 'O Herói da Trilha 2026',
             'Escolhido pelo público na Banca Final. Obrigado a todos que votaram!', '', '') +
           '<div class="corpo"><div class="painel-centro painel-resultado">' + vs.map(function (o) {
             return '<div class="painelinho painelinho-destaque vencedor">' +
@@ -2522,7 +2526,7 @@
     var top = rows[0] && rows[0].n > 0 ? rows[0].p : null;
 
     return '<div class="view view-faixa">' +
-      faixaTopo('escuro', 'Banca Final IDL Tech · Trilha 2026',
+      faixaTopo('escuro', 'IDL · Trilha 2026',
         herois ? 'O Herói escolhido pelo público' : 'Os projetos escolhidos pelo público',
         herois ? 'Cada Herói nasceu das histórias e das causas de um grupo de trilheiros ao longo do ano.'
                : 'Todos estes projetos chegaram até a Banca. Cada um carrega uma jornada de transformação.',
@@ -2569,17 +2573,6 @@
   ];
 
   var login = { erro: '', ocupado: false };
-
-  // o CPF da conta não fica escrito em lugar nenhum: o config.js guarda só
-  // o código embaralhado, do qual não se volta ao número
-  // aceita um código ou uma lista deles: uma entrada por pessoa da organização
-  var ADMIN_HASHES = [].concat(window.IDL_ADMIN || []).map(function (h) {
-    return String(h || '').trim().toLowerCase();
-  }).filter(Boolean);
-  function ehContaDaOrg(hash) {
-    if (!ADMIN_HASHES.length) return true;   // nenhuma conta configurada: não trava o painel
-    return ADMIN_HASHES.indexOf(String(hash || '').toLowerCase()) >= 0;
-  }
 
   function viewAdmin() {
     if (!localState.admin) return viewEntrar('admin');
@@ -3479,6 +3472,7 @@
     }).catch(function () {});
   }
   function viewTelao() {
+    if (remote.on && remote.revelarBanca) return viewTelaoRevelacaoBanca();
     if (remote.on && remote.revelar) return viewTelaoRevelacao();
     telaoGarantirQr();
     var cs = candidatos();
@@ -3691,7 +3685,7 @@
         (jaBan ? '<div><b>Banca</b><span class="tiny">' + esc(localState.banca.nome) + '</span></div><button class="btn btn-primary btn-sm" data-go="banca">Abrir a banca</button>' : '') +
         '<button class="btn btn-ghost btn-sm" data-act="sairTudo">Sair deste aparelho</button></div>' : '';
     return '<div class="view view-faixa">' +
-      faixaTopo('escuro', 'IDL Formatura · Acesso', titulo, texto, '', '') +
+      faixaTopo('escuro', 'IDL · Acesso', titulo, texto, '', '') +
       '<div class="corpo"><div class="painel-centro stack">' + status +
       '<form id="entrarForm" class="painelinho painelinho-destaque stack banca-login" novalidate>' +
       ((jaAdm || jaBan) ? '<p class="tiny" style="margin:0">Entrar com outra senha neste aparelho:</p>' : '') +
@@ -4049,6 +4043,10 @@
     var rank = rankingMedias(d.medias), votos = d.votos || {}, meu = d.meu_voto, esc1 = banca.dec.escolha;
     var pub = d.publico || {}, pubTot = d.publico_total || 0;
     var porProj = {}; (d.avaliacoes || []).forEach(function (a) { (porProj[a.projeto] = porProj[a.projeto] || []).push(a); });
+    // jurados chegam do banco sem nome ("Você", "Jurado 1, 2…"); se vier nome (banco antigo), esconde aqui
+    var eu = String(localState.banca.nome || '').toLowerCase(), apelido = {}, nJ0 = 0;
+    (d.avaliacoes || []).map(function (a) { return a.jurado; }).filter(function (j, i, arr) { return arr.indexOf(j) === i; })
+      .forEach(function (j) { apelido[j] = /^(Você|Jurado \d+)$/.test(j) ? j : (j.toLowerCase() === eu ? 'Você' : 'Jurado ' + (++nJ0)); });
     function votosPublico(p) {
       var n = pub[p.id] || 0; (p.heroes || []).forEach(function (h) { n += pub[h.id] || 0; }); return n;
     }
@@ -4060,7 +4058,7 @@
       var its = porProj[p.id] || [];
       if (!its.length) return '<p class="tiny">Nenhum jurado avaliou este projeto.</p>';
       return '<div class="dc-jur"><span class="eyebrow">Notas de cada jurado</span>' + its.map(function (a) {
-        return '<div class="dc-j"><div class="dc-j-cab"><b>' + esc(a.jurado) + '</b><span class="num">média ' + fmt1(notasMedia(a.notas)) + '</span></div>' +
+        return '<div class="dc-j"><div class="dc-j-cab"><b>' + esc(apelido[a.jurado] || 'Jurado') + '</b><span class="num">média ' + fmt1(notasMedia(a.notas)) + '</span></div>' +
           '<div class="dc-j-notas">' + CRITERIOS.map(function (c) { return '<span title="' + esc(c.t) + '">' + esc(c.t.split(' ')[0]) + ' <b class="num">' + (a.notas[c.k] || '–') + '</b></span>'; }).join('') + '</div>' +
           (a.comentario ? '<p>' + esc(a.comentario) + '</p>' : '') + '</div>';
       }).join('') + '</div>';
@@ -4133,7 +4131,7 @@
     return '<div class="mesa' + (dec ? ' mesa-dec' : '') + '">' + telaoFundo() +
       '<div class="mesa-in">' +
         '<div class="mesa-txt">' +
-          '<span class="mesa-eyebrow">Banca Final IDL Tech · Trilha 2026</span>' +
+          '<span class="mesa-eyebrow">IDL · Trilha 2026</span>' +
           '<h1>' + (dec ? 'Decisão final<br>da banca' : 'Banca,<br>avalie aqui') + '</h1>' +
           (dec ? '<span class="mesa-status' + (remote.decisao ? ' on' : '') + '"><i></i>' + (remote.decisao ? 'Aberta' : 'Aguardando a organização liberar') + '</span>' : '') +
           '<ol class="mesa-passos">' + passos.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
@@ -4155,7 +4153,7 @@
     return '<div class="mesa mesa-entrar">' + telaoFundo() +
       '<div class="mesa-in">' +
         '<div class="mesa-txt">' +
-          '<span class="mesa-eyebrow">IDL Formatura · Trilha 2026</span>' +
+          '<span class="mesa-eyebrow">IDL · Trilha 2026</span>' +
           '<h1>Acesso<br>da equipe</h1>' +
           '<span class="mesa-status on"><i></i>Banca e organização</span>' +
           '<ol class="mesa-passos">' + passos.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
@@ -4262,6 +4260,10 @@
           : 'Quando a banca sair do palco para decidir, abra aqui. Cada jurado vê as médias de todos e vota em 1 projeto; empate desempata pela média.') + '</p></div>' +
         '<button class="btn ' + (remote.decisao ? 'btn-outline' : 'btn-laranja') + '" data-act="decisaoAbrir" data-v="' + (remote.decisao ? '0' : '1') + '">' + (remote.decisao ? 'Encerrar a decisão' : 'Abrir a decisão final') + '</button></div>' +
       (nVot ? '<p class="small">Votos: ' + (adminBancaDados.decisao || []).map(function (v) { var p = byId(v.projeto); return '<b>' + esc(v.jurado) + '</b> → ' + esc(p ? p.name : v.projeto); }).join(' · ') + '</p>' : '') +
+      '<div class="revelar-box' + (remote.revelarBanca ? ' on' : '') + '"><div class="grow"><b>Revelação no telão</b><p class="small">' + (remote.revelarBanca
+          ? 'O telão está mostrando o Projeto destaque.' : 'Mostra o projeto vencedor da banca no telão, com animação. O telão precisa estar com a organização conectada.') + '</p></div>' +
+        (remote.revelarBanca ? '<button class="btn btn-outline" data-act="desrevelar">Voltar o telão para a votação</button>'
+          : '<button class="btn btn-laranja" data-act="askRevelarBanca">' + ico('i-spark') + ' Revelar no telão</button>') + '</div>' +
       '</section>' +
       '<section class="stack"><div class="row wrap" style="gap:8px;justify-content:space-between;align-items:center"><h3 class="h3">Ranking pelas médias <span class="tiny" style="font-weight:400">(1 a 5)</span></h3>' +
         '<span class="tiny rank-auto"><i class="tab-ponto"></i>Atualiza sozinho a cada 10 s' + (adminBancaDados.em ? ' · ' + horaCurta(adminBancaDados.em) : '') + '</span>' +
@@ -4294,7 +4296,7 @@
           [l.media == null ? '' : +l.media.toFixed(2), l.votos]);
     });
     var f1 = XL.folha('Ranking', 'Ranking da banca · notas de 1 a 5',
-      'IDL Formatura · ' + nJ + (nJ === 1 ? ' jurado' : ' jurados') + ' · média de todos os jurados por critério · gerado em ' + quando,
+      'IDL · ' + nJ + (nJ === 1 ? ' jurado' : ' jurados') + ' · média de todos os jurados por critério · gerado em ' + quando,
       [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 50, tipo: 'forte' }, { t: 'Grupo', w: 14 }, { t: 'Heróis', w: 24 }, { t: 'Jurados', w: 10, tipo: 'int' }]
         .concat(critCols, [{ t: 'Média geral', w: 13, tipo: 'n2' }, { t: 'Votos na decisão', w: 13, tipo: 'int' }]),
       r1, { destacar: function (l, i) { return i === 0 && l[0] === 1; } });
@@ -4304,7 +4306,7 @@
         [+(notasMedia(it.notas) || 0).toFixed(2), it.comentario || '']));
     }); });
     r2.sort(function (a, b) { return a[0].localeCompare(b[0], 'pt') || a[1].localeCompare(b[1], 'pt'); });
-    var f2 = XL.folha('Notas por jurado', 'Notas de cada jurado', 'IDL Formatura · uma linha por jurado e projeto · gerado em ' + quando,
+    var f2 = XL.folha('Notas por jurado', 'Notas de cada jurado', 'IDL · uma linha por jurado e projeto · gerado em ' + quando,
       [{ t: 'Jurado', w: 24, tipo: 'forte' }, { t: 'Projeto', w: 48 }, { t: 'Grupo', w: 14 }]
         .concat(CRITERIOS.map(function (c) { return { t: c.t, w: 14, tipo: 'int' }; }), [{ t: 'Média', w: 10, tipo: 'n2' }, { t: 'Comentário', w: 60, tipo: 'longo' }]),
       r2);
@@ -4312,11 +4314,11 @@
       .sort(function (a, b) { return b.votos - a.votos || (b.media || 0) - (a.media || 0); })
       .map(function (l, i) { return [i + 1, l.p.name, l.p.group || '', l.votos, l.media == null ? '' : +l.media.toFixed(2)]; });
     var f3 = XL.folha('Decisão final', 'Decisão final da banca',
-      'IDL Formatura · ' + dec.length + ' de ' + nJ + ' jurados votaram · empate desempata pela média · gerado em ' + quando,
+      'IDL · ' + dec.length + ' de ' + nJ + ' jurados votaram · empate desempata pela média · gerado em ' + quando,
       [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 40, tipo: 'forte' }, { t: 'Grupo', w: 14 }, { t: 'Votos', w: 10, tipo: 'int' }, { t: 'Média das notas', w: 16, tipo: 'n2' }],
       r3, { destacar: function (l, i) { return i === 0; } });
     var r4 = dec.map(function (v) { var p = byId(v.projeto); return [v.jurado, p ? p.name : v.projeto, new Date(v.em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })]; });
-    var f4 = XL.folha('Votos da decisão', 'Voto de cada jurado na decisão final', 'IDL Formatura · gerado em ' + quando,
+    var f4 = XL.folha('Votos da decisão', 'Voto de cada jurado na decisão final', 'IDL · gerado em ' + quando,
       [{ t: 'Jurado', w: 26, tipo: 'forte' }, { t: 'Projeto escolhido', w: 42 }, { t: 'Horário', w: 18 }], r4);
     return [f1, f2, f3, f4];
   }
@@ -4420,11 +4422,14 @@
       '</section>';
 
     var telaoC = '<section class="av-card">' +
-      '<div class="av-cab"><span class="av-tit">' + ico('i-eye') + ' Telão</span>' + avChip('', remote.revelar, 'Revelando', 'Votação') + '</div>' +
-      (remote.revelar
-        ? '<button class="btn btn-outline btn-block btn-lg" data-act="desrevelar">Voltar o telão para a votação</button>'
-        : '<button class="btn btn-primary btn-block btn-lg" data-act="askRevelar">' + ico('i-spark') + ' Revelar o Herói no telão</button>') +
-      (remote.aberta && !remote.revelar ? '<p class="tiny av-obs">Dica: encerre a votação antes de revelar.</p>' : '') +
+      '<div class="av-cab"><span class="av-tit">' + ico('i-eye') + ' Telão</span>' + avChip('', remote.revelar || remote.revelarBanca, 'Revelando', 'Votação') + '</div>' +
+      ((remote.revelar || remote.revelarBanca)
+        ? '<p class="small av-obs"><b>' + (remote.revelarBanca ? 'Revelando o Projeto destaque (banca).' : 'Revelando o Herói da Trilha (público).') + '</b></p>' +
+          '<button class="btn btn-outline btn-block btn-lg" data-act="desrevelar">Voltar o telão para a votação</button>'
+        : '<button class="btn btn-primary btn-block btn-lg" data-act="askRevelar">' + ico('i-spark') + ' Revelar o Herói (público)</button>' +
+          '<button class="btn btn-laranja btn-block btn-lg" data-act="askRevelarBanca">' + ico('i-spark') + ' Revelar o Projeto destaque (banca)</button>') +
+      (remote.aberta && !remote.revelar ? '<p class="tiny av-obs">Dica: encerre a votação antes de revelar o Herói.</p>' : '') +
+      (remote.decisao && !remote.revelarBanca ? '<p class="tiny av-obs">Dica: encerre a decisão final antes de revelar o Projeto destaque.</p>' : '') +
       '<div class="av-linha"><a class="btn btn-ghost btn-sm" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
         '<a class="btn btn-ghost btn-sm" href="#/mesa/entrar" target="_blank" rel="noopener">QR de login</a>' +
         '<a class="btn btn-ghost btn-sm" href="#/mesa" target="_blank" rel="noopener">QR da banca</a>' +
@@ -4636,6 +4641,63 @@
       else if (!(r && r.erro === 'chave_invalida')) toast('Não consegui atualizar.');
     }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'O banco ainda não tem essa opção. Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
   }
+  function setRevelacaoBanca(v) {
+    if (!remote.on) return;
+    sbRpc('definir_revelacao_banca', { p_chave: localState.adminKey || '', p_revelar: !!v }).then(function (r) {
+      if (r && r.ok) {
+        remote.revelarBanca = !!v; if (v) remote.revelar = false;
+        telao.revelInicio = v ? Date.now() : 0; telao.vencBanca = null; render();
+        toast(v ? 'O telão está revelando o Projeto destaque.' : 'O telão voltou para a votação.');
+      } else if (!(r && r.erro === 'chave_invalida')) toast('Não consegui atualizar.');
+    }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
+  }
+  function telaoBuscarVencBanca() {
+    if (telao.buscandoBanca || !localState.adminKey) return;
+    telao.buscandoBanca = true;
+    sbRpc('vencedor_banca', { p_chave: localState.adminKey }).then(function (r) {
+      telao.buscandoBanca = false;
+      telao.vencBanca = (r && r.ok) ? (r.vencedores || []).map(function (v) { return v.id; }) : [];
+      render();
+    }).catch(function () { telao.buscandoBanca = false; });
+  }
+  // revelação do Projeto destaque (prêmio da banca), no laranja da decisão final
+  function viewTelaoRevelacaoBanca() {
+    var ESPERA = 4200;
+    var passou = Date.now() - (telao.revelInicio || Date.now());
+    if (!localState.adminKey) {
+      return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">Projeto destaque</h1>' +
+        '<p class="tr-nota">Para revelar aqui, entre como organização neste computador (4 toques na logo, ou #/entrar) e volte para o telão.</p></div></div>';
+    }
+    if (telao.vencBanca == null) telaoBuscarVencBanca();
+    if (passou < ESPERA || telao.vencBanca == null) {
+      if (!telao.revelTimer) telao.revelTimer = setTimeout(function () { telao.revelTimer = null; if (route.name === 'telao') render(); }, Math.max(300, ESPERA - passou + 50));
+      return '<div class="telao tl-revela tl-banca is-suspense">' + telaoFundo() +
+        '<div class="tr-centro"><span class="tr-eyebrow">IDL · Trilha 2026 · Escolha da banca</span>' +
+        '<h1 class="tr-chamada">E o Projeto destaque é…</h1>' +
+        '<div class="tr-sementes" aria-hidden="true">' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return '<span style="--k:' + k + '">' + sementeSvg() + '</span>'; }).join('') + '</div>' +
+        '</div></div>';
+    }
+    var ps = (telao.vencBanca || []).map(byId).filter(Boolean);
+    if (!ps.length) {
+      return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">A banca ainda não votou</h1><p class="tr-nota">A revelação aparece quando houver votos na decisão final.</p></div></div>';
+    }
+    var confete = '';
+    for (var i = 0; i < 36; i++) {
+      confete += '<span class="tr-c" style="--x:' + ((i * 37) % 100) + '%;--d:' + (2.6 + (i % 7) * .45).toFixed(2) + 's;--a:' + ((i * .23) % 2.4).toFixed(2) + 's;--r:' + ((i * 47) % 360) + 'deg;--cor:' + ['#ffffff', '#2e006a', '#ffd2ad', '#b98fe8'][i % 4] + '"></span>';
+    }
+    return '<div class="telao tl-revela tl-banca is-revelado">' + telaoFundo() +
+      '<div class="tr-confete" aria-hidden="true">' + confete + '</div>' +
+      '<div class="tr-centro">' +
+        '<span class="tr-eyebrow">' + (ps.length > 1 ? 'Empate! Os Projetos destaque da banca são' : 'O Projeto destaque da banca é') + '</span>' +
+        '<div class="tr-projetos n' + ps.length + '">' + ps.map(function (p) {
+          var hs = (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2);
+          return '<figure class="tr-p">' +
+            '<span class="tr-p-figs">' + hs.map(function (h) { return '<img src="' + esc(h.image) + '" alt="">'; }).join('') + '</span>' +
+            '<figcaption><b>' + esc(p.name) + '</b>' +
+            '<span>' + esc([p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ')) + '</span></figcaption></figure>';
+        }).join('') + '</div>' +
+      '</div></div>';
+  }
   function telaoBuscarVencedores() {
     if (telao.buscando || !localState.adminKey) return;
     telao.buscando = true;
@@ -4658,7 +4720,7 @@
     if (passou < ESPERA || telao.vencedores == null) {
       if (!telao.revelTimer) telao.revelTimer = setTimeout(function () { telao.revelTimer = null; if (route.name === 'telao') render(); }, Math.max(300, ESPERA - passou + 50));
       return '<div class="telao tl-revela is-suspense">' + telaoFundo() +
-        '<div class="tr-centro"><span class="tr-eyebrow">Banca Final IDL Tech · Trilha 2026</span>' +
+        '<div class="tr-centro"><span class="tr-eyebrow">IDL · Trilha 2026</span>' +
         '<h1 class="tr-chamada">E o Herói da Trilha 2026 é…</h1>' +
         '<div class="tr-sementes" aria-hidden="true">' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return '<span style="--k:' + k + '">' + sementeSvg() + '</span>'; }).join('') + '</div>' +
         '</div></div>';
@@ -4946,15 +5008,30 @@
       '<span><b>A votação está aberta</b><span class="cta-sub">Toque para escolher o seu Herói</span></span>' + ico('i-chev') + '</a>';
   }
 
+  /* título da aba: "Página - IDL" (no Início, só "IDL") */
+  function tituloPagina() {
+    var r = route.name, nome = {
+      trilhei: 'Por que Trilhei?', programacao: 'Programação', projetos: 'Projetos', herois: 'Heróis',
+      trilha2026: 'A Trilha em 2026', votacao: 'Votação', resultado: 'Resultado', admin: 'Painel',
+      banca: 'Banca', decisao: 'Decisão final', entrar: 'Entrar', telao: 'Telão'
+    }[r] || '';
+    if (r === 'projeto') { var p = byId(route.param); nome = p ? p.name : 'Projeto'; }
+    if (r === 'heroi') { var x = heroById(route.param); nome = x ? String(x.hero.name).split(/\s+[—–-]\s+/)[0] : 'Herói'; }
+    if (r === 'banca' && route.param) { var pb = byId(route.param); nome = pb ? pb.name + ' · Banca' : 'Banca'; }
+    if (r === 'mesa') nome = route.param === 'decisao' ? 'QR · Decisão final' : route.param === 'entrar' ? 'QR · Entrar' : 'QR · Banca';
+    return nome ? nome + ' - IDL' : 'IDL';
+  }
   function render() {
     if (route.name === 'banca' && bancaEditando()) { banca.renderPendente = true; renderNav(); return; }
     renderBrand(); renderNav();
+    document.title = tituloPagina();
     var app = $('#app');
     var ehTelao = route.name === 'telao';
     var ehMesa = route.name === 'mesa';
     document.body.classList.toggle('is-mesa', ehMesa);
     document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao');
-    document.body.classList.toggle('is-revela', ehTelao && remote.on && remote.revelar);
+    document.body.classList.toggle('is-revela', ehTelao && remote.on && (remote.revelar || remote.revelarBanca));
+    document.body.classList.toggle('is-revela-banca', ehTelao && remote.on && remote.revelarBanca);
     // o site é aberto a todos: o CPF só é pedido na tela de votação, quando ela abre
     var gated = false;
     document.body.classList.toggle('is-gated', gated);
@@ -5503,7 +5580,12 @@
         run: function () { setRevelacao(true); } };
       renderOverlay();
     }
-    else if (act === 'desrevelar') setRevelacao(false);
+    else if (act === 'desrevelar') { if (remote.revelarBanca) setRevelacaoBanca(false); if (remote.revelar || !remote.revelarBanca) setRevelacao(false); }
+    else if (act === 'askRevelarBanca') {
+      admin.confirm = { title: 'Revelar o Projeto destaque no telão?', body: 'O telão mostra, com animação, o projeto mais votado na decisão final da banca (empate desempata pela média das notas). Encerre a decisão antes, para ninguém mudar o voto.', yes: 'Sim, revelar',
+        run: function () { setRevelacaoBanca(true); } };
+      renderOverlay();
+    }
     else if (act === 'bancaSair') { localState.banca = null; banca.itens = {}; banca.rascunho = {}; banca.carregou = false; banca.dec = { dados: null, erro: '', escolha: null, enviando: false, buscando: false }; saveLocal(); go('banca'); render(); }
     else if (act === 'bancaNota') bancaMarcar(el);
     else if (act === 'sairTudo') {
@@ -5542,7 +5624,7 @@
     else if (act === 'bancaAtualizar') carregarAdminBanca();
     else if (act === 'bancaPlanilha') {
       if (!adminBancaDados.itens) { toast('Atualize as notas primeiro.'); return; }
-      XL.baixar('notas-da-banca-idl-formatura.xlsx', planilhaBanca());
+      XL.baixar('notas-da-banca-idl.xlsx', planilhaBanca());
     }
     else if (act === 'copyNames') {
       var names = opcoesDeVoto().map(function (p) { return p.name; }).join('\n');
@@ -5569,9 +5651,9 @@
         if (k === colsV.length - 1) return { v: tot ? 1 : 0, s: XL.estilo('totalPct') };
         return { v: k === 1 ? 'Total de votos' : '', s: tt };
       }) };
-      XL.baixar('apuracao-votacao-idl-formatura.xlsx', [XL.folha('Apuração',
+      XL.baixar('apuracao-votacao-idl.xlsx', [XL.folha('Apuração',
         'Apuração da votação · ' + (emH ? 'Herói' : 'Projeto') + ' da Trilha 2026',
-        'IDL Formatura · Banca Final IDL Tech · apurado em ' + agoraBR() + ' · ' + tot + (tot === 1 ? ' voto' : ' votos') + (maxV ? ' · em destaque: o mais votado' : ''),
+        'IDL · apurado em ' + agoraBR() + ' · ' + tot + (tot === 1 ? ' voto' : ' votos') + (maxV ? ' · em destaque: o mais votado' : ''),
         colsV, dadosV, { destacar: function (l) { return maxV > 0 && l[colsV.length - 2] === maxV; }, rodape: [{ alt: 6, c: [] }, linTotal] })]);
     }
     else if (act === 'exportJson') offerFile('conteudo-banca-idl-tech.json', exportPayload(), 'application/json');
@@ -5807,20 +5889,6 @@
       }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
       return;
     }
-    if (f.id === 'bancaLogin') {
-      var nome = String($('#bJurado').value || '').trim().replace(/\s+/g, ' ');
-      banca.loginNome = nome;
-      var sen = String($('#bSenha').value || '').trim();
-      if (nome.length < 2 || nome.split(' ').length < 2) { banca.erro = 'Informe seu nome e sobrenome.'; render(); return; }
-      if (!sen) { banca.erro = 'Informe a senha da banca.'; render(); return; }
-      sbRpc('entrar_banca', { p_senha: sen }).then(function (r) {
-        if (r && r.ok) { localState.banca = { nome: nome, senha: sen }; saveLocal(); banca.erro = ''; banca.carregou = false; banca.itens = {}; banca.rascunho = {}; banca.dec.dados = null; banca.dec.escolha = null; render(); }
-        else { banca.erro = 'Senha da banca incorreta.'; render(); }
-      }).catch(function (e) {
-        banca.erro = String(e && e.message) === 'http 404' ? 'O banco ainda não tem a área da banca.' : 'Sem conexão com o servidor.'; render();
-      });
-      return;
-    }
     if (f.id === 'senhaBancaForm') {
       var nova = normSenha($('#novaSenhaBanca').value);
       if (nova.length < 4) { toast('Use pelo menos 4 caracteres.'); return; }
@@ -5831,49 +5899,6 @@
       return;
     }
 
-    if (f.id === 'pinForm') {
-      var campoCpf = $('#admCpf');
-      var senha = String($('#pin').value || '').trim();
-      if (!senha) { login.erro = 'Informe a senha.'; render(); return; }
-
-      function comHash(h) {
-        if (!ehContaDaOrg(h)) {
-          login.ocupado = false;
-          login.erro = 'Este CPF não tem acesso ao painel.';
-          render(); return;
-        }
-        if (!remote.on) {
-          // sem banco: confere contra o código embaralhado do config.js
-          sha256(senha + '|' + SALT_SENHA).then(function (hs) {
-            login.ocupado = false;
-            if (SENHA_HASH && hs === SENHA_HASH) {
-              login.erro = ''; localState.admin = true; localState.adminKey = senha; saveLocal(); render();
-            } else {
-              login.erro = 'Senha incorreta.'; render();
-            }
-          });
-          return;
-        }
-        entrarComo(senha);
-      }
-
-      // quem já entrou no aplicativo com o CPF não precisa digitar de novo
-      if (!campoCpf) {
-        login.ocupado = true; login.erro = ''; render();
-        comHash(localState.hash);
-        return;
-      }
-
-      var cpf = String(campoCpf.value || '').trim();
-      if (!validCPF(cpf)) { login.erro = 'CPF inválido. Confira os números e tente de novo.'; render(); return; }
-      login.ocupado = true; login.erro = ''; render();
-      // o CPF vira código embaralhado aqui mesmo; o número não vai a lugar nenhum
-      sha256(onlyDigits(cpf) + '|' + SALT).then(function (h) {
-        if (ehContaDaOrg(h) && !localState.hash) { localState.hash = h; localState.code = makeCode(h); saveLocal(); }
-        comHash(h);
-      });
-      return;
-    }
     if (f.id === 'eventForm') {
       var fd = new FormData(f);
       ['name', 'subtitle', 'dateISO', 'dateLabel', 'timeLabel', 'place'].forEach(function (k) {
