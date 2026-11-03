@@ -1761,7 +1761,7 @@
 
   /* ============================ BANCO DE VOTOS ============================ */
   var BE = (window.IDL_BACKEND || {});
-  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, revelarBanca: false, decisao: false, avaliacoes: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
+  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, revelarBanca: false, slide: null, decisao: false, avaliacoes: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
   var adminRes = { carregando: false, dados: null, erro: '' };
   var pubRes = { carregando: false, dados: null, erro: '', pediu: false };
 
@@ -1810,6 +1810,7 @@
       if (remote.resultadoPublico !== !!row.resultado_publico) { pubRes.dados = null; pubRes.erro = ''; pubRes.pediu = false; }
       if (remote.visivel !== !!row.votacao_visivel) mudou = true;
       remote.visivel = !!row.votacao_visivel;
+      if (row.slide !== undefined && remote.slide !== (row.slide || null)) { remote.slide = row.slide || null; mudou = true; }
       if (row.revelar_banca != null && remote.revelarBanca !== !!row.revelar_banca) {
         remote.revelarBanca = !!row.revelar_banca; mudou = true;
         if (remote.revelarBanca) telao.revelInicio = Date.now(); telao.vencBanca = null;
@@ -2567,7 +2568,7 @@
   var admin = { tab: 'geral', editor: null, confirm: null, copy: null, fotosDe: null };
 
   var ADMIN_TABS = [
-    ['aovivo', 'Ao vivo'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
+    ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
     ['programacao', 'Programação'], ['projetos', 'Projetos'],
     ['herois', 'Heróis'], ['banca', 'Banca'], ['retro', 'Trilha 2026'], ['dados', 'Dados']
   ];
@@ -2596,6 +2597,7 @@
 
   function adminTab() {
     if (admin.tab === 'aovivo') return adminAoVivo();
+    if (admin.tab === 'apres') return adminApresentacao();
     if (admin.tab === 'geral') return adminGeral();
     if (admin.tab === 'evento') return adminEvento();
     if (admin.tab === 'programacao') return adminPrograma();
@@ -3474,6 +3476,8 @@
   function viewTelao() {
     if (remote.on && remote.revelarBanca) return viewTelaoRevelacaoBanca();
     if (remote.on && remote.revelar) return viewTelaoRevelacao();
+    if (remote.on && remote.slide) { var sl = slideTelao(remote.slide); if (sl) return sl; }
+    telao.slideVisto = 'votacao';
     telaoGarantirQr();
     var cs = candidatos();
     if (!cs.length) cs = opcoesDeVoto().slice(0, 6);
@@ -4324,6 +4328,279 @@
   }
 
 
+  /* ============================ APRESENTAÇÃO ============================
+     A apresentação da formatura roda dentro do telão (#/telao, em F11) e é
+     comandada pelo controlador (#/controle) ou pelo teclado/passador no
+     próprio telão. O roteiro fica em db.apresentacao (editável na aba
+     Apresentação do painel). Blocos automáticos: "equipes" vira 1 slide por
+     equipe (e marca a equipe No palco), "candidatos" vira 1 vídeo por Herói
+     candidato. Votação e revelações usam as telas vivas que já existem.  */
+  var DECK_PADRAO = [
+    { id: 'abertura',       tipo: 'abertura',     on: true, titulo: 'Banca Final IDL Tech', texto: 'Encerramento da Trilha 2026' },
+    { id: 'instituto',      tipo: 'instituto',    on: true, titulo: 'Instituto Dente de Leão', texto: 'Fortalecendo pessoas, semeando consciência e transformando realidades.' },
+    { id: 'programacao',    tipo: 'programacao',  on: true, titulo: 'Programação do dia' },
+    { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
+    { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
+    { id: 'comofunciona',   tipo: 'comofunciona', on: true, titulo: 'Como funciona a Banca Final' },
+    { id: 'candidatos',     tipo: 'candidatos',   on: true, titulo: 'Vídeos dos candidatos a Herói' },
+    { id: 'votacao',        tipo: 'votacao',      on: true, titulo: 'Votação do público' },
+    { id: 'equipes',        tipo: 'equipes',      on: true, titulo: 'Apresentação das equipes' },
+    { id: 'intervalo',      tipo: 'texto',        on: true, titulo: 'A banca está deliberando', texto: 'Em instantes: a devolutiva da banca e as revelações.' },
+    { id: 'revelaBanca',    tipo: 'revelaBanca',  on: true, titulo: 'Revelação · Projeto destaque' },
+    { id: 'revelaHeroi',    tipo: 'revelaHeroi',  on: true, titulo: 'Revelação · Herói da Trilha' },
+    { id: 'fotos',          tipo: 'fotos',        on: true, titulo: 'Fotos da Trilha 2026' },
+    { id: 'agradecimentos', tipo: 'texto',        on: true, titulo: 'Obrigado!', texto: 'A Trilha 2026 foi feita por cada trilheiro, cada família e cada parceiro que acreditou. Até a próxima!' }
+  ];
+  function deckConfig() {
+    var salvo = (db.apresentacao && db.apresentacao.slides) || [];
+    var ids = salvo.map(function (x) { return x.id; });
+    var lista = salvo.map(function (x) { return JSON.parse(JSON.stringify(x)); });
+    // slides novos do padrão que ainda não estão no roteiro salvo entram no fim
+    DECK_PADRAO.forEach(function (d) { if (ids.indexOf(d.id) < 0) lista.push(JSON.parse(JSON.stringify(d))); });
+    return lista;
+  }
+  // roteiro expandido: um item por slide de verdade, na ordem
+  function deckSlides() {
+    var out = [];
+    deckConfig().forEach(function (it) {
+      if (!it.on) return;
+      if (it.tipo === 'equipes') {
+        var ps = projetosEmOrdem();
+        ps.forEach(function (p, i) { out.push({ key: 'equipe:' + p.id, tipo: 'equipe', pid: p.id, rotulo: p.name, grupo: it.titulo, n: i + 1, de: ps.length }); });
+      } else if (it.tipo === 'candidatos') {
+        candidatos().filter(function (c) { return c.video; }).forEach(function (c) {
+          out.push({ key: 'video:' + c.id, tipo: 'videoHeroi', hid: c.id, rotulo: 'Vídeo · ' + String(c.name).split(/\s+[—–-]\s+/)[0], grupo: it.titulo });
+        });
+      } else out.push({ key: it.id, tipo: it.tipo, item: it, rotulo: it.titulo });
+    });
+    return out;
+  }
+  function deckIndice(key) { var l = deckSlides(); for (var i = 0; i < l.length; i++) if (l[i].key === key) return i; return -1; }
+
+  // ---------- conteúdo de cada slide (telão e prévia do controlador) ----------
+  function slideMarca() { return '<span class="sl-marca"><img src="img/kv/trilhei.webp" alt=""><i></i><img src="img/kv/idltech.webp" alt=""></span>'; }
+  function ytId(v) { var m = String(v || '').match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(String(v || '').trim()) ? String(v).trim() : ''); }
+  function slideHtml(s, previa) {
+    var it = s.item || {}, h = '';
+    switch (s.tipo) {
+      case 'abertura':
+        h = '<div class="sl-centro">' + slideMarca() +
+          '<h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
+          '<p class="sl-lead">' + esc(it.texto || '') + '</p>' +
+          '<p class="sl-data">' + esc([db.event.dateLabel, db.event.place].filter(Boolean).join(' · ')) + '</p></div>' +
+          '<div class="sl-desfile" aria-hidden="true">' + allHeroes().filter(function (x) { return x.hero.image; }).map(function (x, i) { return '<img style="--i:' + i + '" src="' + esc(mini(x.hero.image)) + '" alt="">'; }).join('') + '</div>';
+        break;
+      case 'instituto':
+        h = '<div class="sl-centro"><span class="sl-logo-caixa"><img class="sl-logo-inst" src="img/logo-instituto.webp" alt="Instituto Dente de Leão"></span>' +
+          '<p class="sl-frase">' + esc(it.texto || '') + '</p></div>';
+        break;
+      case 'texto':
+        h = '<div class="sl-centro"><span class="sl-eyebrow">IDL · Trilha 2026</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
+          (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
+        break;
+      case 'programacao':
+        h = '<div class="sl-col"><span class="sl-eyebrow">IDL · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+          '<ol class="sl-prog">' + ordered().filter(function (x) { return x.start && x.start !== x.end; }).map(function (x) {
+            return '<li><b class="num">' + esc(x.start) + '</b><span>' + esc(x.name) + '</span></li>'; }).join('') + '</ol></div>';
+        break;
+      case 'numeros':
+        var nEq = db.projects.reduce(function (a, p) { return a + Math.max(1, (p.teams || []).length); }, 0);
+        h = '<div class="sl-centro"><span class="sl-eyebrow">IDL · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+          '<div class="sl-nums">' + [[nTrilheiros(), 'trilheiros'], [db.projects.length, 'projetos'], [nEq, 'equipes'], [allHeroes().length, 'Heróis']].map(function (n, i) {
+            return '<div style="--i:' + i + '"><b class="num">' + n[0] + '</b><span>' + n[1] + '</span></div>'; }).join('') + '</div></div>';
+        break;
+      case 'comofunciona':
+        h = '<div class="sl-col"><span class="sl-eyebrow">IDL · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+          '<div class="sl-dois">' +
+            '<section class="sl-caixa sl-cx-pub"><span class="sl-tag">Prêmio do público</span><h3>Herói da Trilha</h3>' +
+              '<ol><li>Aponte a câmera para o QR Code no telão</li><li>Informe o seu CPF</li><li>Escolha o seu Herói e confirme. Um voto por pessoa</li></ol></section>' +
+            '<section class="sl-caixa sl-cx-banca"><span class="sl-tag">Prêmio da banca</span><h3>Projeto destaque</h3>' +
+              '<p>Cada jurado dá uma nota de 1 a 5 em:</p><ul>' + CRITERIOS.map(function (c) { return '<li>' + esc(c.t) + '</li>'; }).join('') + '</ul></section>' +
+          '</div></div>';
+        break;
+      case 'video':
+      case 'videoHeroi':
+        var vid = '', tit = it.titulo || '', sub = '';
+        if (s.tipo === 'videoHeroi') { var x = heroById(s.hid); if (x) { vid = x.hero.video; tit = 'Campanha do Herói ' + String(x.hero.name).split(/\s+[—–-]\s+/)[0]; sub = x.project.name; } }
+        else vid = it.video;
+        var id = ytId(vid);
+        if (previa || !id) {
+          h = '<div class="sl-centro"><span class="sl-eyebrow">' + (id ? 'Vídeo' : 'Vídeo · coloque o link na aba Apresentação') + '</span><h1 class="sl-mega sl-mega-m">' + esc(tit) + '</h1>' +
+            (sub ? '<p class="sl-lead">' + esc(sub) + '</p>' : '') + (id ? '<span class="sl-play">▶</span>' : '') + '</div>';
+        } else {
+          h = '<div class="sl-video"><iframe src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1&playsinline=1" title="' + esc(tit) + '" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>';
+        }
+        break;
+      case 'equipe':
+        var p = byId(s.pid);
+        if (!p) { h = '<div class="sl-centro"><h1 class="sl-mega">Equipe</h1></div>'; break; }
+        var hs = (p.heroes || []).filter(function (h2) { return h2.image; }).slice(0, 2);
+        var membros = (p.teams && p.teams.length > 1) ? p.teams.reduce(function (a, t) { return a.concat(t.members || []); }, []) : (p.members || []);
+        h = '<div class="sl-equipe">' +
+          '<div class="sl-eq-txt"><span class="sl-noar"><i></i>No palco · equipe ' + s.n + ' de ' + s.de + '</span>' +
+            '<h1 class="sl-eq-nome">' + esc(p.name) + '</h1>' +
+            (p.tagline ? '<p class="sl-eq-lead">' + esc(p.tagline) + '</p>' : '') +
+            '<p class="sl-eq-meta">' + esc([p.group ? 'Grupo ' + p.group : '', p.category, p.slot ? p.slot : ''].filter(Boolean).join(' · ')) + '</p>' +
+            (membros.length ? '<p class="sl-eq-membros">' + esc(membros.join(' · ')) + '</p>' : '') +
+          '</div>' +
+          '<div class="sl-eq-figs n' + hs.length + '">' + hs.map(function (h2) { return '<figure><img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt=""><figcaption>' + esc(String(h2.name).split(/\s+[—–-]\s+/)[0]) + '</figcaption></figure>'; }).join('') + '</div>' +
+        '</div>';
+        break;
+      case 'fotos':
+        var fs = todasAsFotos().filter(function (f) { return f[0] || f[3]; });
+        if (!fs.length) fs = (db.retro && db.retro.photos) || [];
+        fs = fs.slice(0, 24);
+        var k = fs.length ? Math.floor(Date.now() / 6000) % fs.length : 0;
+        h = fs.length ? '<div class="sl-fotos">' + fs.map(function (f, i) { return '<figure class="' + (i === k ? 'on' : '') + '">' + imgFoto(f, '') + (f[2] ? '<figcaption>' + esc(f[2]) + '</figcaption>' : '') + '</figure>'; }).join('') + '</div>' +
+              '<span class="sl-fotos-tit">' + esc(it.titulo || '') + '</span>'
+          : '<div class="sl-centro"><h1 class="sl-mega">' + esc(it.titulo || 'Fotos') + '</h1></div>';
+        break;
+      case 'votacao':
+        h = previa ? '<div class="sl-centro"><span class="sl-eyebrow">Tela viva</span><h1 class="sl-mega sl-mega-m">Votação do público</h1><p class="sl-lead">QR Code + candidatos</p></div>' : '';
+        break;
+      case 'revelaHeroi':
+      case 'revelaBanca':
+        h = '<div class="sl-centro"><span class="sl-eyebrow">Tela viva</span><h1 class="sl-mega sl-mega-m">' + (s.tipo === 'revelaHeroi' ? 'Revelação do Herói' : 'Revelação do Projeto destaque') + '</h1><p class="sl-lead">Suspense, contagem e o vencedor</p></div>';
+        break;
+    }
+    return h;
+  }
+  function slideTelao(key) {
+    var l = deckSlides(), i = deckIndice(key);
+    if (i < 0) return '';
+    var s = l[i];
+    if (s.tipo === 'votacao') return '';            // usa a tela da votação de sempre
+    var entra = telao.slideVisto !== key; telao.slideVisto = key;
+    if (s.tipo === 'fotos' && !telao.fotosTimer) telao.fotosTimer = setInterval(function () {
+      if (route.name !== 'telao' || remote.slide !== 'fotos') { clearInterval(telao.fotosTimer); telao.fotosTimer = null; return; }
+      var figs = document.querySelectorAll('.sl-fotos figure'); if (!figs.length) return;
+      var k = Math.floor(Date.now() / 6000) % figs.length;
+      Array.prototype.forEach.call(figs, function (f, j) { f.classList.toggle('on', j === k); });
+    }, 1000);
+    return '<div class="telao sl sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + telaoFundo() + slideHtml(s, false) +
+      (s.tipo !== 'video' && s.tipo !== 'videoHeroi' && s.tipo !== 'fotos' ? '<span class="sl-rodape">' + slideMarca() + '</span>' : '') + '</div>';
+  }
+
+  // ---------- navegação ----------
+  var apres = { enviando: false };
+  function irSlide(key) {
+    if (!remote.on || !localState.adminKey) { toast('Entre como organização para controlar a apresentação.'); return; }
+    var l = deckSlides(), i = deckIndice(key), s = l[i];
+    var ultEq = -1; l.forEach(function (x, j) { if (x.tipo === 'equipe') ultEq = j; });
+    var palco = null;
+    if (s && s.tipo === 'equipe') palco = s.pid;
+    else if (ultEq >= 0 && i > ultEq) palco = '';
+    var antes = { slide: remote.slide, palco: remote.palco, rev: remote.revelar, revB: remote.revelarBanca };
+    remote.slide = key || null;
+    if (palco !== null) remote.palco = palco || null;
+    if ((key === 'revelaHeroi') !== remote.revelar) { remote.revelar = key === 'revelaHeroi'; if (remote.revelar) telao.revelInicio = Date.now(); telao.vencedores = null; }
+    if ((key === 'revelaBanca') !== remote.revelarBanca) { remote.revelarBanca = key === 'revelaBanca'; if (remote.revelarBanca) telao.revelInicio = Date.now(); telao.vencBanca = null; }
+    render();
+    sbRpc('definir_slide', { p_chave: localState.adminKey, p_slide: key || '', p_palco: palco }).then(function (r) {
+      if (!r || !r.ok) throw new Error((r && r.erro) || 'falhou');
+    }).catch(function (e) {
+      remote.slide = antes.slide; remote.palco = antes.palco; remote.revelar = antes.rev; remote.revelarBanca = antes.revB; render();
+      toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente para usar a apresentação.' : 'Não consegui trocar o slide. Tente de novo.');
+    });
+  }
+  function passoSlide(d) {
+    var l = deckSlides(); if (!l.length) return;
+    var i = deckIndice(remote.slide);
+    var j = i < 0 ? 0 : Math.max(0, Math.min(l.length - 1, i + d));
+    if (j !== i) irSlide(l[j].key);
+  }
+  // teclado / passador no computador do telão
+  document.addEventListener('keydown', function (e) {
+    if (route.name !== 'telao' || !localState.admin || e.altKey || e.ctrlKey || e.metaKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); passoSlide(1); }
+    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); passoSlide(-1); }
+  });
+
+  // ---------- controlador (#/controle) ----------
+  function viewControle() {
+    if (!localState.admin) return viewEntrar('admin', 'Controle da apresentação: entre como organização.');
+    if (!remote.on) return '<div class="view"><div class="corpo"><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">O controle funciona na versão publicada, com o banco ligado.</p></div></div></div>';
+    var l = deckSlides(), i = deckIndice(remote.slide), atual = l[i], prox = l[i + 1] || (i < 0 ? l[0] : null);
+    var modo = remote.revelarBanca ? 'Revelando o Projeto destaque' : remote.revelar ? 'Revelando o Herói' : atual ? (atual.tipo === 'votacao' ? 'Votação (QR)' : 'Apresentação') : 'Votação (QR) · fora da apresentação';
+    var previa = function (s, cls) {
+      return '<div class="ctl-tela ' + (cls || '') + '"><div class="ctl-escala"><div class="telao sl sl-previa sl-' + (s ? s.tipo : 'vazio') + '">' +
+        (s ? slideHtml(s, true) : '<div class="sl-centro"><h1 class="sl-mega sl-mega-m">Fim</h1></div>') + '</div></div></div>';
+    };
+    var grupos = '', ult = '';
+    l.forEach(function (s, j) {
+      var g = s.grupo || '';
+      if (g && g !== ult) grupos += '<li class="ctl-grupo">' + esc(g) + '</li>';
+      ult = g;
+      grupos += '<li><button class="ctl-item' + (j === i ? ' on' : '') + '" data-act="slideIr" data-k="' + esc(s.key) + '"><span class="num">' + (j + 1) + '</span>' + esc(s.rotulo) + '</button></li>';
+    });
+    return '<div class="view controle">' +
+      '<div class="ctl-topo"><div><span class="eyebrow">Controle · IDL</span><b class="ctl-modo">' + esc(modo) + '</b></div>' +
+        '<div class="ctl-chips">' + avChip('Votação', remote.aberta, 'aberta', 'fechada') + avChip('Decisão', remote.decisao, 'aberta', 'fechada') + '</div></div>' +
+      '<div class="ctl-grade">' +
+        '<div class="ctl-esq">' +
+          '<span class="ctl-rot">Agora no telão' + (atual ? ' · ' + (i + 1) + ' de ' + l.length : '') + '</span>' + previa(atual, 'ctl-atual') +
+          '<div class="ctl-botoes"><button class="btn btn-outline btn-lg" data-act="slideAnt"' + (i <= 0 ? ' disabled' : '') + '>' + ico('i-arrow-left') + ' Anterior</button>' +
+            '<button class="btn btn-primary btn-lg" data-act="slideProx"' + (i >= l.length - 1 ? ' disabled' : '') + '>' + (i < 0 ? 'Começar a apresentação' : 'Próximo') + ' ' + ico('i-chev') + '</button></div>' +
+          '<span class="ctl-rot">A seguir</span>' + previa(prox, 'ctl-prox') +
+        '</div>' +
+        '<div class="ctl-dir">' +
+          '<div class="ctl-acoes">' +
+            (remote.aberta ? '<button class="btn btn-danger btn-block" data-act="askClose">Encerrar a votação</button>' : '<button class="btn btn-laranja btn-block" data-act="askOpen">' + ico('i-vote') + ' Abrir a votação</button>') +
+            '<button class="btn btn-outline btn-block" data-act="slideIr" data-k="votacao">Mostrar a votação (QR)</button>' +
+            '<button class="btn btn-laranja btn-block" data-act="slideIr" data-k="revelaBanca">' + ico('i-spark') + ' Revelar o Projeto destaque (banca)</button>' +
+            '<button class="btn btn-primary btn-block" data-act="slideIr" data-k="revelaHeroi">' + ico('i-spark') + ' Revelar o Herói (público)</button>' +
+            (atual ? '<button class="btn btn-ghost btn-block" data-act="slideSair">Sair da apresentação (telão volta à votação)</button>' : '') +
+          '</div>' +
+          '<ol class="ctl-lista">' + grupos + '</ol>' +
+          '<p class="tiny">Atalhos no computador do telão: → ou passador = próximo · ← = anterior. <a href="#/telao" target="_blank" rel="noopener">Abrir o telão</a></p>' +
+        '</div>' +
+      '</div></div>';
+  }
+  function ajustarPrevias() {
+    Array.prototype.forEach.call(document.querySelectorAll('.ctl-tela'), function (b) {
+      var e = b.querySelector('.ctl-escala'); if (e) e.style.transform = 'scale(' + (b.clientWidth / 1280).toFixed(4) + ')';
+    });
+  }
+  window.addEventListener('resize', function () { if (route.name === 'controle') ajustarPrevias(); });
+
+  // ---------- aba Apresentação do painel ----------
+  function adminApresentacao() {
+    var cfg = deckConfig();
+    var linhas = cfg.map(function (it, i) {
+      var auto = it.tipo === 'equipes' ? 'Automático: 1 slide por equipe, na ordem da programação (marca a equipe No palco)'
+        : it.tipo === 'candidatos' ? 'Automático: 1 vídeo por Herói candidato com vídeo' : it.tipo === 'votacao' ? 'Tela viva: QR da votação'
+        : it.tipo === 'revelaHeroi' || it.tipo === 'revelaBanca' ? 'Tela viva: revelação com animação e som' : it.tipo === 'programacao' ? 'Automático: puxa a Programação'
+        : it.tipo === 'numeros' ? 'Automático: números da Trilha' : it.tipo === 'fotos' ? 'Automático: fotos da aba Fotos' : '';
+      var temTexto = /^(abertura|instituto|texto)$/.test(it.tipo);
+      return '<li class="ap-item' + (it.on ? '' : ' off') + '" data-i="' + i + '">' +
+        '<div class="ap-cab"><label class="ap-on"><input type="checkbox" data-ap="on"' + (it.on ? ' checked' : '') + '> <span class="num">' + (i + 1) + '</span></label>' +
+          '<input class="ap-tit" data-ap="titulo" value="' + esc(it.titulo || '') + '" aria-label="Título do slide">' +
+          '<span class="ap-mov"><button type="button" class="iconbtn" data-act="apMover" data-d="-1" aria-label="Subir">' + ico('i-up') + '</button><button type="button" class="iconbtn" data-act="apMover" data-d="1" aria-label="Descer">' + ico('i-down') + '</button></span></div>' +
+        (auto ? '<p class="tiny ap-auto">' + esc(auto) + '</p>' : '') +
+        (temTexto ? '<textarea data-ap="texto" rows="2" aria-label="Texto do slide">' + esc(it.texto || '') + '</textarea>' : '') +
+        (it.tipo === 'video' ? '<input data-ap="video" value="' + esc(it.video || '') + '" placeholder="Link do YouTube do vídeo" aria-label="Link do vídeo">' : '') +
+        '</li>';
+    }).join('');
+    return '<div class="stack-lg">' +
+      '<section class="stack"><h2 class="h2">Apresentação</h2>' +
+      '<p class="small">A apresentação roda no telão (<b>' + esc(siteBase() + '/#/telao') + '</b>, em F11) e é comandada pelo controle (<b>' + esc(siteBase() + '/#/controle') + '</b>) no celular, ou pelo teclado/passador no computador do telão. Ligue, desligue, reordene e edite os textos aqui; depois clique em Salvar.</p>' +
+      '<div class="row wrap" style="gap:8px"><a class="btn btn-primary" href="#/controle" target="_blank" rel="noopener">Abrir o controle</a><a class="btn btn-outline" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
+        '<button class="btn btn-ghost" data-act="apPadrao">Voltar ao roteiro padrão</button></div></section>' +
+      '<form id="apForm" class="stack"><ol class="ap-lista">' + linhas + '</ol>' +
+      '<button class="btn btn-primary btn-lg" type="submit">' + ico('i-save') + ' Salvar a apresentação</button></form></div>';
+  }
+  function apLerForm() {
+    var cfg = deckConfig();
+    Array.prototype.forEach.call(document.querySelectorAll('.ap-item'), function (li) {
+      var it = cfg[+li.getAttribute('data-i')]; if (!it) return;
+      Array.prototype.forEach.call(li.querySelectorAll('[data-ap]'), function (c) {
+        var k = c.getAttribute('data-ap'); it[k] = k === 'on' ? c.checked : c.value;
+      });
+    });
+    return cfg;
+  }
+
   /* ============================ MODO EVENTO ============================
      Aba "Ao vivo" do painel: tudo o que se usa durante a Banca numa tela
      só, pensada para o celular de quem opera: palco, votação, banca,
@@ -4430,6 +4707,7 @@
           '<button class="btn btn-laranja btn-block btn-lg" data-act="askRevelarBanca">' + ico('i-spark') + ' Revelar o Projeto destaque (banca)</button>') +
       (remote.aberta && !remote.revelar ? '<p class="tiny av-obs">Dica: encerre a votação antes de revelar o Herói.</p>' : '') +
       (remote.decisao && !remote.revelarBanca ? '<p class="tiny av-obs">Dica: encerre a decisão final antes de revelar o Projeto destaque.</p>' : '') +
+      '<a class="btn btn-outline btn-block" href="#/controle">Controle da apresentação</a>' +
       '<div class="av-linha"><a class="btn btn-ghost btn-sm" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
         '<a class="btn btn-ghost btn-sm" href="#/mesa/entrar" target="_blank" rel="noopener">QR de login</a>' +
         '<a class="btn btn-ghost btn-sm" href="#/mesa" target="_blank" rel="noopener">QR da banca</a>' +
@@ -4707,7 +4985,8 @@
      crescendo, "tum" na contagem 3-2-1, explosão + prato no clarão, fanfarra,
      estouros dos canhões de confete e brilhinhos. O navegador só deixa tocar
      depois de um clique na página, por isso o telão mostra "Ativar som".   */
-  var som = { ctx: null, master: null, ruido: null, vol: 0.8, agendado: '', fontes: [] };
+  var som = { ctx: null, master: null, ruido: null, vol: 0.8, agendado: '', fontes: [], arq: {}, arqPedido: false, pref: true };
+  try { som.pref = localStorage.getItem('idl.som.on') !== '0'; } catch (e) { /* sem storage: ligado */ }
   try { var vSalvo = parseFloat(localStorage.getItem('idl.som.vol')); if (vSalvo >= 0 && vSalvo <= 1) som.vol = vSalvo; } catch (e) { /* sem storage */ }
   function somAtivo() { return !!(som.ctx && som.ctx.state === 'running'); }
   function somIniciar() {
@@ -4723,9 +5002,24 @@
       var n = som.ctx.sampleRate * 2, buf = som.ctx.createBuffer(1, n, som.ctx.sampleRate), d = buf.getChannelData(0);
       for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
       som.ruido = buf;
+      som.ctx.onstatechange = function () {
+        somPainelDesenhar();
+        if (somAtivo() && route.name === 'telao' && (remote.revelar || remote.revelarBanca)) somRevelacao(remote.revelarBanca ? 'banca' : 'heroi', telao.revelInicio);
+      };
     }
     if (som.ctx.state !== 'running') som.ctx.resume();
+    somCarregarArquivos();
     return true;
+  }
+  // sons próprios opcionais: audio/suspense.mp3 (até 6,5 s) e audio/comemoracao.mp3
+  function somCarregarArquivos() {
+    if (som.arqPedido || !som.ctx) return; som.arqPedido = true;
+    ['suspense', 'comemoracao'].forEach(function (nome) {
+      fetch('audio/' + nome + '.mp3', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); })
+        .then(function (ab) { return new Promise(function (ok, erro) { som.ctx.decodeAudioData(ab, ok, erro); }); })
+        .then(function (buf) { som.arq[nome] = buf; somPainelDesenhar(true); })
+        .catch(function () { /* sem arquivo: usa o som gerado */ });
+    });
   }
   function somVolume(v) {
     som.vol = Math.max(0, Math.min(1, v));
@@ -4769,9 +5063,50 @@
     sTom(t, 'sine', 130, 42, 1.0 * forca, 0.004, 0.55);
     sRuido(t, 0.05, [['lowpass', 1800]], 0.25 * forca, 0.001, 0.04);
   }
-  function sPrato(t) {          // prato de ataque
-    sRuido(t, 2.8, [['highpass', 5200], ['peaking', 9000, 0, 1]], 0.55, 0.004, 2.6);
-    [3150, 4280, 5370, 6940].forEach(function (f) { sTom(t, 'square', f, 0, 0.018, 0.003, 1.6); });
+  function sPrato(t) {          // prato de ataque (só ruído, sem "bip")
+    sRuido(t, 3.2, [['highpass', 4200], ['peaking', 8000, 0, 1]], 0.5, 0.004, 3.0);
+    sRuido(t, 1.2, [['bandpass', 3000, 1800, 0.7]], 0.18, 0.003, 1.1);
+  }
+  function sTimpano(t, forca) { // tímpano de orquestra (grave, sem "jogo")
+    sTom(t, 'sine', 98, 82, 0.55 * forca, 0.006, 0.9);
+    sTom(t, 'sine', 147, 130, 0.18 * forca, 0.006, 0.6);
+    sRuido(t, 0.08, [['lowpass', 900]], 0.18 * forca, 0.002, 0.07);
+  }
+  // aplausos: muitas palmas curtinhas, cada uma num ponto da plateia
+  function sAplausos(t, dur, forca) {
+    var n = Math.round(dur * 70);
+    for (var i = 0; i < n; i++) {
+      var x = Math.random(), tt = t + x * dur;
+      var env = Math.min(1, x * dur / 0.5) * Math.min(1, (1 - x) * dur / 1.6);   // entra em 0,5 s, sai em 1,6 s
+      if (env < 0.05) continue;
+      sRuido(tt, 0.03, [['highpass', 600], ['bandpass', 900 + Math.random() * 1900, 0, 1.4]], (0.42 + Math.random() * 0.3) * env * forca, 0.001, 0.02 + Math.random() * 0.025, Math.random() * 1.6 - 0.8);
+    }
+  }
+  // "uhuu" da plateia: um véu de vozes (ruído com formantes) que sobe e desce
+  function sTorcida(t, dur) {
+    [[520, 0.22, -0.5], [880, 0.15, 0.5], [1250, 0.08, 0]].forEach(function (f) {
+      var src = som.ctx.createBufferSource(); src.buffer = som.ruido; src.loop = true;
+      var bp = som.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 3;
+      bp.frequency.setValueAtTime(f[0] * 0.8, t); bp.frequency.linearRampToValueAtTime(f[0] * 1.15, t + 0.6); bp.frequency.linearRampToValueAtTime(f[0], t + dur);
+      var g = sSaida(f[2]); src.connect(bp); bp.connect(g);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(f[1], t + 0.35);
+      g.gain.setValueAtTime(f[1], t + dur * 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.start(t, Math.random()); src.stop(t + dur + 0.05); som.fontes.push(src);
+    });
+  }
+  // acorde quente de cordas (seno + triângulo com ataque lento), bem baixinho
+  function sCordas(t, tema, dur) {
+    var base = tema === 'banca' ? 146.83 : 130.81;
+    [1, 1.5, 2, 2.5, 3].forEach(function (m, i) {
+      [-7, 7].forEach(function (det) {
+        var o = som.ctx.createOscillator(); o.type = i < 2 ? 'triangle' : 'sine'; o.frequency.value = base * m; o.detune.value = det;
+        var lp = som.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800;
+        var g = sSaida(det < 0 ? -0.3 : 0.3); o.connect(lp); lp.connect(g);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.9);
+        g.gain.setValueAtTime(0.05, t + dur - 1.2); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.05); som.fontes.push(o);
+      });
+    });
   }
   function sExplosao(t) {
     sTom(t, 'sine', 95, 28, 0.95, 0.005, 1.6);
@@ -4801,7 +5136,7 @@
   function sEstouros(t) {        // canhões de confete
     for (var i = 0; i < 14; i++) {
       var tt = t + 0.08 + i * 0.045 + Math.random() * 0.06, lado = i % 2 ? 0.8 : -0.8;
-      sRuido(tt, 0.08, [['bandpass', 900 + Math.random() * 1800, 0, 1.2]], 0.35, 0.002, 0.07, lado);
+      sRuido(tt, 0.08, [['bandpass', 700 + Math.random() * 1400, 0, 1.2]], 0.22, 0.002, 0.07, lado);
     }
   }
   function sBrilhos(t, dur) {
@@ -4818,15 +5153,34 @@
     var T = function (s) { return agora + (s - passou); };       // segundo s da cena → relógio de áudio
     if (passou > 9) return;                                      // chegou tarde: sem som
     var S = REVELA_MS / 1000;                                     // 6,5 s
-    // rufar: de 0,4 s até o clarão, cada vez mais rápido e forte
-    for (var s = 0.4, k = 0; s < S - 0.02; k++) {
-      var p = (s - 0.4) / (S - 0.4);
-      if (s >= passou) sCaixa(T(s), 0.25 + p * 0.9);
-      s += 0.11 - p * 0.075;
+    // arquivos próprios (pasta audio/): se existirem, entram no lugar do som gerado
+    if (som.arq.suspense && passou < S) {
+      var a1 = som.ctx.createBufferSource(); a1.buffer = som.arq.suspense; var g1 = sSaida(0); a1.connect(g1);
+      g1.gain.setValueAtTime(1, T(Math.max(passou, 0))); g1.gain.setValueAtTime(1, T(S - 0.15)); g1.gain.linearRampToValueAtTime(0.0001, T(S));
+      a1.start(T(Math.max(passou, 0)), Math.max(0, passou)); a1.stop(T(S) + 0.05); som.fontes.push(a1);
+    } else if (!som.arq.suspense) {
+      // rufar de caixa com tímpano por baixo, cada vez mais rápido e forte
+      for (var s = 0.4, k = 0; s < S - 0.02; k++) {
+        var p = (s - 0.4) / (S - 0.4);
+        if (s >= passou) { sCaixa(T(s), 0.2 + p * 0.85); if (k % 3 === 0) sTimpano(T(s), 0.25 + p * 0.6); }
+        s += 0.11 - p * 0.075;
+      }
+      [3.5, 4.5, 5.5].forEach(function (x, i) { if (x >= passou) sTum(T(x), 0.7 + i * 0.15); });
+      if (S - 2 >= passou) sSubida(T(S - 2), 2);
     }
-    [3.5, 4.5, 5.5].forEach(function (x, i) { if (x >= passou) sTum(T(x), 0.7 + i * 0.15); });
-    if (S - 2 >= passou) sSubida(T(S - 2), 2);
-    if (S >= passou - 0.2) { var r = Math.max(0, passou - S); sExplosao(T(S + r)); sFanfarra(T(S + 0.25 + r), tema); sEstouros(T(S + 0.12 + r)); sBrilhos(T(S + 0.9 + r), 2.4); }
+    if (S >= passou - 0.2) {
+      var r = Math.max(0, passou - S);
+      sExplosao(T(S + r));
+      if (som.arq.comemoracao) {
+        var a2 = som.ctx.createBufferSource(); a2.buffer = som.arq.comemoracao; var g2 = sSaida(0); a2.connect(g2);
+        a2.start(T(S + 0.05 + r)); som.fontes.push(a2);
+      } else {
+        sEstouros(T(S + 0.12 + r));
+        sAplausos(T(S + 0.25 + r), 6.5, 1);
+        sTorcida(T(S + 0.2 + r), 4.5);
+        sCordas(T(S + 0.3 + r), tema, 5.5);
+      }
+    }
   }
   function somTeste() {
     if (!somIniciar()) return;
@@ -4834,9 +5188,24 @@
       var t = som.ctx.currentTime + 0.05;
       somParar();
       for (var i = 0; i < 10; i++) sCaixa(t + i * 0.06, 0.4 + i * 0.05);
-      sTum(t + 0.7, 0.9); sExplosao(t + 1.1); sFanfarra(t + 1.3, 'heroi'); sEstouros(t + 1.2); sBrilhos(t + 1.6, 1.5);
+      sTum(t + 0.7, 0.9); sExplosao(t + 1.1);
+      if (som.arq.comemoracao) { var a = som.ctx.createBufferSource(); a.buffer = som.arq.comemoracao; var g = sSaida(0); a.connect(g); a.start(t + 1.15); a.stop(t + 4.5); som.fontes.push(a); }
+      else { sEstouros(t + 1.2); sAplausos(t + 1.3, 3, 1); sTorcida(t + 1.25, 2.6); sCordas(t + 1.3, 'heroi', 3); }
     }, 60);
   }
+  /* som SEMPRE LIGADO no telão: ao abrir o telão o site já liga o som. Se o
+     navegador ainda bloquear (regra dele até alguém interagir com a página),
+     o primeiro clique ou tecla em QUALQUER lugar da tela libera sozinho.  */
+  function somAuto() {
+    if (!som.pref) return;
+    somIniciar();
+  }
+  ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) {
+    document.addEventListener(ev, function () {
+      if (route.name !== 'telao' || !som.pref) return;
+      if (!som.ctx) somIniciar(); else if (som.ctx.state !== 'running') som.ctx.resume();
+    }, true);
+  });
   // painel discreto no canto do telão
   function somPainel(mostrar) {
     var el = $('#somPainel');
@@ -4844,12 +5213,13 @@
     if (!el) {
       el = document.createElement('div'); el.id = 'somPainel'; el.className = 'som-painel';
       document.body.appendChild(el);
+      somAuto();
       el.addEventListener('click', function (e) {
         var b = e.target.closest('[data-som]'); if (!b) return;
         var a = b.getAttribute('data-som');
-        if (a === 'ativar') { if (somIniciar()) setTimeout(function () { somPainelDesenhar(); if (remote.revelar || remote.revelarBanca) somRevelacao(remote.revelarBanca ? 'banca' : 'heroi', telao.revelInicio); toast('Som da revelação ativado.'); }, 120); }
+        if (a === 'ativar') { som.pref = true; try { localStorage.setItem('idl.som.on', '1'); } catch (er) { /* sem storage */ } if (somIniciar()) setTimeout(function () { somPainelDesenhar(); if (remote.revelar || remote.revelarBanca) somRevelacao(remote.revelarBanca ? 'banca' : 'heroi', telao.revelInicio); toast('Som da revelação ativado.'); }, 120); }
         else if (a === 'testar') somTeste();
-        else if (a === 'desligar') { somParar(); if (som.ctx) som.ctx.suspend(); setTimeout(somPainelDesenhar, 60); }
+        else if (a === 'desligar') { som.pref = false; try { localStorage.setItem('idl.som.on', '0'); } catch (er) { /* sem storage */ } somParar(); if (som.ctx) som.ctx.suspend(); setTimeout(somPainelDesenhar, 60); }
       });
       el.addEventListener('input', function (e) { if (e.target.id === 'somVol') somVolume(+e.target.value / 100); });
       var parado = null;
@@ -4863,14 +5233,17 @@
   function somPainelDesenhar() {
     var el = $('#somPainel'); if (!el) return;
     var on = somAtivo();
-    if (el.getAttribute('data-estado') === String(on)) return;   // não redesenha à toa (o clique não pode "fugir")
-    el.setAttribute('data-estado', String(on));
+    var estado = on + '|' + som.pref + '|' + !!som.arq.suspense + '|' + !!som.arq.comemoracao;
+    if (el.getAttribute('data-estado') === estado) return;   // não redesenha à toa (o clique não pode "fugir")
+    el.setAttribute('data-estado', estado);
     el.classList.toggle('ligado', on);
     el.innerHTML = on
-      ? '<span class="sp-ic" aria-hidden="true">♪</span><span class="sp-tx">Som ligado</span>' +
+      ? '<span class="sp-ic" aria-hidden="true">♪</span><span class="sp-tx">Som ligado' + ((som.arq.suspense || som.arq.comemoracao) ? ' · arquivos próprios' : '') + '</span>' +
         '<input id="somVol" type="range" min="0" max="100" value="' + Math.round(som.vol * 100) + '" aria-label="Volume da revelação">' +
         '<button data-som="testar">Testar</button><button data-som="desligar" aria-label="Desligar o som">✕</button>'
-      : '<button class="sp-ativar" data-som="ativar"><span aria-hidden="true">♪</span> Ativar som da revelação</button>';
+      : som.pref
+        ? '<button class="sp-ativar" data-som="ativar"><span aria-hidden="true">♪</span> Som pronto · clique em qualquer lugar da tela para liberar</button>'
+        : '<button class="sp-ativar sp-off" data-som="ativar"><span aria-hidden="true">♪</span> Som desligado · ligar</button>';
   }
 
   function setRevelacaoBanca(v) {
@@ -5010,6 +5383,7 @@
       case 'telao': return viewTelao();
       case 'banca': return viewBanca();
       case 'entrar': return viewEntrar();
+      case 'controle': return viewControle();
       case 'decisao': return viewDecisao();
       case 'mesa': return viewMesa();
       default: return viewHome();
@@ -5212,7 +5586,7 @@
     var r = route.name, nome = {
       trilhei: 'Por que Trilhei?', programacao: 'Programação', projetos: 'Projetos', herois: 'Heróis',
       trilha2026: 'A Trilha em 2026', votacao: 'Votação', resultado: 'Resultado', admin: 'Painel',
-      banca: 'Banca', decisao: 'Decisão final', entrar: 'Entrar', telao: 'Telão'
+      banca: 'Banca', decisao: 'Decisão final', entrar: 'Entrar', telao: 'Telão', controle: 'Controle'
     }[r] || '';
     if (r === 'projeto') { var p = byId(route.param); nome = p ? p.name : 'Projeto'; }
     if (r === 'heroi') { var x = heroById(route.param); nome = x ? String(x.hero.name).split(/\s+[—–-]\s+/)[0] : 'Herói'; }
@@ -5228,7 +5602,7 @@
     var ehTelao = route.name === 'telao';
     var ehMesa = route.name === 'mesa';
     document.body.classList.toggle('is-mesa', ehMesa);
-    document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao');
+    document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao' || route.name === 'controle');
     document.body.classList.toggle('is-revela', ehTelao && remote.on && (remote.revelar || remote.revelarBanca));
     document.body.classList.toggle('is-revela-banca', ehTelao && remote.on && remote.revelarBanca);
     somPainel(ehTelao && remote.on);
@@ -5249,6 +5623,7 @@
     lastLiveId = lv ? lv.id : null;
 
     countUp();
+    if (route.name === 'controle') ajustarPrevias();
     tickLive();
     telaoMontar();
     if (ehTelao) return;
@@ -5772,6 +6147,21 @@
       renderOverlay();
     }
     else if (act === 'pubResult') setVotacao(null, !remote.resultadoPublico);
+    else if (act === 'slideProx') passoSlide(1);
+    else if (act === 'slideAnt') passoSlide(-1);
+    else if (act === 'slideIr') irSlide(el.getAttribute('data-k'));
+    else if (act === 'slideSair') irSlide('');
+    else if (act === 'apMover') {
+      var cfgM = apLerForm(), li = el.closest('.ap-item'), iM = +li.getAttribute('data-i'), dM = +el.getAttribute('data-d'), jM = iM + dM;
+      if (jM < 0 || jM >= cfgM.length) return;
+      var tM = cfgM[iM]; cfgM[iM] = cfgM[jM]; cfgM[jM] = tM;
+      db.apresentacao = { slides: cfgM }; render();
+    }
+    else if (act === 'apPadrao') {
+      admin.confirm = { title: 'Voltar ao roteiro padrão?', body: 'A ordem, os slides ligados e os textos voltam ao padrão. Os textos que vocês editaram se perdem.', yes: 'Sim, voltar', danger: true,
+        run: function () { db.apresentacao = null; save(); toast('Roteiro padrão restaurado.'); } };
+      renderOverlay();
+    }
     else if (act === 'aoVivoAtualizar') { syncEstado(); aoVivoAtualizar(true); toast('Atualizado.'); }
     else if (act === 'palcoProx') { var px = palcoVizinho(1); if (px) definirPalco(px.id); }
     else if (act === 'palcoAnt') { var pa2 = palcoVizinho(-1); if (pa2) definirPalco(pa2.id); }
@@ -6081,6 +6471,7 @@
 
     if (f.matches && f.matches('form.bp-form')) return;
     if (f.id === 'entrarForm') { entrarSubmit(); return; }
+    if (f.id === 'apForm') { db.apresentacao = { slides: apLerForm() }; save(); toast('Apresentação salva. O telão e o controle já usam o roteiro novo.'); return; }
     if (f.id === 'senhaAdminForm') {
       var novaA = normSenha($('#novaSenhaAdmin').value);
       if (novaA.length < 6) { toast('Use pelo menos 6 caracteres.'); return; }
@@ -6290,7 +6681,8 @@
     syncOpcoes();
     syncConteudo();
     setInterval(function () { syncEstado(); }, 12000);
-    setInterval(function () { if (/^(telao|banca|decisao|mesa)$/.test(route.name)) syncEstado(); if (route.name === 'decisao') carregarDecisao(); }, 3000);
+    setInterval(function () { if (/^(banca|decisao|mesa)$/.test(route.name)) syncEstado(); if (route.name === 'decisao') carregarDecisao(); }, 3000);
+    setInterval(function () { if (/^(telao|controle)$/.test(route.name) && document.visibilityState !== 'hidden') syncEstado(); }, 1000);
     setInterval(function () { syncFotos(); }, 60000);
     setInterval(function () { syncConteudo(); }, 30000);
     window.addEventListener('focus', function () { syncEstado(); syncFotos(); syncOpcoes(); syncConteudo(); });
