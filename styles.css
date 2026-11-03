@@ -2348,3 +2348,16 @@ body.is-revela-banca .telao, .telao.tl-banca { background: radial-gradient(1200p
   .rv *, .rv { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
   .rv-conta, .rv-canhoes, .rv-flash, .rv-onda { display: none; }
 }
+
+/* painel de som do telão: discreto, aparece ao mexer o mouse */
+.som-painel { position: fixed; left: 16px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 999px;
+  background: rgba(20, 0, 50, .55); color: #fff; font: 600 13px/1 var(--fonte); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.18); transition: opacity .4s ease; }
+.som-painel.ligado { opacity: .18; }
+.som-painel.ligado.acordado, .som-painel.ligado:hover, .som-painel.ligado:focus-within { opacity: 1; }
+.som-painel button { border: 0; border-radius: 999px; padding: 8px 14px; font: inherit; cursor: pointer; background: rgba(255,255,255,.14); color: #fff; }
+.som-painel button:hover { background: rgba(255,255,255,.26); }
+.som-painel .sp-ativar { background: var(--c-laranja); padding: 10px 16px; animation: spChama 2s ease-in-out infinite; }
+@keyframes spChama { 50% { box-shadow: 0 0 0 8px rgba(249,114,24,.25); } }
+.som-painel .sp-ic { font-size: 16px; padding-left: 4px; }
+.som-painel input[type=range] { width: 110px; accent-color: var(--c-laranja); }

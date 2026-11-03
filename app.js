@@ -4650,6 +4650,7 @@
   var REVELA_MS = 6500;
   function cenaRevelacao(o) {
     var passou = Math.max(0, Date.now() - (telao.revelInicio || Date.now()));
+    somRevelacao(o.tema, telao.revelInicio);
     var tema = o.tema === 'banca' ? ' rv-banca' : '';
     if (passou < REVELA_MS || o.itens == null) {
       if (!telao.revelTimer) telao.revelTimer = setTimeout(function () { telao.revelTimer = null; if (route.name === 'telao') render(); }, Math.max(300, REVELA_MS - passou + 50));
@@ -4701,6 +4702,177 @@
       '<span class="rv-flash" aria-hidden="true"></span>' +
       '</div>';
   }
+  /* ======================= SOM DA REVELAÇÃO (telão) =======================
+     Tudo gerado aqui mesmo (Web Audio), sem arquivo de áudio: rufar de tambor
+     crescendo, "tum" na contagem 3-2-1, explosão + prato no clarão, fanfarra,
+     estouros dos canhões de confete e brilhinhos. O navegador só deixa tocar
+     depois de um clique na página, por isso o telão mostra "Ativar som".   */
+  var som = { ctx: null, master: null, ruido: null, vol: 0.8, agendado: '', fontes: [] };
+  try { var vSalvo = parseFloat(localStorage.getItem('idl.som.vol')); if (vSalvo >= 0 && vSalvo <= 1) som.vol = vSalvo; } catch (e) { /* sem storage */ }
+  function somAtivo() { return !!(som.ctx && som.ctx.state === 'running'); }
+  function somIniciar() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { toast('Este navegador não toca som gerado.'); return false; }
+    if (!som.ctx) {
+      som.ctx = new AC();
+      var comp = som.ctx.createDynamicsCompressor();
+      comp.threshold.value = -16; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.25;
+      som.master = som.ctx.createGain(); som.master.gain.value = som.vol;
+      var saida = som.ctx.createGain(); saida.gain.value = 0.7;   // folga para não distorcer na caixa de som
+      som.master.connect(comp); comp.connect(saida); saida.connect(som.ctx.destination);
+      var n = som.ctx.sampleRate * 2, buf = som.ctx.createBuffer(1, n, som.ctx.sampleRate), d = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      som.ruido = buf;
+    }
+    if (som.ctx.state !== 'running') som.ctx.resume();
+    return true;
+  }
+  function somVolume(v) {
+    som.vol = Math.max(0, Math.min(1, v));
+    if (som.master) som.master.gain.setTargetAtTime(som.vol, som.ctx.currentTime, 0.05);
+    try { localStorage.setItem('idl.som.vol', String(som.vol)); } catch (e) { /* sem storage */ }
+  }
+  function somParar() {
+    som.fontes.forEach(function (f) { try { f.stop(); } catch (e) { /* já parou */ } });
+    som.fontes = []; som.agendado = '';
+  }
+  // --- peças básicas ---
+  function sEnv(g, t, pico, ataque, queda) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, pico), t + ataque);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + ataque + queda);
+  }
+  function sSaida(pan) {
+    var g = som.ctx.createGain();
+    if (pan && som.ctx.createStereoPanner) { var p = som.ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); p.connect(som.master); }
+    else g.connect(som.master);
+    return g;
+  }
+  function sRuido(t, dur, filtros, pico, ataque, queda, pan) {
+    var src = som.ctx.createBufferSource(); src.buffer = som.ruido; src.loop = true;
+    var no = src;
+    filtros.forEach(function (f) { var bq = som.ctx.createBiquadFilter(); bq.type = f[0]; bq.frequency.setValueAtTime(f[1], t); if (f[2]) bq.frequency.exponentialRampToValueAtTime(f[2], t + dur); if (f[3]) bq.Q.value = f[3]; no.connect(bq); no = bq; });
+    var g = sSaida(pan); no.connect(g); sEnv(g, t, pico, ataque, queda);
+    src.start(t, Math.random()); src.stop(t + ataque + queda + 0.05); som.fontes.push(src);
+  }
+  function sTom(t, tipo, f0, f1, pico, ataque, queda, pan) {
+    var o = som.ctx.createOscillator(); o.type = tipo;
+    o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + ataque + queda);
+    var g = sSaida(pan); o.connect(g); sEnv(g, t, pico, ataque, queda);
+    o.start(t); o.stop(t + ataque + queda + 0.05); som.fontes.push(o);
+  }
+  function sCaixa(t, forca) {   // toque de caixa (rufar)
+    sRuido(t, 0.12, [['highpass', 900], ['bandpass', 2400, 0, 0.8]], 1.1 * forca, 0.002, 0.11, (Math.random() - .5) * .3);
+    sTom(t, 'triangle', 210, 160, 0.32 * forca, 0.002, 0.07);
+  }
+  function sTum(t, forca) {     // bumbo grave da contagem
+    sTom(t, 'sine', 130, 42, 1.0 * forca, 0.004, 0.55);
+    sRuido(t, 0.05, [['lowpass', 1800]], 0.25 * forca, 0.001, 0.04);
+  }
+  function sPrato(t) {          // prato de ataque
+    sRuido(t, 2.8, [['highpass', 5200], ['peaking', 9000, 0, 1]], 0.55, 0.004, 2.6);
+    [3150, 4280, 5370, 6940].forEach(function (f) { sTom(t, 'square', f, 0, 0.018, 0.003, 1.6); });
+  }
+  function sExplosao(t) {
+    sTom(t, 'sine', 95, 28, 0.95, 0.005, 1.6);
+    sRuido(t, 1.4, [['lowpass', 2600, 180]], 0.9, 0.004, 1.3);
+    sPrato(t + 0.01);
+  }
+  function sSubida(t, dur) {     // "whoosh" subindo até o clarão
+    sRuido(t, dur, [['bandpass', 300, 5200, 2.5]], 0.35, dur * 0.9, 0.15);
+  }
+  function sFanfarra(t, tema) {
+    var base = tema === 'banca' ? 293.66 : 261.63;               // Ré maior para a banca, Dó maior para o Herói
+    var r = [1, 1.25, 1.5, 2];
+    r.forEach(function (m, i) { sMetal(t + i * 0.11, base * m, 0.32, 0.5); });
+    [1, 1.25, 1.5, 2, 2.5].forEach(function (m) { sMetal(t + 0.5, base * m, 0.22, 2.4); });
+  }
+  function sMetal(t, f, pico, queda) {  // nota de "metais": serrote com filtro abrindo
+    [-6, 6].forEach(function (det) {
+      var o = som.ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = det;
+      var lp = som.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 2;
+      lp.frequency.setValueAtTime(400, t); lp.frequency.exponentialRampToValueAtTime(3200, t + 0.12); lp.frequency.exponentialRampToValueAtTime(1400, t + queda);
+      var g = sSaida(det < 0 ? -0.25 : 0.25); o.connect(lp); lp.connect(g);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(pico / 2, t + 0.04);
+      g.gain.setValueAtTime(pico / 2, t + Math.max(0.05, queda - 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, t + queda);
+      o.start(t); o.stop(t + queda + 0.05); som.fontes.push(o);
+    });
+  }
+  function sEstouros(t) {        // canhões de confete
+    for (var i = 0; i < 14; i++) {
+      var tt = t + 0.08 + i * 0.045 + Math.random() * 0.06, lado = i % 2 ? 0.8 : -0.8;
+      sRuido(tt, 0.08, [['bandpass', 900 + Math.random() * 1800, 0, 1.2]], 0.35, 0.002, 0.07, lado);
+    }
+  }
+  function sBrilhos(t, dur) {
+    var notas = [2093, 2637, 3136, 3520, 4186];
+    for (var i = 0; i < 16; i++) sTom(t + Math.random() * dur, 'sine', notas[i % notas.length], 0, 0.07, 0.004, 0.45, (Math.random() - .5) * 1.4);
+  }
+  // trilha completa, alinhada à animação (0 = início do suspense)
+  function somRevelacao(tema, inicio) {
+    if (!somAtivo() || !inicio) return;
+    var chave = tema + ':' + inicio;
+    if (som.agendado === chave) return;
+    somParar(); som.agendado = chave;
+    var passou = (Date.now() - inicio) / 1000, agora = som.ctx.currentTime;
+    var T = function (s) { return agora + (s - passou); };       // segundo s da cena → relógio de áudio
+    if (passou > 9) return;                                      // chegou tarde: sem som
+    var S = REVELA_MS / 1000;                                     // 6,5 s
+    // rufar: de 0,4 s até o clarão, cada vez mais rápido e forte
+    for (var s = 0.4, k = 0; s < S - 0.02; k++) {
+      var p = (s - 0.4) / (S - 0.4);
+      if (s >= passou) sCaixa(T(s), 0.25 + p * 0.9);
+      s += 0.11 - p * 0.075;
+    }
+    [3.5, 4.5, 5.5].forEach(function (x, i) { if (x >= passou) sTum(T(x), 0.7 + i * 0.15); });
+    if (S - 2 >= passou) sSubida(T(S - 2), 2);
+    if (S >= passou - 0.2) { var r = Math.max(0, passou - S); sExplosao(T(S + r)); sFanfarra(T(S + 0.25 + r), tema); sEstouros(T(S + 0.12 + r)); sBrilhos(T(S + 0.9 + r), 2.4); }
+  }
+  function somTeste() {
+    if (!somIniciar()) return;
+    setTimeout(function () {
+      var t = som.ctx.currentTime + 0.05;
+      somParar();
+      for (var i = 0; i < 10; i++) sCaixa(t + i * 0.06, 0.4 + i * 0.05);
+      sTum(t + 0.7, 0.9); sExplosao(t + 1.1); sFanfarra(t + 1.3, 'heroi'); sEstouros(t + 1.2); sBrilhos(t + 1.6, 1.5);
+    }, 60);
+  }
+  // painel discreto no canto do telão
+  function somPainel(mostrar) {
+    var el = $('#somPainel');
+    if (!mostrar) { if (el) el.remove(); return; }
+    if (!el) {
+      el = document.createElement('div'); el.id = 'somPainel'; el.className = 'som-painel';
+      document.body.appendChild(el);
+      el.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-som]'); if (!b) return;
+        var a = b.getAttribute('data-som');
+        if (a === 'ativar') { if (somIniciar()) setTimeout(function () { somPainelDesenhar(); if (remote.revelar || remote.revelarBanca) somRevelacao(remote.revelarBanca ? 'banca' : 'heroi', telao.revelInicio); toast('Som da revelação ativado.'); }, 120); }
+        else if (a === 'testar') somTeste();
+        else if (a === 'desligar') { somParar(); if (som.ctx) som.ctx.suspend(); setTimeout(somPainelDesenhar, 60); }
+      });
+      el.addEventListener('input', function (e) { if (e.target.id === 'somVol') somVolume(+e.target.value / 100); });
+      var parado = null;
+      document.addEventListener('mousemove', function () {
+        var p = $('#somPainel'); if (!p) return;
+        p.classList.add('acordado'); clearTimeout(parado); parado = setTimeout(function () { p.classList.remove('acordado'); }, 3000);
+      });
+    }
+    somPainelDesenhar();
+  }
+  function somPainelDesenhar() {
+    var el = $('#somPainel'); if (!el) return;
+    var on = somAtivo();
+    if (el.getAttribute('data-estado') === String(on)) return;   // não redesenha à toa (o clique não pode "fugir")
+    el.setAttribute('data-estado', String(on));
+    el.classList.toggle('ligado', on);
+    el.innerHTML = on
+      ? '<span class="sp-ic" aria-hidden="true">♪</span><span class="sp-tx">Som ligado</span>' +
+        '<input id="somVol" type="range" min="0" max="100" value="' + Math.round(som.vol * 100) + '" aria-label="Volume da revelação">' +
+        '<button data-som="testar">Testar</button><button data-som="desligar" aria-label="Desligar o som">✕</button>'
+      : '<button class="sp-ativar" data-som="ativar"><span aria-hidden="true">♪</span> Ativar som da revelação</button>';
+  }
+
   function setRevelacaoBanca(v) {
     if (!remote.on) return;
     sbRpc('definir_revelacao_banca', { p_chave: localState.adminKey || '', p_revelar: !!v }).then(function (r) {
@@ -5059,6 +5231,8 @@
     document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao');
     document.body.classList.toggle('is-revela', ehTelao && remote.on && (remote.revelar || remote.revelarBanca));
     document.body.classList.toggle('is-revela-banca', ehTelao && remote.on && remote.revelarBanca);
+    somPainel(ehTelao && remote.on);
+    if (!(ehTelao && remote.on && (remote.revelar || remote.revelarBanca)) && som.agendado) somParar();
     // o site é aberto a todos: o CPF só é pedido na tela de votação, quando ela abre
     var gated = false;
     document.body.classList.toggle('is-gated', gated);
