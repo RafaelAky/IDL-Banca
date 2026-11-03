@@ -2196,3 +2196,12 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .banca-aviso-flut.sai { animation: bafSai .35s ease forwards; }
 @keyframes bafEntra { from { opacity: 0; transform: translate(-50%, -30px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 @keyframes bafSai { to { opacity: 0; transform: translate(-50%, -24px); } }
+/* ao vivo: chave para mostrar/esconder a aba Votação com a votação fechada */
+.av-vis { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--c-linha-forte); cursor: pointer; }
+.av-vis.on { border-color: var(--c-acao); background: #faf6ff; }
+.av-vis input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.av-vis input:checked + .cv-trilho { background: var(--c-acao); }
+.av-vis input:checked + .cv-trilho span { transform: translateX(22px); }
+.av-vis input:focus-visible + .cv-trilho { box-shadow: var(--anel); }
+.av-vis b { display: block; color: var(--c-roxo); font-size: .95rem; }
+.av-vis .tiny { display: block; color: var(--c-texto-2); }

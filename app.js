@@ -454,11 +454,12 @@
   }
   /* A aba Votação só aparece para o público quando a organização liga a
      chave "Mostrar a votação no site" no painel (abrir a votação também
-     liga). Quem está com o painel aberto neste aparelho sempre vê.
+     liga). Vale para todos, inclusive o aparelho da organização.
      Sem banco (modo prévia), vale a data do evento.                       */
   function mostraVotacao() {
-    if (localState.admin || localState.voted || votacaoAberta()) return true;
+    if (votacaoAberta()) return true;
     if (remote.on) return remote.visivel;
+    if (localState.admin || localState.voted) return true;
     return eventPhase() !== 'antes';
   }
   function navItens() {
@@ -3423,6 +3424,7 @@
       '<h2 id="cfTitle" class="h2">' + esc(c.title) + '</h2>' +
       '<p class="lead">' + esc(c.body) + '</p>' +
       '<button class="btn btn-block btn-lg ' + (c.danger ? 'btn-danger' : 'btn-primary') + '" data-act="confirmYes">' + esc(c.yes) + '</button>' +
+      (c.yes2 ? '<button class="btn btn-block btn-lg btn-outline" data-act="confirmYes2">' + esc(c.yes2) + '</button>' : '') +
       '<button class="btn btn-block btn-ghost" data-act="closeSheet">Cancelar</button>' +
       '</div></div>';
   }
@@ -4263,7 +4265,9 @@
       (remote.aberta
         ? '<button class="btn btn-danger btn-block btn-lg" data-act="askClose">Encerrar a votação</button>'
         : '<button class="btn btn-laranja btn-block btn-lg" data-act="askOpen">' + ico('i-vote') + ' Abrir a votação</button>') +
-      (!remote.visivel && !remote.aberta ? '<p class="tiny av-obs">A aba Votação ainda está escondida no site; abrir a votação também a mostra.</p>' : '') +
+      (!remote.aberta ? '<label class="av-vis' + (remote.visivel ? ' on' : '') + '"><input type="checkbox" data-act="toggleVisivelAv"' + (remote.visivel ? ' checked' : '') + '>' +
+        '<span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>' + (remote.visivel ? 'Aba Votação visível no site' : 'Aba Votação escondida do site') + '</b>' +
+        '<span class="tiny">' + (remote.visivel ? 'O público vê a aba (com a votação fechada).' : 'Abrir a votação mostra a aba de novo.') + '</span></span></label>' : '') +
       '</section>';
 
     var bancaC = '<section class="av-card">' +
@@ -5125,7 +5129,7 @@
     });
   }
 
-  function setVotacao(aberta, resultado) {
+  function setVotacao(aberta, resultado, visivelDepois) {
     if (!remote.on) {
       toast('Esta cópia está em modo prévia — abra a votação na versão publicada.');
       return;
@@ -5137,8 +5141,8 @@
         if (aberta != null) remote.aberta = aberta;
         if (resultado != null) remote.resultadoPublico = resultado;
         render();
-        toast(aberta === true ? 'Votação aberta.' : aberta === false ? 'Votação encerrada.' : 'Atualizado.');
-        syncEstado(false);
+        toast(aberta === true ? 'Votação aberta.' : aberta === false ? (visivelDepois === false ? 'Votação encerrada e escondida do site.' : 'Votação encerrada.') : 'Atualizado.');
+        if (visivelDepois === false) definirVisivel(false, true); else syncEstado(false);
       } else {
         toast(ERROS[r && r.erro] || 'Não consegui atualizar.');
       }
@@ -5163,6 +5167,15 @@
     }).catch(function (e) {
       toast(String(e && e.message) === 'http 404' ? 'O banco ainda não tem a função de zerar. Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.');
     });
+  }
+
+  // mostra/esconde a aba Votação no site (só com a votação fechada)
+  function definirVisivel(quer, quieto) {
+    if (!remote.on) { toast('Disponível na versão publicada.'); return; }
+    sbRpc('definir_visibilidade', { p_chave: localState.adminKey || '', p_visivel: !!quer }).then(function (r) {
+      if (r && r.ok) { remote.visivel = !!r.visivel; render(); if (!quieto) toast(r.visivel ? 'A aba Votação agora aparece para todos.' : 'A aba Votação foi escondida do site.'); }
+      else { render(); if (!(r && r.erro === 'chave_invalida')) toast('Não consegui mudar agora. Tente de novo.'); }
+    }).catch(function () { render(); toast('Sem conexão com o servidor.'); });
   }
 
   function loadResult() {
@@ -5272,6 +5285,7 @@
     else if (act === 'cancelVote') { if (!flow.busy) { flow.picked = null; flow.error = ''; flow.palavra = ''; renderOverlay(); } }
     else if (act === 'confirmVote') submitVote();
     else if (act === 'confirmYes') { var c = admin.confirm; admin.confirm = null; if (c && c.run) c.run(); renderOverlay(); }
+    else if (act === 'confirmYes2') { var c2 = admin.confirm; admin.confirm = null; if (c2 && c2.run2) c2.run2(); renderOverlay(); }
     else if (act === 'askLogout') {
       admin.confirm = { title: 'Sair do painel?', body: 'Nada do conteúdo se perde. Só que, para voltar, este aparelho vai pedir a senha de novo.', yes: 'Sim, sair',
         run: function () { localState.admin = false; localState.adminKey = ''; login.erro = ''; adminRes.dados = null; saveLocal(); go('home'); } };
@@ -5299,8 +5313,9 @@
       renderOverlay();
     }
     else if (act === 'askClose') {
-      admin.confirm = { title: 'Encerrar a votação?', body: 'Ninguém mais conseguirá votar. Os votos já registrados continuam guardados.', yes: 'Sim, encerrar', danger: true,
-        run: function () { setVotacao(false, null); } };
+      admin.confirm = { title: 'Encerrar a votação?', body: 'Ninguém mais conseguirá votar. Os votos já registrados continuam guardados. A aba Votação continua no site (mostrando "votação encerrada") ou some?', danger: true,
+        yes: 'Encerrar e esconder do site', run: function () { setVotacao(false, null, false); },
+        yes2: 'Encerrar e manter a aba visível', run2: function () { setVotacao(false, null); } };
       renderOverlay();
     }
     else if (act === 'askZerarTudo') {
@@ -5593,6 +5608,7 @@
     if (act === 'filtroFotos') { filtFotos = t.value || 'todas'; render(); var sel = $('#filtroFotos'); if (sel) sel.focus({ preventScroll: true }); return; }
     if (act === 'setPalavra') { flow.palavra = t.value; }
     else if (act === 'palcoEscolher') { definirPalco(t.value || null); }
+    else if (act === 'toggleVisivelAv') { definirVisivel(!!t.checked); }
     else if (act === 'toggleVisivel') {
       var quer = !!t.checked;
       if (!remote.on) { toast('Disponível na versão publicada.'); t.checked = !quer; return; }
