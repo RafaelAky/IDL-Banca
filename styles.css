@@ -2479,3 +2479,4 @@ body.is-revela-banca .telao, .telao.tl-banca { background: radial-gradient(1200p
 .sl-prog li { font-size: clamp(15px, 1.5vw, 32px); padding-bottom: .6vh; }
 .sl-programacao .sl-col { padding-bottom: 6vh; }
 .sl-eq-figs { height: 70vh; }
+.tl-preta { position: fixed; inset: 0; z-index: 200; background: #000; }

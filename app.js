@@ -4510,12 +4510,23 @@
     if (j !== i) irSlide(l[j].key);
   }
   // teclado / passador no computador do telão
+  /* passadores de slide funcionam como teclado: → ↓ PageDown espaço (avança),
+     ← ↑ PageUp (volta). O botão "iniciar" do passador manda F5, que aqui NÃO
+     recarrega a página; o botão de "tela preta" (B ou .) escurece o telão.  */
   document.addEventListener('keydown', function (e) {
-    if (route.name !== 'telao' || !localState.admin || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (route.name !== 'telao' || e.altKey || e.ctrlKey || e.metaKey) return;
     var k = e.key;
-    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); passoSlide(1); }
-    else if (k === 'ArrowLeft' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); passoSlide(-1); }
+    if (k === 'F5') { e.preventDefault(); return; }
+    if (k === 'b' || k === 'B' || k === '.' || k === 'w' || k === 'W') { e.preventDefault(); telaoPreta(); return; }
+    if (!localState.admin) return;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); telaoPreta(false); passoSlide(1); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); telaoPreta(false); passoSlide(-1); }
   });
+  function telaoPreta(forcar) {
+    var el = $('#tlPreta'), ligar = forcar == null ? !el : forcar;
+    if (ligar && !el) { el = document.createElement('div'); el.id = 'tlPreta'; el.className = 'tl-preta'; document.body.appendChild(el); }
+    else if (!ligar && el) el.remove();
+  }
 
   // ---------- controlador (#/controle) ----------
   function viewControle() {
@@ -5605,7 +5616,9 @@
     document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao' || route.name === 'controle');
     document.body.classList.toggle('is-revela', ehTelao && remote.on && (remote.revelar || remote.revelarBanca));
     document.body.classList.toggle('is-revela-banca', ehTelao && remote.on && remote.revelarBanca);
-    somPainel(ehTelao && remote.on);
+    // som sempre ligado no telão, sem menu na tela: o primeiro clique/tecla libera
+    if (ehTelao && remote.on) somAuto();
+    var spV = $('#somPainel'); if (spV) spV.remove();
     if (!(ehTelao && remote.on && (remote.revelar || remote.revelarBanca)) && som.agendado) somParar();
     // o site é aberto a todos: o CPF só é pedido na tela de votação, quando ela abre
     var gated = false;
