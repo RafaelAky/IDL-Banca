@@ -3428,14 +3428,14 @@
     return oficial || (location.origin + location.pathname.replace(/index\.html$/, '').replace(/\/+$/, ''));
   }
   function telaoUrlVoto() { return siteBase() + '/#/votacao'; }
-  function telaoQrSvg(texto) {
+  function telaoQrSvg(texto, cor) {
     if (typeof window.qrcode !== 'function') return '';
     var q = window.qrcode(0, 'M');
     q.addData(texto); q.make();
     var n = q.getModuleCount(), d = '';
     for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) d += 'M' + c + ' ' + r + 'h1v1h-1z';
     return '<svg viewBox="-2 -2 ' + (n + 4) + ' ' + (n + 4) + '" shape-rendering="crispEdges" role="img" aria-label="QR Code para a votação">' +
-      '<rect x="-2" y="-2" width="' + (n + 4) + '" height="' + (n + 4) + '" fill="#fff"/><path d="' + d + '" fill="#2e006a"/></svg>';
+      '<rect x="-2" y="-2" width="' + (n + 4) + '" height="' + (n + 4) + '" fill="#fff"/><path d="' + d + '" fill="' + (cor || '#2e006a') + '"/></svg>';
   }
   function telaoGarantirQr() {
     var url = telaoUrlVoto();
@@ -3964,9 +3964,10 @@
 
   /* ------------------- telas com QR Code para a mesa da banca ------------------- */
   var qrCache = {}, qrLibPedida = false;
-  function qrPara(url) {
-    if (qrCache[url]) return qrCache[url];
-    if (typeof window.qrcode === 'function') { qrCache[url] = telaoQrSvg(url); return qrCache[url]; }
+  function qrPara(url, cor) {
+    var ch = url + '|' + (cor || '');
+    if (qrCache[ch]) return qrCache[ch];
+    if (typeof window.qrcode === 'function') { qrCache[ch] = telaoQrSvg(url, cor); return qrCache[ch]; }
     if (!qrLibPedida) {
       qrLibPedida = true;
       var sc = document.createElement('script'); sc.src = 'vendor/qrcode.js';
@@ -3978,7 +3979,7 @@
   function viewMesa() {
     var dec = route.param === 'decisao';
     var url = siteBase() + (dec ? '/#/decisao' : '/#/banca');
-    var svg = qrPara(url);
+    var svg = qrPara(url, dec ? '#7a2c06' : '#2e006a');
     var passos = dec
       ? ['Entre com seu nome e sobrenome e a senha da banca', 'Veja a média de cada projeto, dada por todos os jurados', 'Escolha o projeto vencedor e confirme o seu voto']
       : ['Entre com seu nome e sobrenome e a senha da banca', 'Toque no card do projeto — o que está no palco aparece como NO AR', 'Dê uma nota de 1 a 5 em cada um dos 6 critérios e confirme'];
@@ -3991,7 +3992,7 @@
           '<ol class="mesa-passos">' + passos.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
           (dec ? '' : '<p class="mesa-crit">' + CRITERIOS.map(function (c) { return esc(c.t); }).join(' · ') + '</p>') +
         '</div>' +
-        '<div class="mesa-qr"><span class="mesa-qr-cab">Aponte a câmera do celular</span>' +
+        '<div class="mesa-qr"><span class="mesa-qr-tag">' + (dec ? '★ Decisão final' : '✎ Avaliação dos projetos') + '</span><span class="mesa-qr-cab">Aponte a câmera do celular</span>' +
           '<div class="mesa-qr-img">' + (svg || '<span class="tl-qr-carrega">Gerando o QR Code…</span>') + '</div>' +
           '<span class="mesa-url">' + esc(url.replace(/^https?:\/\//, '')) + '</span></div>' +
       '</div>' +

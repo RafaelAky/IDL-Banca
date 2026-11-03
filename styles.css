@@ -2053,3 +2053,29 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .topo-turma { padding-bottom: clamp(20px, 3vw, 40px); }
 .topo-turma .turma { margin-top: 12px; }
 .topo-turma .turma-dica { margin-top: 18px; }
+
+/* telas da mesa: cada uma com a sua cor, para não confundir qual QR é qual */
+.mesa-qr-tag { display: inline-flex; align-items: center; gap: .4em; padding: .4em 1.1em; border-radius: 99px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: clamp(.8rem, 1.1vw, 1.1rem); background: var(--c-roxo); color: #fff; }
+/* decisão final: tudo no laranja */
+.mesa.mesa-dec { background: radial-gradient(1100px 700px at 18% 8%, #ffa04d 0%, #f97218 45%, #c74a07 100%); }
+.mesa-dec .tl-fundo-s { color: rgba(255,255,255,.3); }
+.mesa-dec .mesa-eyebrow { color: #fff3e6; }
+.mesa-dec h1 { color: #fff; text-shadow: 0 4px 24px rgba(122,44,6,.25); }
+.mesa-dec .mesa-passos li { color: #fff; }
+.mesa-dec .mesa-passos li::before { background: #fff; color: #c74a07; }
+.mesa-dec .mesa-status { background: rgba(122,44,6,.28); color: #fff; }
+.mesa-dec .mesa-status.on { background: #fff; color: #c74a07; }
+.mesa-dec .mesa-status.on i { background: #f97218; }
+.mesa-dec .mesa-qr { color: #7a2c06; border: 6px solid #ffd2ad; box-shadow: 0 30px 80px rgba(122,44,6,.4); }
+.mesa-dec .mesa-qr-tag { background: #f97218; }
+.mesa-dec .mesa-url { color: #c74a07; }
+.mesa-dec .mesa-print { border-color: rgba(255,255,255,.55); color: #fff; }
+@media print {
+  .mesa.mesa-dec { background: #fff !important; }
+  .mesa-dec h1, .mesa-dec .mesa-passos li { color: #c74a07; }
+  .mesa-dec .mesa-qr { border-color: #f97218; }
+}
+@media (max-width: 820px) {
+  .mesa { flex-direction: column; gap: 22px; }
+  .mesa-print { position: relative; right: auto; bottom: auto; z-index: 1; }
+}
