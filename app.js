@@ -450,7 +450,7 @@
   // a aba do painel só existe para o CPF da organização.
   // para todo mundo o site abre normal, e ela simplesmente não é desenhada.
   function ehAdmin() {
-    return !!localState.hash && ehContaDaOrg(localState.hash);
+    return !!localState.admin;
   }
   /* A aba Votação só aparece para o público quando a organização liga a
      chave "Mostrar a votação no site" no painel (abrir a votação também
@@ -462,13 +462,16 @@
     if (localState.admin || localState.voted) return true;
     return eventPhase() !== 'antes';
   }
+  var NAV_BANCA = { id: 'banca', label: 'Banca', shortLabel: 'Banca', icon: 'i-users' };
   function navItens() {
     var base = mostraVotacao() ? NAV_BASE : NAV_BASE.filter(function (n) { return n.id !== 'votacao'; });
+    if (bancaLogada()) base = base.concat([NAV_BANCA]);
     return ehAdmin() ? base.concat([NAV_ADMIN]) : base;
   }
   function navGroup(cur) {
     if (cur === 'heroi' || cur === 'projeto' || cur === 'herois') return 'projetos';
     if (cur === 'resultado') return 'votacao';
+    if (cur === 'decisao') return 'banca';
     return cur;
   }
   function renderNav() {
@@ -2571,37 +2574,7 @@
   }
 
   function viewAdmin() {
-    if (!localState.admin) {
-      var jaIdentificada = !!localState.hash && ehContaDaOrg(localState.hash);
-      return '<div class="view view-faixa">' +
-        faixaTopo('escuro', 'Acesso restrito', 'Painel da organização',
-          'Só os CPFs da organização entram aqui. Esta senha é pedida uma vez só neste aparelho — depois a aba Painel abre direto.',
-          '', '') +
-        '<div class="corpo"><div class="painel-centro">' +
-        '<form id="pinForm" class="painelinho painelinho-destaque stack">' +
-        '<span class="ic-trava" aria-hidden="true">' + ico('i-key') + '</span>' +
-        (jaIdentificada
-          ? '<div class="banner"><span class="bi">' + ico('i-lock') + '</span><p class="grow">' +
-            'Reconheci o CPF com que você entrou no aplicativo' + (firstName(localState.name) ? ', ' + esc(firstName(localState.name)) : '') +
-            '. Falta só a senha.</p></div>'
-          : '<div class="field' + (login.erro ? ' err' : '') + '">' +
-            '<label for="admCpf">CPF da conta</label>' +
-            '<input class="big" id="admCpf" type="text" inputmode="numeric" autocomplete="off" ' +
-            'placeholder="000.000.000-00" maxlength="14"></div>') +
-        '<div class="field' + (login.erro ? ' err' : '') + '">' +
-        '<label for="pin">Senha</label>' +
-        '<input class="big" id="pin" type="password" autocomplete="current-password" placeholder="••••••••"></div>' +
-        (login.erro ? '<span class="errmsg">' + ico('i-info') + esc(login.erro) + '</span>' : '') +
-        '<button class="btn btn-primary btn-block btn-lg" type="submit"' + (login.ocupado ? ' disabled' : '') + '>' +
-        (login.ocupado ? 'Verificando…' : 'Entrar no painel') + '</button></form>' +
-        '<div class="gnote">' + ico('i-lock') +
-        '<p>Seu CPF já disse <b>quem</b> é — e só os CPFs da organização abrem esta aba. A senha existe porque um CPF circula em ficha de matrícula e lista de presença, ' +
-        'e sem ela quem soubesse o seu número poderia abrir a votação fora de hora ou ver o resultado antes de você publicar.</p></div>' +
-        (!SENHA_HASH
-          ? '<span class="errmsg">' + ico('i-info') + 'Nenhuma senha configurada. Preencha o IDL_SENHA_HASH no config.js.</span>' : '') +
-        '<button class="btn btn-ghost btn-sm" data-go="home">Voltar ao aplicativo</button>' +
-        '</div></div></div>';
-    }
+    if (!localState.admin) return viewEntrar('admin');
 
     var tabs = '<div class="tabs" role="tablist">' + ADMIN_TABS.map(function (t) {
       var curto = { programacao: 'Agenda', retro: 'Fotos', geral: 'Geral' }[t[0]];
@@ -3693,6 +3666,88 @@
     });
   }
 
+  /* ============================ ENTRADA ÚNICA ============================
+     #/entrar (ou 4 toques na logo, ou o QR da mesa): nome completo + senha.
+     A senha diz o papel: a da organização abre o painel; a da banca abre a
+     área de avaliação. O voto do público continua sendo pelo CPF.        */
+  var entrada = { erro: '', ocupado: false, nome: '' };
+  function normSenha(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
+  function viewEntrar(contexto, sub) {
+    var jaAdm = !!localState.admin, jaBan = bancaLogada();
+    var titulo = contexto === 'admin' ? 'Painel da organização' : contexto === 'banca' ? 'Área da banca' : 'Entrar';
+    var texto = sub || (contexto === 'admin' ? 'Entre com o seu nome e a senha da organização.'
+      : contexto === 'banca' ? 'Avalie cada projeto em 6 critérios, de 1 a 5, e confirme.'
+      : 'Acesso da organização e da banca. Use o seu nome completo e a senha que você recebeu.');
+    var status = (jaAdm || jaBan) ? '<div class="entrar-status">' +
+        (jaAdm ? '<div><b>Organização</b><span class="tiny">' + esc(localState.name || 'conectado') + '</span></div><button class="btn btn-primary btn-sm" data-go="admin">Abrir o painel</button>' : '') +
+        (jaBan ? '<div><b>Banca</b><span class="tiny">' + esc(localState.banca.nome) + '</span></div><button class="btn btn-primary btn-sm" data-go="banca">Abrir a banca</button>' : '') +
+        '<button class="btn btn-ghost btn-sm" data-act="sairTudo">Sair deste aparelho</button></div>' : '';
+    return '<div class="view view-faixa">' +
+      faixaTopo('escuro', 'IDL Formatura · Acesso', titulo, texto, '', '') +
+      '<div class="corpo"><div class="painel-centro stack">' + status +
+      '<form id="entrarForm" class="painelinho painelinho-destaque stack banca-login" novalidate>' +
+      ((jaAdm || jaBan) ? '<p class="tiny" style="margin:0">Entrar com outra senha neste aparelho:</p>' : '') +
+      '<div class="field"><label for="eNome">Nome completo</label>' +
+        '<input class="big" id="eNome" type="text" autocomplete="name" autocapitalize="words" maxlength="60" placeholder="Ex.: Maria Oliveira" value="' + esc(entrada.nome || (contexto === 'banca' && banca.loginNome) || '') + '">' +
+        '<span class="tiny">Na banca, é assim que suas avaliações aparecem. Use o mesmo nome se entrar por outro aparelho.</span></div>' +
+      '<div class="field"><label for="eSenha">Senha</label><input class="big" id="eSenha" type="password" autocomplete="current-password" placeholder="••••••••"></div>' +
+      (entrada.erro ? '<span class="errmsg">' + ico('i-info') + esc(entrada.erro) + '</span>' : '') +
+      '<button class="btn btn-primary btn-block btn-lg" type="submit"' + (entrada.ocupado ? ' disabled' : '') + '>' + (entrada.ocupado ? 'Verificando…' : 'Entrar') + '</button>' +
+      '<p class="tiny">A senha foi passada pela organização. Ela vale do jeito que for digitada: com ou sem espaço, maiúscula ou minúscula.</p>' +
+      '</form>' +
+      '<button class="btn btn-ghost btn-sm" data-go="home" style="justify-self:center">Voltar ao site</button>' +
+      '</div></div></div>';
+  }
+  function entrarSubmit() {
+    var nome = String(($('#eNome') || {}).value || '').trim().replace(/\s+/g, ' ');
+    var senha = normSenha(($('#eSenha') || {}).value);
+    entrada.nome = nome;
+    if (!senha) { entrada.erro = 'Informe a senha.'; render(); return; }
+    entrada.ocupado = true; entrada.erro = ''; render();
+    function papel(p) {
+      entrada.ocupado = false;
+      if (p === 'admin') {
+        localState.admin = true; localState.adminKey = senha;
+        if (nome) localState.name = nome;
+        saveLocal(); entrada.erro = ''; entrada.nome = '';
+        toast('Bem-vindo ao painel' + (nome ? ', ' + firstName(nome) : '') + '.');
+        go('admin'); render(); if (remote.on) loadResult();
+        return;
+      }
+      if (p === 'banca') {
+        if (nome.length < 3 || nome.split(' ').length < 2) { entrada.erro = 'Para a banca, informe o seu nome e sobrenome.'; render(); return; }
+        localState.banca = { nome: nome, senha: senha }; saveLocal();
+        banca.erro = ''; banca.carregou = false; banca.itens = {}; banca.rascunho = {}; banca.dec.dados = null; banca.dec.escolha = null;
+        entrada.erro = ''; entrada.nome = '';
+        toast('Bem-vindo à banca, ' + firstName(nome) + '.');
+        go(route.name === 'decisao' ? 'decisao' : 'banca'); render();
+        return;
+      }
+      entrada.erro = 'Senha incorreta.'; render();
+    }
+    if (!remote.on) {
+      sha256(senha + '|' + SALT_SENHA).then(function (hs) { papel(SENHA_HASH && hs === SENHA_HASH ? 'admin' : null); });
+      return;
+    }
+    sbRpc('entrar', { p_senha: senha }).then(function (r) { papel(r && r.ok ? r.papel : null); })
+      .catch(function (e) {
+        if (String(e && e.message) !== 'http 404') { entrada.ocupado = false; entrada.erro = 'Sem conexão com o servidor. Verifique sua internet.'; render(); return; }
+        // banco ainda na versão anterior: tenta as funções antigas
+        sbRpc('entrar_admin', { p_chave: senha }).then(function (r) {
+          if (r && r.ok) return papel('admin');
+          return sbRpc('entrar_banca', { p_senha: senha }).then(function (r2) { papel(r2 && r2.ok ? 'banca' : null); });
+        }).catch(function () { entrada.ocupado = false; entrada.erro = 'Sem conexão com o servidor.'; render(); });
+      });
+  }
+  // a senha da organização mudou em outro aparelho: este sai do painel
+  function conferirSessao() {
+    if (!remote.on || !localState.admin || !localState.adminKey) return;
+    sbRpc('entrar_admin', { p_chave: localState.adminKey }).then(function (r) {
+      if (r && r.ok === false) { localState.admin = false; localState.adminKey = ''; saveLocal(); render(); toast('A senha da organização mudou. Entre de novo.'); }
+    }).catch(function () {});
+  }
+  setTimeout(conferirSessao, 1500);
+
   /* ================================ BANCA ================================
      #/banca          os jurados entram com nome e sobrenome + a senha da banca
                       e veem um card por projeto (o que está no palco fica "NO AR")
@@ -3743,20 +3798,7 @@
     var hs = (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2);
     return hs.length ? '<span class="' + cls + ' n' + hs.length + '" aria-hidden="true">' + hs.map(function (h) { return '<img src="' + esc(h.image) + '" alt="">'; }).join('') + '</span>' : '';
   }
-  function bancaLogin(sub) {
-    return '<div class="view view-faixa">' +
-      faixaTopo('escuro', 'Banca Final IDL Tech', 'Área da banca', sub, '', '') +
-      '<div class="corpo"><div class="painel-centro">' +
-      '<form id="bancaLogin" class="painelinho painelinho-destaque stack banca-login" novalidate>' +
-      '<div class="field"><label for="bJurado">Nome e sobrenome</label>' +
-        '<input class="big" id="bJurado" type="text" autocomplete="name" autocapitalize="words" maxlength="60" placeholder="Ex.: Maria Oliveira" value="' + esc(banca.loginNome || '') + '">' +
-        '<span class="tiny">É assim que suas avaliações aparecem para a organização. Use o mesmo nome se entrar por outro aparelho.</span></div>' +
-      '<div class="field"><label for="bSenha">Senha da banca</label><input class="big" id="bSenha" type="password" autocomplete="off" placeholder="••••••••"></div>' +
-      (banca.erro ? '<span class="errmsg">' + ico('i-info') + esc(banca.erro) + '</span>' : '') +
-      '<button class="btn btn-primary btn-block btn-lg" type="submit">Entrar</button>' +
-      '<p class="tiny">A senha é a mesma para toda a banca e foi passada pela organização.</p>' +
-      '</form></div></div></div>';
-  }
+  function bancaLogin(sub) { return viewEntrar('banca', sub); }
   function bancaSemBanco() {
     return '<div class="view view-faixa">' + faixaTopo('escuro', 'Banca', 'Área da banca', 'Disponível na versão publicada do site, com o banco de dados ligado.', '', '') + '</div>';
   }
@@ -3981,7 +4023,7 @@
     if (!d && !banca.dec.erro) setTimeout(carregarDecisao, 0);
     var topo = '<section class="banca-topo"><div class="cont">' +
       '<div><span class="eyebrow">Banca · ' + esc(localState.banca.nome) + '</span><h1 class="titulo-pag">Decisão final</h1>' +
-      '<p class="small">Médias de todos os jurados, de 1 a 5. Escolha o projeto vencedor e confirme.</p></div>' +
+      '<p class="small">Prêmio da banca: o Projeto destaque. Veja as médias e as notas de todos os jurados (e, como informação, o voto do público) e escolha o vencedor.</p></div>' +
       '<a class="btn btn-ghost btn-sm" href="#/banca">Avaliações</a></div></section>';
     if (banca.dec.erro && !d) return '<div class="view banca-view">' + topo + '<div class="cont banca-corpo"><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">' + esc(banca.dec.erro) + '</p></div></div></div>';
     if (!d) return '<div class="view banca-view">' + topo + '<div class="cont banca-corpo"><p class="small">Carregando…</p></div></div>';
@@ -3993,6 +4035,24 @@
         '<a class="btn btn-outline" href="#/banca">Ver minhas avaliações</a></div></div></div>';
     }
     var rank = rankingMedias(d.medias), votos = d.votos || {}, meu = d.meu_voto, esc1 = banca.dec.escolha;
+    var pub = d.publico || {}, pubTot = d.publico_total || 0;
+    var porProj = {}; (d.avaliacoes || []).forEach(function (a) { (porProj[a.projeto] = porProj[a.projeto] || []).push(a); });
+    function votosPublico(p) {
+      var n = pub[p.id] || 0; (p.heroes || []).forEach(function (h) { n += pub[h.id] || 0; }); return n;
+    }
+    function detalhePublico(p) {
+      var hs = (p.heroes || []).map(function (h) { return '<li><span>' + esc(h.name) + '</span><b class="num">' + (pub[h.id] || 0) + '</b></li>'; }).join('');
+      return '<div class="dc-pub"><span class="eyebrow">Voto do público · Herói da Trilha</span><ul>' + hs + '</ul></div>';
+    }
+    function detalheJurados(p) {
+      var its = porProj[p.id] || [];
+      if (!its.length) return '<p class="tiny">Nenhum jurado avaliou este projeto.</p>';
+      return '<div class="dc-jur"><span class="eyebrow">Notas de cada jurado</span>' + its.map(function (a) {
+        return '<div class="dc-j"><div class="dc-j-cab"><b>' + esc(a.jurado) + '</b><span class="num">média ' + fmt1(notasMedia(a.notas)) + '</span></div>' +
+          '<div class="dc-j-notas">' + CRITERIOS.map(function (c) { return '<span title="' + esc(c.t) + '">' + esc(c.t.split(' ')[0]) + ' <b class="num">' + (a.notas[c.k] || '–') + '</b></span>'; }).join('') + '</div>' +
+          (a.comentario ? '<p>' + esc(a.comentario) + '</p>' : '') + '</div>';
+      }).join('') + '</div>';
+    }
     var venc = vencedorDecisao(rank, votos), todos = d.jurados && d.votaram >= d.jurados;
     var lista = rank.map(function (l, i) {
       var sel = esc1 === l.p.id, nv = votos[l.p.id] || 0;
@@ -4001,14 +4061,15 @@
           '<span class="dc-pos num">' + (l.media == null ? '–' : (i + 1) + 'º') + '</span>' +
           bancaFig(l.p, 'bc-fig') +
           '<span class="bc-txt"><span class="bc-nome">' + esc(l.p.name) + '</span><span class="tiny">' + esc(nomesHerois(l.p)) + ' · ' + l.jurados + (l.jurados === 1 ? ' jurado' : ' jurados') + '</span>' +
+          '<span class="dc-pubchip">Público: <b class="num">' + votosPublico(l.p) + '</b>' + (pubTot ? ' · ' + Math.round(votosPublico(l.p) / pubTot * 100) + '%' : '') + '</span>' +
           (meu ? '<span class="dc-votos">' + nv + (nv === 1 ? ' voto' : ' votos') + '</span>' : '') + '</span>' +
           '<span class="dc-media"><b class="num">' + fmt1(l.media) + '</b><span class="tiny">média</span></span>' +
           '<span class="dc-radio" aria-hidden="true"></span>' +
         '</button>' +
-        '<details class="dc-det"><summary>Ver notas por critério</summary>' + critBarras(l.crit) + '</details>' +
+        '<details class="dc-det"><summary>Ver notas, jurados e público</summary>' + critBarras(l.crit) + detalheJurados(l.p) + detalhePublico(l.p) + '</details>' +
         '</div>';
     }).join('');
-    var placar = '<div class="dec-placar"><b class="num">' + (d.votaram || 0) + ' de ' + (d.jurados || 0) + '</b> jurados já votaram' +
+    var placar = '<div class="dec-placar"><b class="num">' + (d.votaram || 0) + ' de ' + (d.jurados || 0) + '</b> jurados já votaram' + (pubTot ? ' · público: <b class="num">' + pubTot + '</b> votos no Herói da Trilha' : '') +
       (meu && venc ? (venc.empate
         ? ' · <span>Empate em ' + venc.votos + (venc.votos === 1 ? ' voto' : ' votos') + ' — pela média, à frente: <b>' + esc(venc.lider.p.name) + '</b></span>'
         : ' · <span>' + (todos ? 'Vencedor' : 'Mais votado até agora') + ': <b>' + esc(venc.lider.p.name) + '</b> (' + venc.votos + (venc.votos === 1 ? ' voto' : ' votos') + ')</span>') : '') +
@@ -4146,8 +4207,12 @@
         '<div class="row wrap" style="gap:8px"><button class="btn btn-outline btn-sm" data-act="bancaAtualizar">Atualizar</button>' +
         '<button class="btn btn-outline btn-sm" data-act="bancaPlanilha">' + ico('i-save') + ' Baixar planilha</button></div></div>' +
         tabela + '</section>' +
-      '<section class="stack"><h3 class="h3">Senha da banca</h3>' +
-      '<p class="small">É a mesma para todos os jurados. Começa como <b>banca2026</b>; troque antes do evento.</p>' +
+      '<section class="stack"><h3 class="h3">Senhas de acesso</h3>' +
+      '<p class="small">A entrada é a mesma para todos: <b>4 toques na logo</b> do site (ou o QR da mesa) e depois nome completo + senha. A senha decide o papel. Ela vale com ou sem espaço, maiúscula ou minúscula.</p>' +
+      '<form id="senhaAdminForm" class="row wrap" style="gap:10px;align-items:flex-end">' +
+      '<div class="field" style="flex:1 1 220px"><label for="novaSenhaAdmin">Nova senha da organização <span class="tiny">(hoje: trilhei2026, se não foi trocada)</span></label><input id="novaSenhaAdmin" type="text" autocomplete="off" minlength="6"></div>' +
+      '<button class="btn btn-primary" type="submit" style="min-height:53px">' + ico('i-save') + ' Salvar</button></form>' +
+      '<p class="small" style="margin-top:6px">Senha da banca: é a mesma para todos os jurados. Começa como <b>banca2026</b>.</p>' +
       '<form id="senhaBancaForm" class="row wrap" style="gap:10px;align-items:flex-end">' +
       '<div class="field" style="flex:1 1 220px"><label for="novaSenhaBanca">Nova senha da banca</label><input id="novaSenhaBanca" type="text" autocomplete="off" minlength="4"></div>' +
       '<button class="btn btn-primary" type="submit" style="min-height:53px">' + ico('i-save') + ' Salvar</button></form>' +
@@ -4610,6 +4675,7 @@
       case 'admin': return viewAdmin();
       case 'telao': return viewTelao();
       case 'banca': return viewBanca();
+      case 'entrar': return viewEntrar();
       case 'decisao': return viewDecisao();
       case 'mesa': return viewMesa();
       default: return viewHome();
@@ -5367,6 +5433,11 @@
     else if (act === 'desrevelar') setRevelacao(false);
     else if (act === 'bancaSair') { localState.banca = null; banca.itens = {}; banca.rascunho = {}; banca.carregou = false; banca.dec = { dados: null, erro: '', escolha: null, enviando: false, buscando: false }; saveLocal(); go('banca'); render(); }
     else if (act === 'bancaNota') bancaMarcar(el);
+    else if (act === 'sairTudo') {
+      localState.admin = false; localState.adminKey = ''; localState.banca = null;
+      banca.itens = {}; banca.rascunho = {}; banca.carregou = false; banca.dec = { dados: null, erro: '', escolha: null, enviando: false, buscando: false };
+      saveLocal(); toast('Você saiu deste aparelho.'); go('home'); render();
+    }
     else if (act === 'bancaConfirmar') bancaConfirmar(el.getAttribute('data-id'));
     else if (act === 'bancaVoltar') { go('banca'); window.scrollTo(0, 0); }
     else if (act === 'decEscolher') { banca.dec.escolha = el.getAttribute('data-id'); render(); }
@@ -5652,6 +5723,16 @@
     var f = ev.target; ev.preventDefault();
 
     if (f.matches && f.matches('form.bp-form')) return;
+    if (f.id === 'entrarForm') { entrarSubmit(); return; }
+    if (f.id === 'senhaAdminForm') {
+      var novaA = normSenha($('#novaSenhaAdmin').value);
+      if (novaA.length < 6) { toast('Use pelo menos 6 caracteres.'); return; }
+      sbRpc('definir_senha_admin', { p_chave: localState.adminKey || '', p_nova: novaA }).then(function (r) {
+        if (r && r.ok) { localState.adminKey = novaA; saveLocal(); $('#novaSenhaAdmin').value = ''; toast('Senha da organização trocada. Os outros aparelhos vão pedir a nova.'); }
+        else toast(r && r.erro === 'igual_banca' ? 'A senha da organização não pode ser igual à da banca.' : r && r.erro === 'senha_curta' ? 'Use pelo menos 6 caracteres.' : 'Não consegui trocar a senha.');
+      }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
+      return;
+    }
     if (f.id === 'bancaLogin') {
       var nome = String($('#bJurado').value || '').trim().replace(/\s+/g, ' ');
       banca.loginNome = nome;
@@ -5667,7 +5748,7 @@
       return;
     }
     if (f.id === 'senhaBancaForm') {
-      var nova = String($('#novaSenhaBanca').value || '').trim();
+      var nova = normSenha($('#novaSenhaBanca').value);
       if (nova.length < 4) { toast('Use pelo menos 4 caracteres.'); return; }
       sbRpc('definir_senha_banca', { p_chave: localState.adminKey || '', p_nova: nova }).then(function (r) {
         if (r && r.ok) { toast('Senha da banca trocada. Avise os jurados.'); $('#novaSenhaBanca').value = ''; }
@@ -5836,7 +5917,7 @@
       taps++;
       clearTimeout(timer);
       timer = setTimeout(function () { taps = 0; }, 1400);
-      if (taps >= 4) { taps = 0; go('admin'); }
+      if (taps >= 4) { taps = 0; go('entrar'); }
       else if (taps === 1) { if (route.name !== 'home') go('home'); }
     });
   })();

@@ -2205,3 +2205,26 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .av-vis input:focus-visible + .cv-trilho { box-shadow: var(--anel); }
 .av-vis b { display: block; color: var(--c-roxo); font-size: .95rem; }
 .av-vis .tiny { display: block; color: var(--c-texto-2); }
+
+/* entrada única */
+.entrar-status { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; padding: 14px 16px; border-radius: 16px; background: #fff; border: 1.5px solid var(--c-lilas); }
+.entrar-status b { display: block; color: var(--c-roxo); }
+.entrar-status .tiny { color: var(--c-texto-2); }
+.entrar-status > .btn-ghost { grid-column: 1 / -1; justify-self: start; }
+/* decisão: voto do público e notas de cada jurado */
+.dc-pubchip { display: inline-block; margin-top: 4px; font-size: 12px; color: var(--c-texto-2); }
+.dc-pubchip b { color: var(--c-roxo); }
+.dc-jur, .dc-pub { display: grid; gap: 8px; padding: 6px 14px 14px; }
+.dc-j { padding: 10px 12px; border-radius: 12px; background: var(--c-fundo); display: grid; gap: 6px; }
+.dc-j-cab { display: flex; justify-content: space-between; gap: 10px; color: var(--c-roxo); }
+.dc-j-cab span { font-size: 13px; font-weight: 700; }
+.dc-j-notas { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--c-texto-2); }
+.dc-j-notas b { color: var(--c-roxo); }
+.dc-j p { margin: 0; font-size: 13.5px; color: var(--c-texto-2); }
+.dc-pub ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dc-pub li { display: flex; justify-content: space-between; padding: 8px 12px; border-radius: 10px; background: #fff6ef; font-size: 14px; }
+.dc-pub li b { color: #c74a07; }
+/* barra de baixo com 8 itens (jurado + organização no mesmo aparelho) */
+.bottomnav[data-n="8"] ul { --n: 8; }
+.bottomnav[data-n="7"] .navbtn .lbl, .bottomnav[data-n="8"] .navbtn .lbl { font-size: 10px; letter-spacing: -.01em; }
+.bottomnav[data-n="8"] .navbtn svg { width: 20px; height: 20px; }
