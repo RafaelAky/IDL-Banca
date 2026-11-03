@@ -369,10 +369,17 @@
   }
   // cada equipe tem 6 minutos de apresentação + 1 de troca
   var MIN_POR_EQUIPE = 7;
+  /* miniatura leve (640 px de altura) das ilustrações dos Heróis, para listas,
+     cards e a turma. As páginas de detalhe e o telão usam a imagem grande.
+     Se a miniatura não existir no servidor, a imagem grande entra no lugar. */
+  function mini(src) {
+    var m = /^(?:\.?\/)?img\/(heroi-[\w-]+\.webp)(\?.*)?$/.exec(String(src || ''));
+    return m ? 'img/mini/' + m[1] + (m[2] || '') : src;
+  }
   function projectImage(p) {
     if (p.cover) return { src: p.cover, contain: false };
     var h = (p.heroes || [])[0];
-    return h && h.image ? { src: h.image, contain: true } : { src: '', contain: false };
+    return h && h.image ? { src: mini(h.image), contain: true } : { src: '', contain: false };
   }
   function initials(name) {
     return String(name || '?').replace(/\(.*?\)/g, ' ').trim().split(/\s+/).slice(0, 2)
@@ -671,7 +678,7 @@
   // moldura clara com o Herói apoiado na base — a ilustração nunca vai sobre fundo escuro
   function quadroHeroi(h, cls, attrs) {
     return '<span class="quadro ' + (cls || '') + '"' + (attrs || '') + '>' +
-      (h && h.image ? '<img src="' + esc(h.image) + '" alt="' + (attrs && /aria-hidden/.test(attrs) ? '' : 'Ilustração do Herói ' + esc(h.name)) + '" loading="lazy">' : '<span class="quadro-vazio">' + ico('i-seed') + '</span>') +
+      (h && h.image ? '<img src="' + esc(mini(h.image)) + '" alt="' + (attrs && /aria-hidden/.test(attrs) ? '' : 'Ilustração do Herói ' + esc(h.name)) + '" loading="lazy">' : '<span class="quadro-vazio">' + ico('i-seed') + '</span>') +
       '</span>';
   }
 
@@ -687,7 +694,7 @@
     return '<div class="rolo-caixa"><div class="turma-rolo"><div class="turma ' + (cls || '') + '" data-hmax="' + (alturaMax || 300) + '">' + hs.map(function (x) {
       return '<button class="turma-p" data-go="heroi/' + esc(x.hero.id) + '" ' +
         'aria-label="' + esc(x.hero.name + ', Herói do projeto ' + x.project.name) + '">' +
-        '<img src="' + esc(x.hero.image) + '" alt="" loading="lazy">' +
+        '<img src="' + esc(mini(x.hero.image)) + '" alt="" loading="lazy">' +
         '<span class="turma-nome" aria-hidden="true"><b>' + esc(x.hero.name) + '</b><small>' + esc(x.project.name) + '</small></span>' +
         '</button>';
     }).join('') + '</div></div>' +
@@ -1472,7 +1479,7 @@
       '<button class="vidposter" data-act="playVideo" data-v="' + esc(id) + '" data-t="' + esc(h.name) + '" ' +
       'aria-label="Assistir à campanha do Herói ' + esc(h.name) + '">' +
       '<span class="vp-art" aria-hidden="true">' +
-      (h.image ? '<img src="' + esc(h.image) + '" alt="" loading="lazy">' : '') + '</span>' +
+      (h.image ? '<img src="' + esc(mini(h.image)) + '" alt="" loading="lazy">' : '') + '</span>' +
       '<span class="vp-play" aria-hidden="true">' + ico('i-play') + '</span>' +
       '<span class="vp-text"><span class="vp-k">Assista</span>' +
       '<span class="vp-n">A campanha de ' + esc(h.name) + '</span>' +
@@ -2962,7 +2969,7 @@
     var rows = hs.length ? hs.map(function (x) {
       return '<div class="listrow">' +
         '<div class="logo-slot" style="width:46px;height:46px;border-radius:12px;border-style:' + (x.hero.image ? 'solid' : 'dashed') + '">' +
-        (x.hero.image ? '<img src="' + esc(x.hero.image) + '" alt="" style="object-fit:contain">' : '<span>' + esc(initials(x.hero.name)) + '</span>') + '</div>' +
+        (x.hero.image ? '<img src="' + esc(mini(x.hero.image)) + '" alt="" style="object-fit:contain">' : '<span>' + esc(initials(x.hero.name)) + '</span>') + '</div>' +
         '<div class="grow"><div class="h3" style="font-size:14.5px">' + esc(x.hero.name) +
         (videoId(x.hero.video) ? ' <span class="chip chip-soft" style="font-size:10px;vertical-align:middle">vídeo</span>' : '') + '</div>' +
         '<div class="tiny">' + esc(x.project.name) + (x.project.group ? ' · grupo ' + esc(x.project.group) : '') + '</div></div>' +
@@ -3000,7 +3007,7 @@
       return '<div class="listrow">' +
         '<label class="row grow" style="gap:11px;cursor:pointer">' +
         '<input type="checkbox" data-cand="' + esc(x.hero.id) + '"' + (ehCandidato(x.hero) ? ' checked' : '') + ' style="width:19px;height:19px;accent-color:var(--brand-primary)">' +
-        (x.hero.image ? '<img src="' + esc(x.hero.image) + '" alt="" style="width:34px;height:44px;object-fit:contain;object-position:bottom">' : '') +
+        (x.hero.image ? '<img src="' + esc(mini(x.hero.image)) + '" alt="" style="width:34px;height:44px;object-fit:contain;object-position:bottom">' : '') +
         '<span class="grow"><span class="h3" style="font-size:14.5px">' + esc(x.hero.name) + '</span>' +
         '<br><span class="tiny">' + esc((x.project.group ? 'grupo ' + x.project.group + ' · ' : '') + x.project.name) + '</span></span></label>' +
         '</div>';
@@ -3620,7 +3627,7 @@
     if (!p) return '';
     var prox = palcoVizinho(1);
     var figs = (p.heroes || []).filter(function (h) { return h.image; }).map(function (h) {
-      return '<img src="' + esc(h.image) + '" alt="">';
+      return '<img src="' + esc(mini(h.image)) + '" alt="">';
     }).join('');
     return '<section class="cont palco-card" aria-live="polite">' +
       '<div class="pc-figs" aria-hidden="true">' + figs + '</div>' +
@@ -3797,7 +3804,7 @@
   }
   function bancaFig(p, cls) {
     var hs = (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2);
-    return hs.length ? '<span class="' + cls + ' n' + hs.length + '" aria-hidden="true">' + hs.map(function (h) { return '<img src="' + esc(h.image) + '" alt="">'; }).join('') + '</span>' : '';
+    return hs.length ? '<span class="' + cls + ' n' + hs.length + '" aria-hidden="true">' + hs.map(function (h) { return '<img src="' + esc(mini(h.image)) + '" alt="">'; }).join('') + '</span>' : '';
   }
   function bancaLogin(sub) { return viewEntrar('banca', sub); }
   function bancaSemBanco() {
@@ -4357,7 +4364,7 @@
     if (!modoEv.em) setTimeout(function () { aoVivoAtualizar(true); }, 0);
     var p = palcoAtual(), ant = palcoVizinho(-1), prox = palcoVizinho(1), lista = projetosEmOrdem();
     var pos = p ? lista.indexOf(p) + 1 : 0;
-    var figs = p ? (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return '<img src="' + esc(h.image) + '" alt="">'; }).join('') : '';
+    var figs = p ? (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return '<img src="' + esc(mini(h.image)) + '" alt="">'; }).join('') : '';
     var opcoes = '<option value="">Escolher equipe…</option>' + lista.map(function (x) {
       return '<option value="' + esc(x.id) + '"' + (p && p.id === x.id ? ' selected' : '') + '>' + esc((x.slot ? x.slot + ' · ' : '') + x.name) + '</option>';
     }).join('');
@@ -6005,9 +6012,36 @@
     var im = e.target;
     if (!im || im.tagName !== 'IMG' || im.getAttribute('data-reserva')) return;
     var src = im.getAttribute('src') || '';
+    if (/(^|\/)img\/mini\//.test(src)) { im.setAttribute('src', src.replace('img/mini/', 'img/')); return; }
     var alt = RESERVA_IMG[src.replace(/^\.?\//, '').split('?')[0]];
     if (alt) { im.setAttribute('data-reserva', '1'); im.setAttribute('src', alt); }
   }, true);
+
+  /* pré-carregamento: com o site aberto e parado, baixa em segundo plano as
+     miniaturas de todos os Heróis (e as imagens da marca). Quem abre o site
+     antes do evento já fica com tudo no aparelho: abrir a votação não baixa
+     quase nada. Respeita o "economia de dados" do celular.               */
+  (function () {
+    var feito = false;
+    function preCarregar() {
+      if (feito) return; feito = true;
+      var c = navigator.connection || {};
+      if (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')) return;
+      var urls = [];
+      (db.projects || []).forEach(function (p) { (p.heroes || []).forEach(function (h) { if (h.image) urls.push(mini(h.image)); }); });
+      var i = 0;
+      (function proxima() {
+        if (i >= urls.length) return;
+        var im = new Image(); im.decoding = 'async';
+        im.onload = im.onerror = function () { setTimeout(proxima, 120); };
+        im.src = urls[i++];
+      })();
+    }
+    window.addEventListener('load', function () {
+      var ocioso = window.requestIdleCallback || function (f) { return setTimeout(f, 2500); };
+      setTimeout(function () { ocioso(preCarregar); }, 1500);
+    });
+  })();
 
   /* ----------------------- funcionar com internet fraca ------------------ */
   // guarda páginas, textos e imagens no aparelho (sw.js). A votação, o painel
