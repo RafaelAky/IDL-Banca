@@ -1812,7 +1812,7 @@
       remote.visivel = !!row.votacao_visivel;
       if (row.revelar_banca != null && remote.revelarBanca !== !!row.revelar_banca) {
         remote.revelarBanca = !!row.revelar_banca; mudou = true;
-        telao.revelInicio = remote.revelarBanca ? Date.now() : 0; telao.vencBanca = null;
+        if (remote.revelarBanca) telao.revelInicio = Date.now(); telao.vencBanca = null;
       }
       if (row.avaliacoes_abertas != null && remote.avaliacoes !== !!row.avaliacoes_abertas) { remote.avaliacoes = !!row.avaliacoes_abertas; mudou = true; }
       if (remote.decisao !== !!row.decisao_aberta) { remote.decisao = !!row.decisao_aberta; mudou = true; banca.dec.dados = null; if (route.name === 'decisao') carregarDecisao(); }
@@ -1820,7 +1820,7 @@
       if (remote.palco !== palcoNovo) { var tinhaPalco = remote.carregou; remote.palco = palcoNovo; mudou = true; if (tinhaPalco && palcoNovo) bancaAvisoPalco(palcoNovo); }
       if (remote.revelar !== !!row.revelar_telao) {
         remote.revelar = !!row.revelar_telao; mudou = true;
-        telao.revelInicio = remote.revelar ? Date.now() : 0; telao.vencedores = null;
+        if (remote.revelar) telao.revelInicio = Date.now(); telao.vencedores = null;
       }
       remote.aberta = !!row.votacao_aberta;
       remote.resultadoPublico = !!row.resultado_publico;
@@ -4641,6 +4641,66 @@
       else if (!(r && r.erro === 'chave_invalida')) toast('Não consegui atualizar.');
     }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'O banco ainda não tem essa opção. Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
   }
+  /* ===================== CENA DE REVELAÇÃO (telão) =====================
+     Suspense de 6,5 s (núcleo de luz crescendo, sementes girando cada vez
+     mais rápido, contagem 3-2-1) e a revelação: clarão, ondas de choque,
+     raios de luz girando, o vencedor surgindo, nome letra a letra, canhões
+     de confete e brilhos. Os tempos usam o relógio da revelação, então um
+     redesenho no meio não recomeça a animação.                            */
+  var REVELA_MS = 6500;
+  function cenaRevelacao(o) {
+    var passou = Math.max(0, Date.now() - (telao.revelInicio || Date.now()));
+    var tema = o.tema === 'banca' ? ' rv-banca' : '';
+    if (passou < REVELA_MS || o.itens == null) {
+      if (!telao.revelTimer) telao.revelTimer = setTimeout(function () { telao.revelTimer = null; if (route.name === 'telao') render(); }, Math.max(300, REVELA_MS - passou + 50));
+      return '<div class="telao tl-revela rv rv-suspense' + tema + '" style="--t0:-' + passou + 'ms">' + telaoFundo() +
+        '<span class="rv-vinheta" aria-hidden="true"></span>' +
+        '<span class="rv-nucleo" aria-hidden="true"></span>' +
+        '<div class="rv-orbita" aria-hidden="true">' + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(function (k) { return '<span style="--k:' + k + '">' + sementeSvg() + '</span>'; }).join('') + '</div>' +
+        '<div class="tr-centro rv-susp-txt"><span class="tr-eyebrow">' + esc(o.eyebrowS) + '</span>' +
+          '<h1 class="tr-chamada">' + esc(o.chamada) + '</h1></div>' +
+        '<div class="rv-conta" aria-hidden="true"><b style="--n:0">3</b><b style="--n:1">2</b><b style="--n:2">1</b></div>' +
+        '</div>';
+    }
+    var t1 = Math.min(passou - REVELA_MS, 60000);
+    var cores = o.tema === 'banca' ? ['#ffffff', '#2e006a', '#ffd2ad', '#b98fe8', '#ffe066'] : ['#f97218', '#ffffff', '#e8dbf7', '#ffd166', '#b98fe8'];
+    var canhoes = '';
+    for (var i = 0; i < 90; i++) {
+      var lado = i % 2 ? 1 : -1, ang = 0.25 + ((i * 37) % 50) / 100;
+      canhoes += '<i class="rv-pc" style="--lado:' + lado + ';--tx:' + (lado * (18 + ((i * 53) % 46))).toFixed(0) + 'vw;--ty:-' + (55 + ((i * 29) % 40)) + 'vh;--fy:' + (8 + (i % 5) * 4) + 'vh;--r:' + ((i * 71) % 360) + 'deg;--dl:' + ((i % 9) * 35) + 'ms;--cor:' + cores[i % cores.length] + ';--w:' + (0.8 + (i % 3) * .35).toFixed(2) + 'vh;--s:' + ang.toFixed(2) + '"></i>';
+    }
+    var chuva = '';
+    for (var c = 0; c < 40; c++) {
+      chuva += '<span class="tr-c" style="--x:' + ((c * 37) % 100) + '%;--d:' + (3.2 + (c % 7) * .5).toFixed(2) + 's;--a:' + (1.4 + (c * .23) % 3).toFixed(2) + 's;--r:' + ((c * 47) % 360) + 'deg;--cor:' + cores[c % cores.length] + '"></span>';
+    }
+    var brilhos = '';
+    for (var b = 0; b < 18; b++) {
+      brilhos += '<i class="rv-brilho" style="--x:' + (8 + (b * 47) % 84) + '%;--y:' + (8 + (b * 31) % 70) + '%;--dl:' + (900 + (b * 173) % 2200) + 'ms;--sz:' + (1.4 + (b % 4) * .6).toFixed(1) + 'vh"></i>';
+    }
+    function letras(txt, base) {
+      return String(txt).split('').map(function (ch, k) {
+        return ch === ' ' ? '<span class="rv-l rv-esp"> </span>' : '<span class="rv-l" style="--i:' + (base + k) + '">' + esc(ch) + '</span>';
+      }).join('');
+    }
+    return '<div class="telao tl-revela rv rv-revelado' + tema + '" style="--t1:-' + t1 + 'ms">' + telaoFundo() +
+      '<span class="rv-raios" aria-hidden="true"></span>' +
+      '<span class="rv-onda" style="--o:0" aria-hidden="true"></span><span class="rv-onda" style="--o:1" aria-hidden="true"></span><span class="rv-onda" style="--o:2" aria-hidden="true"></span>' +
+      '<div class="tr-confete" aria-hidden="true">' + chuva + '</div>' +
+      '<div class="rv-canhoes" aria-hidden="true">' + canhoes + '</div>' +
+      '<div class="rv-brilhos" aria-hidden="true">' + brilhos + '</div>' +
+      '<div class="tr-centro rv-centro">' +
+        '<span class="tr-eyebrow rv-eyebrow">' + esc(o.itens.length > 1 ? o.eyebrowEmpate : o.eyebrowR) + '</span>' +
+        '<div class="rv-vencedores n' + o.itens.length + '">' + o.itens.map(function (it, n) {
+          var off = n * 6;
+          return '<figure class="rv-v" style="--v:' + n + '">' +
+            '<span class="rv-figs"><span class="rv-halo" aria-hidden="true"></span>' + (it.imgs || []).map(function (src) { return '<img src="' + esc(src) + '" alt="">'; }).join('') + '</span>' +
+            '<figcaption><b class="rv-nome" aria-label="' + esc(it.nome) + '">' + letras(it.nome, off) + '</b>' +
+            (it.sub ? '<span class="rv-sub">' + esc(it.sub) + '</span>' : '') + '</figcaption></figure>';
+        }).join('') + '</div>' +
+      '</div>' +
+      '<span class="rv-flash" aria-hidden="true"></span>' +
+      '</div>';
+  }
   function setRevelacaoBanca(v) {
     if (!remote.on) return;
     sbRpc('definir_revelacao_banca', { p_chave: localState.adminKey || '', p_revelar: !!v }).then(function (r) {
@@ -4662,41 +4722,24 @@
   }
   // revelação do Projeto destaque (prêmio da banca), no laranja da decisão final
   function viewTelaoRevelacaoBanca() {
-    var ESPERA = 4200;
-    var passou = Date.now() - (telao.revelInicio || Date.now());
     if (!localState.adminKey) {
       return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">Projeto destaque</h1>' +
         '<p class="tr-nota">Para revelar aqui, entre como organização neste computador (4 toques na logo, ou #/entrar) e volte para o telão.</p></div></div>';
     }
     if (telao.vencBanca == null) telaoBuscarVencBanca();
-    if (passou < ESPERA || telao.vencBanca == null) {
-      if (!telao.revelTimer) telao.revelTimer = setTimeout(function () { telao.revelTimer = null; if (route.name === 'telao') render(); }, Math.max(300, ESPERA - passou + 50));
-      return '<div class="telao tl-revela tl-banca is-suspense">' + telaoFundo() +
-        '<div class="tr-centro"><span class="tr-eyebrow">IDL · Trilha 2026 · Escolha da banca</span>' +
-        '<h1 class="tr-chamada">E o Projeto destaque é…</h1>' +
-        '<div class="tr-sementes" aria-hidden="true">' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return '<span style="--k:' + k + '">' + sementeSvg() + '</span>'; }).join('') + '</div>' +
-        '</div></div>';
+    var itens = null;
+    if (telao.vencBanca != null) {
+      itens = telao.vencBanca.map(byId).filter(Boolean).map(function (p) {
+        return { imgs: (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return h.image; }), nome: p.name,
+                 sub: [p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ') };
+      });
+      if (!itens.length && Date.now() - (telao.revelInicio || 0) >= REVELA_MS) {
+        return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">A banca ainda não votou</h1><p class="tr-nota">A revelação aparece quando houver votos na decisão final.</p></div></div>';
+      }
     }
-    var ps = (telao.vencBanca || []).map(byId).filter(Boolean);
-    if (!ps.length) {
-      return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">A banca ainda não votou</h1><p class="tr-nota">A revelação aparece quando houver votos na decisão final.</p></div></div>';
-    }
-    var confete = '';
-    for (var i = 0; i < 36; i++) {
-      confete += '<span class="tr-c" style="--x:' + ((i * 37) % 100) + '%;--d:' + (2.6 + (i % 7) * .45).toFixed(2) + 's;--a:' + ((i * .23) % 2.4).toFixed(2) + 's;--r:' + ((i * 47) % 360) + 'deg;--cor:' + ['#ffffff', '#2e006a', '#ffd2ad', '#b98fe8'][i % 4] + '"></span>';
-    }
-    return '<div class="telao tl-revela tl-banca is-revelado">' + telaoFundo() +
-      '<div class="tr-confete" aria-hidden="true">' + confete + '</div>' +
-      '<div class="tr-centro">' +
-        '<span class="tr-eyebrow">' + (ps.length > 1 ? 'Empate! Os Projetos destaque da banca são' : 'O Projeto destaque da banca é') + '</span>' +
-        '<div class="tr-projetos n' + ps.length + '">' + ps.map(function (p) {
-          var hs = (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2);
-          return '<figure class="tr-p">' +
-            '<span class="tr-p-figs">' + hs.map(function (h) { return '<img src="' + esc(h.image) + '" alt="">'; }).join('') + '</span>' +
-            '<figcaption><b>' + esc(p.name) + '</b>' +
-            '<span>' + esc([p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ')) + '</span></figcaption></figure>';
-        }).join('') + '</div>' +
-      '</div></div>';
+    return cenaRevelacao({ tema: 'banca', itens: itens,
+      eyebrowS: 'IDL · Trilha 2026 · Escolha da banca', chamada: 'E o Projeto destaque é…',
+      eyebrowR: 'O Projeto destaque da banca é', eyebrowEmpate: 'Empate! Os Projetos destaque são' });
   }
   function telaoBuscarVencedores() {
     if (telao.buscando || !localState.adminKey) return;
@@ -4710,40 +4753,24 @@
     }).catch(function () { telao.buscando = false; });
   }
   function viewTelaoRevelacao() {
-    var ESPERA = 4200;
-    var passou = Date.now() - (telao.revelInicio || Date.now());
     if (!localState.adminKey) {
       return '<div class="telao tl-revela"><div class="tr-centro"><h1 class="tr-chamada">Revelação do Herói</h1>' +
-        '<p class="tr-nota">Para revelar aqui, entre no painel da organização neste computador (#/admin) e volte para o telão.</p></div></div>';
+        '<p class="tr-nota">Para revelar aqui, entre como organização neste computador (4 toques na logo, ou #/entrar) e volte para o telão.</p></div></div>';
     }
     if (telao.vencedores == null) telaoBuscarVencedores();
-    if (passou < ESPERA || telao.vencedores == null) {
-      if (!telao.revelTimer) telao.revelTimer = setTimeout(function () { telao.revelTimer = null; if (route.name === 'telao') render(); }, Math.max(300, ESPERA - passou + 50));
-      return '<div class="telao tl-revela is-suspense">' + telaoFundo() +
-        '<div class="tr-centro"><span class="tr-eyebrow">IDL · Trilha 2026</span>' +
-        '<h1 class="tr-chamada">E o Herói da Trilha 2026 é…</h1>' +
-        '<div class="tr-sementes" aria-hidden="true">' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return '<span style="--k:' + k + '">' + sementeSvg() + '</span>'; }).join('') + '</div>' +
-        '</div></div>';
+    var itens = null;
+    if (telao.vencedores != null) {
+      itens = telao.vencedores.map(function (id) {
+        var x = heroById(id); if (x) return { imgs: x.hero.image ? [x.hero.image] : [], nome: String(x.hero.name).split(/\s+[—–-]\s+/)[0], sub: [x.project.name, x.project.group ? 'Grupo ' + x.project.group : ''].filter(Boolean).join(' · ') };
+        var p = byId(id); return p ? { imgs: [], nome: p.name, sub: p.group ? 'Grupo ' + p.group : '' } : null;
+      }).filter(Boolean);
+      if (!itens.length && Date.now() - (telao.revelInicio || 0) >= REVELA_MS) {
+        return '<div class="telao tl-revela"><div class="tr-centro"><h1 class="tr-chamada">Ainda não há votos</h1><p class="tr-nota">A revelação aparece quando houver votos registrados.</p></div></div>';
+      }
     }
-    var vs = (telao.vencedores || []).map(function (id) { var x = heroById(id); if (x) return { nome: x.hero.name, img: x.hero.image, proj: x.project.name, grupo: x.project.group }; var p = byId(id); return p ? { nome: p.name, img: projectImage(p).src, proj: '', grupo: p.group } : null; }).filter(Boolean);
-    if (!vs.length) {
-      return '<div class="telao tl-revela"><div class="tr-centro"><h1 class="tr-chamada">Ainda não há votos</h1><p class="tr-nota">A revelação aparece quando houver votos registrados.</p></div></div>';
-    }
-    var confete = '';
-    for (var i = 0; i < 36; i++) {
-      confete += '<span class="tr-c" style="--x:' + ((i * 37) % 100) + '%;--d:' + (2.6 + (i % 7) * .45).toFixed(2) + 's;--a:' + ((i * .23) % 2.4).toFixed(2) + 's;--r:' + ((i * 47) % 360) + 'deg;--cor:' + ['#f97218', '#ffffff', '#e8dbf7', '#b98fe8'][i % 4] + '"></span>';
-    }
-    return '<div class="telao tl-revela is-revelado">' + telaoFundo() +
-      '<div class="tr-confete" aria-hidden="true">' + confete + '</div>' +
-      '<div class="tr-centro">' +
-        '<span class="tr-eyebrow">' + (vs.length > 1 ? 'Empate! Os Heróis da Trilha 2026 são' : 'O Herói da Trilha 2026 é') + '</span>' +
-        '<div class="tr-vencedores n' + vs.length + '">' + vs.map(function (v) {
-          return '<figure class="tr-v"><span class="tr-luz" aria-hidden="true"></span>' +
-            (v.img ? '<img src="' + esc(v.img) + '" alt="">' : '') +
-            '<figcaption><b>' + esc(String(v.nome).split(/\s+[—–-]\s+/)[0]) + '</b>' +
-            '<span>' + esc([v.proj, v.grupo ? 'Grupo ' + v.grupo : ''].filter(Boolean).join(' · ')) + '</span></figcaption></figure>';
-        }).join('') + '</div>' +
-      '</div></div>';
+    return cenaRevelacao({ tema: 'heroi', itens: itens,
+      eyebrowS: 'IDL · Trilha 2026 · Voto do público', chamada: 'E o Herói da Trilha 2026 é…',
+      eyebrowR: 'O Herói da Trilha 2026 é', eyebrowEmpate: 'Empate! Os Heróis da Trilha 2026 são' });
   }
 
   /* ================= HERÓI VENCEDOR EM DESTAQUE NO INÍCIO =================
