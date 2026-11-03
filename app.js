@@ -4085,26 +4085,202 @@
       '</div>';
   }
   function planilhaBanca() {
-    var L = [], linhas = consolidadoBanca();
-    L.push(['jurado', 'projeto', 'grupo'].concat(CRITERIOS.map(function (c) { return c.t; }), ['media', 'comentario']).map(csv).join(';'));
-    linhas.forEach(function (l) {
-      l.itens.forEach(function (it) {
-        L.push([csv(it.jurado), csv(l.p.name), csv(l.p.group || '')].concat(CRITERIOS.map(function (c) { return it.notas[c.k] || ''; }),
-          [fmt1(notasMedia(it.notas)), csv(it.comentario || '')]).join(';'));
-      });
+    var linhas = consolidadoBanca(), quando = agoraBR();
+    var jur = {}; (adminBancaDados.itens || []).forEach(function (i) { if (i.notas && notasQtd(i.notas)) jur[i.jurado] = true; });
+    var nJ = Object.keys(jur).length, dec = adminBancaDados.decisao || [];
+    var critCols = CRITERIOS.map(function (c) { return { t: c.t, w: 15, tipo: 'n2' }; });
+    var r1 = linhas.map(function (l, i) {
+      return [l.media == null ? '' : i + 1, l.p.name, l.p.group || '', nomesHerois(l.p), l.n]
+        .concat(CRITERIOS.map(function (c) { return l.crit[c.k] == null ? '' : +l.crit[c.k].toFixed(2); }),
+          [l.media == null ? '' : +l.media.toFixed(2), l.votos]);
     });
-    L.push(''); L.push('RANKING');
-    L.push(['posicao', 'projeto', 'grupo', 'jurados'].concat(CRITERIOS.map(function (c) { return c.t; }), ['media_geral', 'votos_decisao']).map(csv).join(';'));
-    linhas.forEach(function (l, i) {
-      L.push([l.media == null ? '' : i + 1, csv(l.p.name), csv(l.p.group || ''), l.n].concat(CRITERIOS.map(function (c) { return l.crit[c.k] == null ? '' : l.crit[c.k].toFixed(2).replace('.', ','); }),
-        [l.media == null ? '' : l.media.toFixed(2).replace('.', ','), l.votos]).join(';'));
-    });
-    if ((adminBancaDados.decisao || []).length) {
-      L.push(''); L.push('DECISAO FINAL'); L.push('jurado;projeto;horario');
-      adminBancaDados.decisao.forEach(function (v) { var p = byId(v.projeto); L.push([csv(v.jurado), csv(p ? p.name : v.projeto), csv(new Date(v.em).toLocaleString('pt-BR'))].join(';')); });
-    }
-    return L.join('\n');
+    var f1 = XL.folha('Ranking', 'Ranking da banca · notas de 1 a 5',
+      'IDL Formatura · ' + nJ + (nJ === 1 ? ' jurado' : ' jurados') + ' · média de todos os jurados por critério · gerado em ' + quando,
+      [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 50, tipo: 'forte' }, { t: 'Grupo', w: 14 }, { t: 'Heróis', w: 24 }, { t: 'Jurados', w: 10, tipo: 'int' }]
+        .concat(critCols, [{ t: 'Média geral', w: 13, tipo: 'n2' }, { t: 'Votos na decisão', w: 13, tipo: 'int' }]),
+      r1, { destacar: function (l, i) { return i === 0 && l[0] === 1; } });
+    var r2 = [];
+    linhas.forEach(function (l) { l.itens.forEach(function (it) {
+      r2.push([it.jurado, l.p.name, l.p.group || ''].concat(CRITERIOS.map(function (c) { return it.notas[c.k] || ''; }),
+        [+(notasMedia(it.notas) || 0).toFixed(2), it.comentario || '']));
+    }); });
+    r2.sort(function (a, b) { return a[0].localeCompare(b[0], 'pt') || a[1].localeCompare(b[1], 'pt'); });
+    var f2 = XL.folha('Notas por jurado', 'Notas de cada jurado', 'IDL Formatura · uma linha por jurado e projeto · gerado em ' + quando,
+      [{ t: 'Jurado', w: 24, tipo: 'forte' }, { t: 'Projeto', w: 48 }, { t: 'Grupo', w: 14 }]
+        .concat(CRITERIOS.map(function (c) { return { t: c.t, w: 14, tipo: 'int' }; }), [{ t: 'Média', w: 10, tipo: 'n2' }, { t: 'Comentário', w: 60, tipo: 'longo' }]),
+      r2);
+    var r3 = linhas.filter(function (l) { return l.votos > 0; })
+      .sort(function (a, b) { return b.votos - a.votos || (b.media || 0) - (a.media || 0); })
+      .map(function (l, i) { return [i + 1, l.p.name, l.p.group || '', l.votos, l.media == null ? '' : +l.media.toFixed(2)]; });
+    var f3 = XL.folha('Decisão final', 'Decisão final da banca',
+      'IDL Formatura · ' + dec.length + ' de ' + nJ + ' jurados votaram · empate desempata pela média · gerado em ' + quando,
+      [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 40, tipo: 'forte' }, { t: 'Grupo', w: 14 }, { t: 'Votos', w: 10, tipo: 'int' }, { t: 'Média das notas', w: 16, tipo: 'n2' }],
+      r3, { destacar: function (l, i) { return i === 0; } });
+    var r4 = dec.map(function (v) { var p = byId(v.projeto); return [v.jurado, p ? p.name : v.projeto, new Date(v.em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })]; });
+    var f4 = XL.folha('Votos da decisão', 'Voto de cada jurado na decisão final', 'IDL Formatura · gerado em ' + quando,
+      [{ t: 'Jurado', w: 26, tipo: 'forte' }, { t: 'Projeto escolhido', w: 42 }, { t: 'Horário', w: 18 }], r4);
+    return [f1, f2, f3, f4];
   }
+
+
+  /* ===================== PLANILHAS FORMATADAS (.xlsx) =====================
+     Gera um arquivo do Excel de verdade, com cores, larguras, cabeçalho
+     fixo e filtro, direto no navegador (sem biblioteca externa). Abre no
+     Excel, no Google Planilhas e no Numbers.                              */
+  var XL = (function () {
+    // estilos: [fonte, preenchimento, borda, formato numérico, alinhamento]
+    var FONTES = [
+      '<font><sz val="11"/><color rgb="FF241338"/><name val="Calibri"/></font>',
+      '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>',
+      '<font><b/><sz val="18"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>',
+      '<font><i/><sz val="10"/><color rgb="FF574A6B"/><name val="Calibri"/></font>',
+      '<font><b/><sz val="11"/><color rgb="FF2E006A"/><name val="Calibri"/></font>',
+      '<font><b/><sz val="13"/><color rgb="FF2E006A"/><name val="Calibri"/></font>',
+      '<font><b/><sz val="11"/><color rgb="FF9A3D06"/><name val="Calibri"/></font>'
+    ];
+    function fill(c) { return '<fill><patternFill patternType="solid"><fgColor rgb="FF' + c + '"/><bgColor indexed="64"/></patternFill></fill>'; }
+    var PREENCH = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>',
+      fill('2E006A'), fill('44108C'), fill('F6F2FC'), fill('FFE6D3'), fill('F97218'), fill('E8DBF7'), fill('FFFFFF')];
+    var BORDAS = ['<border><left/><right/><top/><bottom/><diagonal/></border>',
+      '<border><left style="thin"><color rgb="FFE0D2F3"/></left><right style="thin"><color rgb="FFE0D2F3"/></right><top style="thin"><color rgb="FFE0D2F3"/></top><bottom style="thin"><color rgb="FFE0D2F3"/></bottom><diagonal/></border>'];
+    var FMT = { int: 1, n2: 164, pct: 165, n1: 166 };
+    var estilos = [[0, 0, 0, 0, '']], mapa = {};
+    function est(fonte, preench, borda, fmt, alin) {
+      var k = [fonte, preench, borda, fmt, alin].join('|');
+      if (mapa[k] == null) { mapa[k] = estilos.length; estilos.push([fonte, preench, borda, fmt, alin]); }
+      return mapa[k];
+    }
+    // tipos de célula usados nas planilhas
+    function estilo(tipo, linha) {
+      var zebra = linha === 'z', topo = linha === 'top';
+      var pf = topo ? 5 : (zebra ? 4 : 8), ft = topo ? 6 : 0;
+      switch (tipo) {
+        case 'titulo': return est(2, 2, 0, 0, 'left');
+        case 'sub': return est(3, 7, 0, 0, 'left');
+        case 'cab': return est(1, 3, 1, 0, 'cwrap');
+        case 'secao': return est(5, 0, 0, 0, 'left');
+        case 'total': return est(1, 6, 1, 0, 'left');
+        case 'totalNum': return est(1, 6, 1, FMT.int, 'center');
+        case 'totalPct': return est(1, 6, 1, FMT.pct, 'center');
+        case 'pos': return est(topo ? 6 : 4, pf, 1, FMT.int, 'center');
+        case 'int': return est(ft, pf, 1, FMT.int, 'center');
+        case 'n2': return est(ft, pf, 1, FMT.n2, 'center');
+        case 'n1': return est(ft, pf, 1, FMT.n1, 'center');
+        case 'pct': return est(ft, pf, 1, FMT.pct, 'center');
+        case 'forte': return est(topo ? 6 : 4, pf, 1, 0, 'left');
+        case 'longo': return est(ft, pf, 1, 0, 'wrap');
+        default: return est(ft, pf, 1, 0, 'left');
+      }
+    }
+    function escX(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ''); }
+    function colLetra(n) { var s = ''; n++; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+    function folhaXml(f) {
+      var linhasXml = f.linhas.map(function (lin, r) {
+        var alt = lin.alt ? ' ht="' + lin.alt + '" customHeight="1"' : '';
+        return '<row r="' + (r + 1) + '"' + alt + '>' + (lin.c || []).map(function (c, k) {
+          if (c == null) return '';
+          var ref = colLetra(k) + (r + 1), s = c.s != null ? ' s="' + c.s + '"' : '';
+          if (c.v === '' || c.v == null) return '<c r="' + ref + '"' + s + '/>';
+          if (typeof c.v === 'number' && isFinite(c.v)) return '<c r="' + ref + '"' + s + '><v>' + c.v + '</v></c>';
+          return '<c r="' + ref + '"' + s + ' t="inlineStr"><is><t xml:space="preserve">' + escX(c.v) + '</t></is></c>';
+        }).join('') + '</row>';
+      }).join('');
+      var vista = f.fixa ? '<sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="' + f.fixa + '" topLeftCell="A' + (f.fixa + 1) + '" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+                         : '<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>';
+      var cols = '<cols>' + f.larguras.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join('') + '</cols>';
+      var merges = (f.juntar || []).length ? '<mergeCells count="' + f.juntar.length + '">' + f.juntar.map(function (m) { return '<mergeCell ref="' + m + '"/>'; }).join('') + '</mergeCells>' : '';
+      var filtro = f.filtro ? '<autoFilter ref="' + f.filtro + '"/>' : '';
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' + vista + '<sheetFormatPr defaultRowHeight="18"/>' + cols + '<sheetData>' + linhasXml + '</sheetData>' + filtro + merges +
+        '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>';
+    }
+    function estilosXml() {
+      var xfs = estilos.map(function (e) {
+        var al = e[4] === 'wrap' ? '<alignment vertical="top" wrapText="1"/>' : e[4] === 'cwrap' ? '<alignment horizontal="center" vertical="center" wrapText="1"/>' : e[4] ? '<alignment horizontal="' + e[4] + '" vertical="center"/>' : '';
+        return '<xf numFmtId="' + e[3] + '" fontId="' + e[0] + '" fillId="' + e[1] + '" borderId="' + e[2] + '" xfId="0"' +
+          (e[3] ? ' applyNumberFormat="1"' : '') + ' applyFont="1" applyFill="1" applyBorder="1"' + (al ? ' applyAlignment="1">' + al + '</xf>' : '/>');
+      }).join('');
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+        '<numFmts count="3"><numFmt numFmtId="164" formatCode="0.00"/><numFmt numFmtId="165" formatCode="0.0%"/><numFmt numFmtId="166" formatCode="0.0"/></numFmts>' +
+        '<fonts count="' + FONTES.length + '">' + FONTES.join('') + '</fonts>' +
+        '<fills count="' + PREENCH.length + '">' + PREENCH.join('') + '</fills>' +
+        '<borders count="' + BORDAS.length + '">' + BORDAS.join('') + '</borders>' +
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        '<cellXfs count="' + estilos.length + '">' + xfs + '</cellXfs>' +
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    }
+    // zip simples (sem compressão), suficiente para o .xlsx
+    var CRC = (function () { var t = [], c; for (var n = 0; n < 256; n++) { c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+    function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+    function zip(arquivos) {
+      var enc = new TextEncoder(), partes = [], central = [], pos = 0;
+      function u16(v) { return [v & 255, (v >>> 8) & 255]; }
+      function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
+      arquivos.forEach(function (a) {
+        var nome = enc.encode(a[0]), dados = enc.encode(a[1]), crc = crc32(dados);
+        var loc = [].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(dados.length), u32(dados.length), u16(nome.length), u16(0));
+        partes.push(new Uint8Array(loc), nome, dados);
+        central.push([].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(dados.length), u32(dados.length),
+          u16(nome.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(pos)), nome);
+        pos += loc.length + nome.length + dados.length;
+      });
+      var ini = pos, tam = 0, cent = [];
+      for (var i = 0; i < central.length; i += 2) { var h = new Uint8Array(central[i]); cent.push(h, central[i + 1]); tam += h.length + central[i + 1].length; }
+      var fim = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(arquivos.length), u16(arquivos.length), u32(tam), u32(ini), u16(0)));
+      return new Blob(partes.concat(cent, [fim]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+    function livro(folhas) {
+      var xmls = folhas.map(folhaXml);   // gera as folhas antes: registra os estilos usados
+      var arq = [
+        ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+          folhas.map(function (f, i) { return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join('') + '</Types>'],
+        ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+        ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+          folhas.map(function (f, i) { return '<sheet name="' + escX(f.nome.slice(0, 31)) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join('') + '</sheets>' +
+          (folhas.some(function (f) { return f.filtro; }) ? '<definedNames>' + folhas.map(function (f, i) {
+            if (!f.filtro) return '';
+            var p = f.filtro.split(':'), abs = function (r) { return r.replace(/^([A-Z]+)(\d+)$/, '$$$1$$$2'); };
+            return '<definedName name="_xlnm._FilterDatabase" localSheetId="' + i + '" hidden="1">\'' + escX(f.nome.slice(0, 31)) + '\'!' + abs(p[0]) + ':' + abs(p[1]) + '</definedName>';
+          }).join('') + '</definedNames>' : '') + '</workbook>'],
+        ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          folhas.map(function (f, i) { return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join('') +
+          '<Relationship Id="rId' + (folhas.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>']
+      ];
+      xmls.forEach(function (x, i) { arq.push(['xl/worksheets/sheet' + (i + 1) + '.xml', x]); });
+      arq.push(['xl/styles.xml', estilosXml()]);
+      return zip(arq);
+    }
+    /* monta uma folha padrão: título, subtítulo, cabeçalho e linhas.
+       colunas: [{t: 'Título', w: 20, tipo: 'texto|int|n2|pct|forte|longo|pos'}] */
+    function folha(nome, titulo, sub, colunas, dados, opc) {
+      opc = opc || {};
+      var n = colunas.length, ult = colLetra(n - 1);
+      var linhas = [
+        { alt: 34, c: [{ v: titulo, s: estilo('titulo') }].concat(colunas.slice(1).map(function () { return { v: '', s: estilo('titulo') }; })) },
+        { alt: 20, c: [{ v: sub, s: estilo('sub') }].concat(colunas.slice(1).map(function () { return { v: '', s: estilo('sub') }; })) },
+        { alt: 6, c: [] },
+        { alt: 36, c: colunas.map(function (c) { return { v: c.t, s: estilo('cab') }; }) }
+      ];
+      dados.forEach(function (lin, i) {
+        var tipoLinha = (opc.destacar && opc.destacar(lin, i)) ? 'top' : (i % 2 ? 'z' : '');
+        linhas.push({ c: lin.map(function (v, k) { return { v: v, s: estilo(colunas[k].tipo || 'texto', tipoLinha) }; }) });
+      });
+      (opc.rodape || []).forEach(function (lin) { linhas.push(lin); });
+      return { nome: nome, linhas: linhas, larguras: colunas.map(function (c) { return c.w || 14; }),
+        juntar: ['A1:' + ult + '1', 'A2:' + ult + '2'], fixa: 4,
+        filtro: dados.length ? 'A4:' + ult + (4 + dados.length) : null };
+    }
+    function baixar(nome, folhas) {
+      try {
+        var blob = livro(folhas), url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = nome; document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+        toast('Planilha baixada.');
+      } catch (e) { toast('Não consegui gerar a planilha neste navegador.'); }
+    }
+    return { folha: folha, baixar: baixar, estilo: estilo, livro: livro };
+  })();
+  function agoraBR() { return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }); }
 
   /* ===================== DOWNLOAD DE PLANILHAS (CSV) =====================
      Baixa direto no navegador. Separador ";" e acentos que o Excel lê bem. */
@@ -5017,7 +5193,7 @@
     else if (act === 'bancaAtualizar') carregarAdminBanca();
     else if (act === 'bancaPlanilha') {
       if (!adminBancaDados.itens) { toast('Atualize as notas primeiro.'); return; }
-      baixarArquivo('notas-da-banca-idl-tech.csv', planilhaBanca());
+      XL.baixar('notas-da-banca-idl-formatura.xlsx', planilhaBanca());
     }
     else if (act === 'copyNames') {
       var names = opcoesDeVoto().map(function (p) { return p.name; }).join('\n');
@@ -5027,15 +5203,27 @@
     else if (act === 'exportVotos') {
       var r = adminRes.dados;
       if (!r || !r.liberado) { toast('Atualize as respostas primeiro.'); return; }
-      var linhas = ['posicao;' + (votoEmHerois() ? 'heroi;projeto;grupo' : 'projeto;grupo;') + ';votos;percentual'];
-      (r.projetos || []).forEach(function (p, i) {
+      var emH = votoEmHerois(), tot = r.total || 0, maxV = 0;
+      (r.projetos || []).forEach(function (p) { maxV = Math.max(maxV, p.votos || 0); });
+      var dadosV = (r.projetos || []).map(function (p, i) {
         var loc = opcaoPorId(p.id), hx = heroById(p.id), pj = hx ? hx.project : byId(p.id);
-        var pct = r.total ? (p.votos / r.total * 100) : 0;
-        linhas.push([i + 1, csv((loc && loc.name) || p.nome || p.id), csv(hx ? pj.name : ''), csv(pj ? pj.group : ''), p.votos, pct.toFixed(1).replace('.', ',')].join(';'));
+        var nome = (loc && loc.name) || p.nome || p.id;
+        return emH ? [i + 1, nome, pj ? pj.name : '', pj ? pj.group || '' : '', p.votos || 0, tot ? (p.votos || 0) / tot : 0]
+                   : [i + 1, nome, pj ? pj.group || '' : '', p.votos || 0, tot ? (p.votos || 0) / tot : 0];
       });
-      linhas.push(['', 'TOTAL', '', '', r.total || 0, '100,0'].join(';'));
-      linhas.push(''); linhas.push('apurado_em;' + new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
-      baixarArquivo('apuracao-votacao-banca-idl-tech.csv', linhas.join('\n'));
+      var colsV = emH
+        ? [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Herói', w: 30, tipo: 'forte' }, { t: 'Projeto', w: 40 }, { t: 'Grupo', w: 16 }, { t: 'Votos', w: 11, tipo: 'int' }, { t: '% dos votos', w: 14, tipo: 'pct' }]
+        : [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 44, tipo: 'forte' }, { t: 'Grupo', w: 16 }, { t: 'Votos', w: 11, tipo: 'int' }, { t: '% dos votos', w: 14, tipo: 'pct' }];
+      var tt = XL.estilo('total');
+      var linTotal = { alt: 24, c: colsV.map(function (c, k) {
+        if (k === colsV.length - 2) return { v: tot, s: XL.estilo('totalNum') };
+        if (k === colsV.length - 1) return { v: tot ? 1 : 0, s: XL.estilo('totalPct') };
+        return { v: k === 1 ? 'Total de votos' : '', s: tt };
+      }) };
+      XL.baixar('apuracao-votacao-idl-formatura.xlsx', [XL.folha('Apuração',
+        'Apuração da votação · ' + (emH ? 'Herói' : 'Projeto') + ' da Trilha 2026',
+        'IDL Formatura · Banca Final IDL Tech · apurado em ' + agoraBR() + ' · ' + tot + (tot === 1 ? ' voto' : ' votos') + (maxV ? ' · em destaque: o mais votado' : ''),
+        colsV, dadosV, { destacar: function (l) { return maxV > 0 && l[colsV.length - 2] === maxV; }, rodape: [{ alt: 6, c: [] }, linTotal] })]);
     }
     else if (act === 'exportJson') offerFile('conteudo-banca-idl-tech.json', exportPayload(), 'application/json');
     else if (act === 'fotosDe') { admin.fotosDe = el.getAttribute('data-p'); render(); window.scrollTo(0, 0); }
