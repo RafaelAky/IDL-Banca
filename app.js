@@ -1810,6 +1810,17 @@
       remote.resultadoPublico = !!row.resultado_publico;
       remote.exigeChave = !!row.exige_chave;
       remote.totalTrilheiros = total;
+      // "Zerar tudo" da organização: limpa o que este aparelho guarda
+      var rein = parseInt(row.reinicio, 10) || 0;
+      if (row.reinicio != null) {
+        if (localState.reinicio == null) { localState.reinicio = rein; saveLocal(); }
+        else if (localState.reinicio !== rein) {
+          localState.reinicio = rein; localState.visited = []; localState.voted = null;
+          flow.picked = null; flow.error = ''; flow.busy = false;
+          banca.itens = {}; banca.rascunho = {}; banca.carregou = false; banca.dec.dados = null; banca.dec.escolha = null;
+          saveLocal(); mudou = true;
+        }
+      }
       // votos zerados pela organização: este aparelho pode votar de novo
       var rod = parseInt(row.rodada, 10) || 0;
       if (rod && rod !== remote.rodada) {
@@ -2732,6 +2743,11 @@
       comandos +
       '<section class="stack"><h3 class="h3">Onde editar cada coisa</h3>' +
       '<div class="shortcuts">' + atalhos + '</div></section>' +
+      (remote.on ? '<section class="zerar-tudo">' +
+        '<div class="grow"><h3 class="h3">Zerar tudo</h3>' +
+        '<p class="small">Depois do ensaio, deixa o site pronto para o dia: apaga <b>votos</b>, <b>avaliações e decisão da banca</b> e os <b>projetos conhecidos</b> de todos os aparelhos; fecha a votação, a decisão e a revelação e tira a equipe do palco.</p>' +
+        '<p class="tiny">Continuam: textos, Heróis, fotos, senhas, palavra-chave, candidatos e a chave "mostrar a votação".</p></div>' +
+        '<button class="btn btn-danger" data-act="askZerarTudo">' + ico('i-trash') + ' Zerar tudo</button></section>' : '') +
       '</div>';
   }
 
@@ -5137,6 +5153,23 @@
     else if (act === 'askClose') {
       admin.confirm = { title: 'Encerrar a votação?', body: 'Ninguém mais conseguirá votar. Os votos já registrados continuam guardados.', yes: 'Sim, encerrar', danger: true,
         run: function () { setVotacao(false, null); } };
+      renderOverlay();
+    }
+    else if (act === 'askZerarTudo') {
+      admin.confirm = { title: 'Zerar tudo?', danger: true, yes: 'Sim, zerar tudo',
+        body: 'Apaga todos os votos, as notas, os comentários e a decisão da banca, e limpa os projetos conhecidos de todos os aparelhos. A votação, a decisão final e a revelação ficam fechadas. Não dá para desfazer.',
+        run: function () {
+          sbRpc('zerar_tudo', { p_chave: localState.adminKey || '' }).then(function (r) {
+            if (!r || !r.ok) { toast(ERROS[r && r.erro] || 'Não consegui zerar.'); return; }
+            remote.rodada = r.rodada || remote.rodada; localState.rodada = remote.rodada;
+            localState.voted = null; localState.visited = []; saveLocal();
+            adminRes.dados = null; adminBancaDados.itens = null; adminBancaDados.decisao = [];
+            toast('Tudo zerado: ' + (r.votos || 0) + ' votos e ' + (r.avaliacoes || 0) + ' avaliações apagados.');
+            syncEstado(); loadResult();
+          }).catch(function (e) {
+            toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente para ter o "Zerar tudo".' : 'Sem conexão com o servidor.');
+          });
+        } };
       renderOverlay();
     }
     else if (act === 'askZerar') {

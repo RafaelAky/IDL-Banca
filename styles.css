@@ -2084,3 +2084,18 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .view-passa.entra-dir .det-topo-in { animation: heroiEntraDir .42s cubic-bezier(.2,.8,.2,1) both; }
 .view-passa.entra-esq .det-topo-in { animation: heroiEntraEsq .42s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { .view-passa .det-topo-in { animation: none !important; } }
+
+/* celular: a lista de projetos mostra o Herói de cada um, à esquerda */
+@media (max-width: 599px) {
+  .ind-item { grid-template-columns: auto 1fr auto; grid-template-areas: "herois hora seta" "herois txt seta"; gap: .1rem .85rem; padding-block: .85rem; }
+  .ind-hora { align-self: end; padding-top: 0; min-width: 0; font-size: var(--t-mini); }
+  .ind-txt { align-self: start; }
+  .ind-nome { font-size: 1.12rem; }
+  .ind-herois { display: flex; align-self: center; }
+  .ind-herois .quadro-mini { width: 52px; box-shadow: 0 4px 10px rgba(46,0,106,.1); }
+  .ind-herois .quadro-mini + .quadro-mini { margin-left: -26px; margin-top: 10px; }
+  .ind-seta, .ind-visto { align-self: center; }
+}
+.zerar-tudo { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 18px 20px; border-radius: 18px; border: 1.5px dashed rgba(180,35,90,.45); background: rgba(180,35,90,.04); }
+.zerar-tudo .h3 { color: var(--c-perigo); margin-bottom: 4px; }
+.zerar-tudo p { margin: 0 0 4px; max-width: 70ch; }
