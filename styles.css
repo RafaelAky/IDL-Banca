@@ -2049,3 +2049,7 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .rf-col .rf-redes a { color: var(--c-roxo-2); }
 .rf-col .rf-redes a:hover, .rf-col a:hover { color: var(--c-laranja); }
 .rf-logo img { display: block; width: min(270px, 100%); height: auto; }
+/* topo de Heróis: espaço embaixo para a sombra, os pés e a frase não serem cortados */
+.topo-turma { padding-bottom: clamp(20px, 3vw, 40px); }
+.topo-turma .turma { margin-top: 12px; }
+.topo-turma .turma-dica { margin-top: 18px; }

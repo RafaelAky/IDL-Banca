@@ -4330,6 +4330,10 @@
     // para dar para tocar em cada um com folga (a foto desliza para o lado)
     var celHome = t.classList.contains('turma-home') && window.innerWidth < 760;
     if (celHome) { S = 0.66; SOBE = 0.56; }
+    // topo de "Heróis & Projetos": rostos um pouco mais afastados e fileiras
+    // mais separadas, para ninguém ficar escondido atrás do outro
+    var topo = t.classList.contains('turma-topo');
+    if (topo) { S = 0.5; SOBE = 0.36; }
     var hMax = +t.getAttribute('data-hmax') || 300;
     t.style.width = '';
     var W = (rolo && rolo.clientWidth) || t.clientWidth;
@@ -4341,6 +4345,7 @@
     var podeRolar = t.classList.contains('turma-home');
     if (!podeRolar && h < 150 && n >= 7) {
       r = 3; maior = Math.ceil(n / r);
+      if (topo) SOBE = 0.46;
       h = Math.min(hMax, W / (maior * S + S));
     }
     // tela estreita: a foto mantém duas fileiras num tamanho bom e passa a
