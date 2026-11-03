@@ -1659,3 +1659,132 @@ body.is-telao .topbar, body.is-telao .bottomnav { display: none; }
 .tl-mais { font-size: clamp(20px, 2vw, 42px); font-weight: 800; text-shadow: 0 2px 10px rgba(20, 0, 50, .6); }
 /* aviso de que os +1 são ilustrativos, discreto embaixo dos Heróis */
 .tl-c .tl-aviso { margin-top: 4.5vh; align-self: flex-start; font-size: clamp(12px, 1vw, 20px); }
+
+/* =============================== NO PALCO =============================== */
+.pc-ao-vivo {
+  display: inline-flex; align-items: center; gap: .45em; padding: .3em .8em; border-radius: 999px;
+  background: var(--c-laranja); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+}
+.pc-ao-vivo i { width: .55em; height: .55em; border-radius: 50%; background: #fff; animation: tlPisca 1.4s ease-in-out infinite; }
+.palco-card {
+  position: relative; z-index: 3; display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  margin-top: -34px; padding: 16px 20px; border-radius: 22px; background: var(--c-branco);
+  box-shadow: 0 14px 40px rgba(46,0,106,.16); border: 1.5px solid var(--c-lilas-claro);
+}
+.pc-figs { display: flex; align-items: flex-end; height: 92px; }
+.pc-figs img { height: 100%; width: auto; }
+.pc-figs img + img { margin-left: -14px; }
+.pc-txt { flex: 1 1 240px; display: grid; gap: 4px; justify-items: start; }
+.pc-nome { font-size: clamp(1.25rem, 1rem + 1vw, 1.7rem); font-weight: 800; color: var(--c-roxo); line-height: 1.1; }
+.pc-sub, .pc-prox { font-size: 14px; color: var(--c-texto-2); }
+.pc-prox b { color: var(--c-roxo); }
+.tlproj.is-palco { border-color: var(--c-laranja) !important; box-shadow: 0 0 0 2px rgba(249,114,24,.35); }
+.tlproj .pc-ao-vivo { margin-left: auto; font-size: 10px; }
+.det-txt .pc-ao-vivo { margin-bottom: 4px; }
+
+/* painel: controle do palco */
+.painel-palco {
+  display: grid; gap: 14px; padding: 20px; border-radius: var(--r-3, 20px);
+  background: linear-gradient(135deg, #fff 0%, #fbf7ff 100%); border: 2px solid var(--c-lilas-claro);
+}
+.pp-cab { display: grid; gap: 4px; }
+.painel-palco .btn[disabled] { opacity: .45; cursor: not-allowed; }
+.painel-palco select { width: 100%; min-height: 48px; padding: .6rem .9rem; border: 1.5px solid var(--c-linha-forte); border-radius: var(--r-2); background: #fff; font: inherit; }
+
+/* painel: revelação e vencedor no site */
+.revelar-box {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-top: 8px; padding: 14px 16px; border-radius: var(--r-2);
+  border: 1.5px solid rgba(249,114,24,.45); background: rgba(249,114,24,.06);
+}
+.revelar-box b { color: var(--c-roxo); }
+.revelar-box p { margin: 2px 0 0; max-width: 52ch; }
+.revelar-site { border-color: var(--c-lilas); background: rgba(185,143,232,.08); }
+
+/* ================================= BANCA ================================= */
+.banca-topo { background: var(--grad-escuro); color: #fff; padding: 28px 0 24px; }
+.banca-topo .cont { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.banca-topo .titulo-pag { color: #fff; font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem); }
+.banca-topo .small { color: rgba(255,255,255,.85); }
+.banca-topo .eyebrow { color: var(--c-lilas-claro); }
+.banca-topo .btn-ghost { color: #fff; border-color: rgba(255,255,255,.6); }
+.banca-corpo { display: grid; gap: 14px; padding-block: 24px 48px; }
+.banca-corpo > .eyebrow { margin-bottom: -4px; }
+.aval { display: grid; gap: 12px; padding: 16px 18px; border-radius: var(--r-2); background: #fff; border: 1.5px solid var(--c-linha); }
+.aval-feita { border-color: rgba(31,122,85,.35); }
+.aval-palco { border: 2px solid var(--c-laranja); box-shadow: 0 10px 30px rgba(249,114,24,.15); }
+.aval-cab { display: flex; align-items: center; gap: 12px; }
+.aval-cab .h3 { font-size: 1.1rem; margin: 2px 0; }
+.aval-fig { width: 44px; height: 58px; flex: none; display: flex; align-items: flex-end; justify-content: center; background: var(--grad-quadro); border-radius: 10px; overflow: hidden; }
+.aval-fig img { height: 94%; width: auto; }
+.aval-campos { display: grid; gap: 12px; grid-template-columns: 140px 1fr; align-items: start; }
+.aval-nota input { font-size: 1.3rem; font-weight: 700; text-align: center; }
+.aval-pe { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.aval-feita .aval-estado { color: var(--c-ok); font-weight: 600; }
+@media (max-width: 600px) { .aval-campos { grid-template-columns: 1fr; } }
+
+/* painel: consolidado da banca */
+.banca-tab { display: grid; gap: 8px; }
+.banca-linha .bl-media { flex: none; font-size: 1.5rem; font-weight: 800; color: var(--c-roxo); min-width: 3ch; text-align: right; }
+.bl-item { padding: 10px 0; border-top: 1px solid var(--c-linha); }
+.bl-item:first-child { border-top: 0; }
+.bl-item p { margin: 4px 0 0; color: var(--c-texto-2); }
+
+/* ====================== TELÃO · REVELAÇÃO DO HERÓI ====================== */
+body.is-revela .telao { background: radial-gradient(1200px 700px at 50% 40%, #5a22a8 0%, #2e006a 55%, #16002f 100%); }
+.tl-revela { align-items: center; justify-content: center; text-align: center; }
+.tr-centro { position: relative; z-index: 2; display: grid; justify-items: center; gap: 3vh; width: 100%; }
+.tr-eyebrow { font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--c-lilas-claro); font-size: clamp(14px, 1.4vw, 28px); }
+.tr-chamada { color: #fff; font-weight: 800; font-size: clamp(36px, 5.4vw, 110px); line-height: 1.05; letter-spacing: -.02em; }
+.is-suspense .tr-chamada { animation: trPulsa 1.1s ease-in-out infinite; }
+@keyframes trPulsa { 50% { transform: scale(1.04); opacity: .85; } }
+.tr-nota { color: rgba(255,255,255,.85); font-size: clamp(16px, 1.5vw, 28px); max-width: 40ch; }
+.tr-sementes { position: relative; width: 22vh; height: 22vh; }
+.tr-sementes span { position: absolute; left: 50%; top: 50%; width: 5vh; color: #fff; transform: rotate(calc(var(--k) * 45deg)) translateY(-9vh); transform-origin: 0 0; animation: trGira 2.4s linear infinite; opacity: .85; }
+.tr-sementes span svg { width: 100%; height: auto; }
+@keyframes trGira { to { transform: rotate(calc(var(--k) * 45deg + 360deg)) translateY(-9vh); } }
+.tr-vencedores { display: flex; justify-content: center; align-items: flex-end; gap: 4vw; }
+.tr-v { position: relative; display: grid; justify-items: center; gap: 1.6vh; margin: 0; animation: trSurge 1.1s cubic-bezier(.2,.9,.3,1.2) both; }
+.tr-v img { position: relative; z-index: 1; height: 58vh; width: auto; filter: drop-shadow(0 20px 40px rgba(0,0,0,.45)); }
+.tr-vencedores.n2 .tr-v img, .tr-vencedores.n3 .tr-v img { height: 46vh; }
+.tr-luz { position: absolute; left: 50%; top: 40%; width: 70vh; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(255,220,180,.55), rgba(249,114,24,.18) 55%, transparent 72%); animation: trLuz 3s ease-in-out infinite; }
+@keyframes trLuz { 50% { transform: translate(-50%, -50%) scale(1.08); } }
+.tr-v figcaption { position: relative; z-index: 1; display: grid; gap: .6vh; }
+.tr-v figcaption b { color: #fff; font-size: clamp(40px, 6vw, 130px); font-weight: 800; line-height: 1; letter-spacing: -.02em; text-shadow: 0 6px 30px rgba(0,0,0,.35); }
+.tr-v figcaption span { color: #ffd7b5; font-weight: 600; font-size: clamp(16px, 1.6vw, 32px); }
+@keyframes trSurge { from { opacity: 0; transform: translateY(40px) scale(.85); } }
+.tr-confete { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.tr-c { position: absolute; top: -4vh; left: var(--x); width: 1.1vh; height: 2.2vh; border-radius: 3px; background: var(--cor); transform: rotate(var(--r)); animation: trCai var(--d) linear var(--a) infinite; opacity: .9; }
+@keyframes trCai { to { transform: translateY(112vh) rotate(calc(var(--r) + 540deg)); } }
+
+/* =================== INÍCIO · BANNER DO HERÓI VENCEDOR =================== */
+.dobra-venc { background: radial-gradient(800px 480px at 80% 30%, rgba(249,114,24,.35), transparent 65%), linear-gradient(150deg, #3d1180 0%, #2e006a 58%, #23004f 100%); }
+.dobra-venc::after { background: linear-gradient(90deg, rgba(28,3,62,.9) 0%, rgba(28,3,62,.55) 50%, rgba(28,3,62,0) 75%); }
+.dv-figs { position: absolute; right: max(4vw, calc((100% - var(--maxw)) / 2)); bottom: 0; z-index: 1; height: 92%; display: flex; align-items: flex-end; }
+.dv-figs img { height: 100%; width: auto; filter: drop-shadow(0 16px 30px rgba(0,0,0,.4)); }
+@media (max-width: 759px) {
+  .dv-figs { right: -6%; height: 70%; opacity: .55; }
+}
+
+/* ============================ VOLTAR AO TOPO ============================ */
+.topo-btn {
+  position: fixed; right: 16px; bottom: calc(var(--nav-h) + 16px); z-index: 44;
+  width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--c-roxo); color: #fff; box-shadow: 0 10px 24px rgba(46,0,106,.3);
+  opacity: 0; transform: translateY(12px) scale(.9); pointer-events: none; transition: opacity .25s, transform .25s;
+}
+.topo-btn svg { width: 22px; height: 22px; }
+.topo-btn.is-vis { opacity: 1; transform: none; pointer-events: auto; }
+.topo-btn:hover { background: var(--c-acao); }
+body.is-telao .topo-btn { display: none; }
+/* com a chamada laranja de votar aberta, o botão sobe para não cobrir */
+body:has(.cta-votar) .topo-btn { bottom: calc(var(--nav-h) + 92px); }
+
+/* ============== TELÃO · Heróis maiores (QR Code mais estreito) ============== */
+.tl-c .tl-corpo { grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 2.4vw; }
+.tl-c .tl-qr { padding: 2.4vh 1.4vw; }
+.tl-c .tl-qr-img { width: min(17vw, 36vh); }
+.tl-c .tl-qr-cab { font-size: clamp(13px, 1.15vw, 24px); }
+.tl-c .tl-palavra b { font-size: clamp(20px, 2.2vw, 44px); }
+.tl-c .tl-qr-pe { font-size: clamp(11px, .9vw, 18px); }
+.tl-estilo-portal .tl-cands { gap: 1.3vw; }
