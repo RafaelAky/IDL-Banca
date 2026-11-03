@@ -2042,7 +2042,7 @@ body.is-telao::-webkit-scrollbar, body.is-mesa::-webkit-scrollbar { display: non
 html:has(body.is-telao), html:has(body.is-mesa) { scrollbar-width: none; }
 html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scrollbar { display: none; }
 /* rodapé: fundo lavanda do site e textos nos tons do site */
-.rodape-idl { background: var(--c-fundo); border-top: 1px solid var(--c-linha); color: var(--c-texto-2); }
+.rodape-idl { background: var(--c-fundo); color: var(--c-texto-2); }
 .rf-marca p, .rf-col a { color: var(--c-texto-2); }
 .rf-col h2, .rf-contato b { color: var(--c-roxo); }
 .rf-inst { color: var(--c-texto-2); }
