@@ -242,7 +242,7 @@ window.IDL_SEED = {
     id:'prj_conexao', name:'Conexão de verdade', slot:'10:33', block:'Manhã', category:'Saúde',
     group:'Educa', members:['Aghata','Emily','Felipe','Gleyciani','Lanna'],
     values:['Responsabilidade','Empatia','Altruísmo','Coragem'],
-    heroes:[{id:'her_duda', name:'Duda', inspiration:'Professora Bruna do Educa', image:'img/heroi-06.webp',
+    heroes:[{id:'her_duda', name:'Duda', inspiration:'Professora Bruna do Educa', image:'img/heroi-06-v2.webp?v=3',
       story:'Duda percebeu que as crianças estavam passando muito tempo no celular e criou a ação Conexão de Verdade. Com brincadeiras e atividades em grupo, ajudou as crianças a fortalecer amizades e se divertir longe das telas. Sua mensagem é: "Desligue a tela. Ligue a vida!".'}],
     tagline:'Fortalecer a conexão dentro de casa é o primeiro passo para fortalecer a sociedade.',
     meaning:'O projeto nasceu da própria vivência do grupo no Educa. Eles perceberam que o uso excessivo do celular afastava os jovens e dificulta o relacionamento de amizades. Com as ações promovidas pela professora Bruna, descobriram que, quando as telas perdem espaço, o diálogo, as brincadeiras e os vínculos ganham força. Inspirados por essa transformação, decidiram levar esse aprendizado também para as famílias, acreditando que fortalecer a conexão dentro de casa é o primeiro passo para fortalecer a sociedade.',

@@ -189,7 +189,8 @@
     'img/heroi-01.webp': 'img/heroi-01-v2.webp?v=3',    // Clara
     'img/heroi-14.webp': 'img/heroi-14-v2.webp?v=3',    // Karol
     'img/heroi-16.webp': 'img/heroi-16-v2.webp?v=3',    // Lydia
-    'img/heroi-17b.webp': 'img/heroi-17b-v2.webp?v=3'   // Neo
+    'img/heroi-17b.webp': 'img/heroi-17b-v2.webp?v=3',  // Neo
+    'img/heroi-06.webp': 'img/heroi-06-v2.webp?v=3'     // Duda: a bota da direita agora vai até o chão
   };
   // conteúdo salvo antes com o endereço sem o "?v=3"
   Object.keys(IMAGENS_NOVAS).forEach(function (k) { IMAGENS_NOVAS[IMAGENS_NOVAS[k].split('?')[0]] = IMAGENS_NOVAS[k]; });
@@ -1489,7 +1490,7 @@
   }
 
   // ilustrações cujo arquivo já termina cortado nos pés (conferido nos arquivos)
-  var PE_CORTADO = { 'img/heroi-05.webp': 1, 'img/heroi-06.webp': 1 };
+  var PE_CORTADO = { 'img/heroi-05.webp': 1 };
   function clsPe(src) { return PE_CORTADO[src] ? ' class="pe-cortado"' : ''; }
   /* passar de Herói: setas nas pontas, deslizar o dedo no celular e as setas do teclado */
   var heroiEntrada = '';
