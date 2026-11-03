@@ -597,8 +597,7 @@
     return '<footer class="rodape-idl">' +
       '<div class="cont rf-in">' +
         '<div class="rf-marca">' +
-          '<a class="rf-logo" href="https://institutodentedeleao.com.br/" aria-label="Instituto Dente de Leão">' + florInstituto() +
-            '<span class="rf-nome"><span class="rf-inst">INSTITUTO</span><span class="rf-dl">DENTE<span>DE</span>LEÃO</span></span></a>' +
+          '<a class="rf-logo" href="https://institutodentedeleao.com.br/" aria-label="Instituto Dente de Leão"><img src="img/logo-instituto.webp?v=1" width="820" height="169" alt="Instituto Dente de Leão"></a>' +
           '<p>Instituto Dente de Leão. Fortalecendo pessoas, semeando consciência e transformando realidades.</p>' +
         '</div>' +
         '<nav class="rf-col" aria-label="Links rápidos"><h2>Links rápidos</h2><ul>' + links + '</ul></nav>' +

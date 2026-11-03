@@ -2048,3 +2048,4 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .rf-inst { color: var(--c-texto-2); }
 .rf-col .rf-redes a { color: var(--c-roxo-2); }
 .rf-col .rf-redes a:hover, .rf-col a:hover { color: var(--c-laranja); }
+.rf-logo img { display: block; width: min(270px, 100%); height: auto; }
