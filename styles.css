@@ -2236,3 +2236,9 @@ html:has(body.is-telao)::-webkit-scrollbar, html:has(body.is-mesa)::-webkit-scro
 .mesa-entrar .mesa-passos li::before { background: var(--c-lilas); color: #1d0045; }
 .mesa-entrar .mesa-qr { border: 6px solid var(--c-lilas); }
 .mesa-entrar .mesa-qr-tag { background: #1d0045; }
+/* avaliações fechadas */
+.banca-fechada { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; background: #fff; border: 1.5px dashed var(--c-lilas); color: var(--c-roxo); max-width: 760px; }
+.banca-fechada > svg { width: 22px; height: 22px; flex: none; color: var(--c-acao); margin-top: 2px; }
+.banca-fechada b { display: block; }
+.banca-fechada .tiny { display: block; color: var(--c-texto-2); }
+.bp-form.travado .crit-b { opacity: .45; cursor: not-allowed; }

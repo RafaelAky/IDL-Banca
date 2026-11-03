@@ -1754,7 +1754,7 @@
 
   /* ============================ BANCO DE VOTOS ============================ */
   var BE = (window.IDL_BACKEND || {});
-  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, decisao: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
+  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, decisao: false, avaliacoes: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
   var adminRes = { carregando: false, dados: null, erro: '' };
   var pubRes = { carregando: false, dados: null, erro: '', pediu: false };
 
@@ -1803,6 +1803,7 @@
       if (remote.resultadoPublico !== !!row.resultado_publico) { pubRes.dados = null; pubRes.erro = ''; pubRes.pediu = false; }
       if (remote.visivel !== !!row.votacao_visivel) mudou = true;
       remote.visivel = !!row.votacao_visivel;
+      if (row.avaliacoes_abertas != null && remote.avaliacoes !== !!row.avaliacoes_abertas) { remote.avaliacoes = !!row.avaliacoes_abertas; mudou = true; }
       if (remote.decisao !== !!row.decisao_aberta) { remote.decisao = !!row.decisao_aberta; mudou = true; banca.dec.dados = null; if (route.name === 'decisao') carregarDecisao(); }
       var palcoNovo = row.palco || null;
       if (remote.palco !== palcoNovo) { var tinhaPalco = remote.carregou; remote.palco = palcoNovo; mudou = true; if (tinhaPalco && palcoNovo) bancaAvisoPalco(palcoNovo); }
@@ -3834,6 +3835,7 @@
         '<button class="btn btn-ghost btn-sm" data-act="bancaSair">Sair</button>' +
       '</div></section>' +
       '<div class="cont banca-corpo">' +
+        (!remote.avaliacoes ? '<div class="banca-fechada">' + ico('i-lock') + '<span><b>As avaliações ainda estão fechadas</b><span class="tiny">Você já pode ler os projetos. As notas abrem quando a organização liberar; esta tela atualiza sozinha.</span></span></div>' : '') +
         (remote.decisao ? '<a class="banca-aviso dec" href="#/decisao"><span><b>A decisão final está aberta</b><span class="tiny">Veja as médias de todos e escolha o vencedor.</span></span>' + ico('i-chev') + '</a>' : '') +
         (p ? '<button class="banca-aviso" data-go="banca/' + esc(p.id) + '"><span class="bc-noar"><i></i>NO AR</span><span class="grow"><b>' + esc(p.name) + '</b><span class="tiny">Apresentando agora · toque para avaliar</span></span>' + ico('i-chev') + '</button>' : '') +
         '<div class="bcards">' + cards + '</div>' +
@@ -3852,7 +3854,7 @@
     var p = byId(id);
     if (!p) return notFound('Projeto não encontrado', 'banca', 'Voltar aos projetos');
     var d = bancaDraft(id), noar = palcoAtual() && palcoAtual().id === id;
-    var q = notasQtd(d.notas), salvo = banca.itens[id];
+    var q = notasQtd(d.notas), salvo = banca.itens[id], trava = !remote.avaliacoes;
     var crit = CRITERIOS.map(function (c, i) {
       var v = d.notas[c.k] || 0;
       return '<fieldset class="crit' + (v ? ' tem' : '') + '" data-crit="' + c.k + '">' +
@@ -3862,7 +3864,7 @@
           '<p class="tiny">2 e 4 ficam entre esses pontos.</p></details>' +
         '<div class="crit-escala" role="radiogroup" aria-label="' + esc(c.t) + '">' +
         [1, 2, 3, 4, 5].map(function (n) {
-          return '<button type="button" class="crit-b' + (v === n ? ' on' : '') + '" role="radio" aria-checked="' + (v === n) + '" data-act="bancaNota" data-k="' + c.k + '" data-v="' + n + '" aria-label="' + n + ' — ' + ESCALA[n] + '">' + n + '</button>';
+          return '<button type="button" class="crit-b' + (v === n ? ' on' : '') + '" role="radio" aria-checked="' + (v === n) + '" data-act="bancaNota" data-k="' + c.k + '" data-v="' + n + '" aria-label="' + n + ' — ' + ESCALA[n] + '"' + (trava ? ' disabled' : '') + '>' + n + '</button>';
         }).join('') + '</div>' +
         '<span class="crit-rot tiny">' + (v ? v + ' · ' + ESCALA[v] : '1 = Insuficiente · 5 = Excelente') + '</span>' +
         '</fieldset>';
@@ -3877,15 +3879,16 @@
           '<p class="small">' + esc(nomesHerois(p)) + '</p></div></div>' +
       '</div></section>' +
       '<div class="cont banca-corpo">' +
+        (trava ? '<div class="banca-fechada">' + ico('i-lock') + '<span><b>Avaliações fechadas</b><span class="tiny">Leia o resumo do projeto. Os botões de nota liberam quando a organização abrir as avaliações.</span></span></div>' : '') +
         bancaResumo(p) +
-        '<form class="bp-form" data-aval="' + esc(id) + '" novalidate>' + crit +
+        '<form class="bp-form' + (trava ? ' travado' : '') + '" data-aval="' + esc(id) + '" novalidate>' + crit +
         '<div class="field"><label for="bpCom">Comentário <span class="tiny">(opcional)</span></label>' +
           '<textarea id="bpCom" rows="4" maxlength="4000" data-aval-campo="comentario" placeholder="Pontos fortes, sugestões, observações…">' + esc(d.comentario) + '</textarea></div>' +
         '</form>' +
       '</div>' +
       '<div class="bp-pe"><div class="cont">' +
         '<span class="bp-resumo"><b class="num" id="bpMedia">' + fmt1(notasMedia(d.notas)) + '</b><span class="tiny" id="bpQtd">' + q + ' de 6 critérios' + (salvo && !d.mudou && notasCompletas(salvo.notas) ? ' · ✓ confirmada' : '') + '</span></span>' +
-        '<button class="btn btn-primary btn-lg" data-act="bancaConfirmar" data-id="' + esc(id) + '"' + (banca.salvando ? ' disabled' : '') + '>' + (banca.salvando ? 'Salvando…' : 'Confirmar avaliação') + '</button>' +
+        '<button class="btn btn-primary btn-lg" data-act="bancaConfirmar" data-id="' + esc(id) + '"' + (banca.salvando || trava ? ' disabled' : '') + '>' + (trava ? 'Avaliações fechadas' : banca.salvando ? 'Salvando…' : 'Confirmar avaliação') + '</button>' +
       '</div></div></div>';
   }
   // resumo do projeto para o jurado, recolhido por padrão (abre com um toque)
@@ -3923,6 +3926,7 @@
     var x = $('#bancaAviso'); if (x && !/^#\/(banca|decisao)\/?$/.test(location.hash)) x.remove();
   });
   function bancaMarcar(btn) {
+    if (!remote.avaliacoes) { toast('As avaliações ainda estão fechadas.'); return; }
     var f = btn.closest('form.bp-form'); if (!f) return;
     var id = f.getAttribute('data-aval'), d = bancaDraft(id);
     var k = btn.getAttribute('data-k'), v = +btn.getAttribute('data-v');
@@ -3957,6 +3961,7 @@
         toast('Avaliação de ' + (p ? p.name : 'projeto') + ' confirmada.');
         go('banca'); window.scrollTo(0, 0);
       } else if (r && r.erro === 'senha_banca_invalida') { bancaSenhaMudou(); render(); }
+      else if (r && r.erro === 'avaliacoes_fechadas') { remote.avaliacoes = false; toast('As avaliações foram fechadas pela organização. Suas notas continuam aqui.'); render(); }
       else { toast('Não consegui salvar. Tente de novo.'); render(); }
     }).catch(function (e) {
       banca.salvando = false; render();
@@ -4242,6 +4247,7 @@
         '<a class="btn btn-outline" href="#/mesa/decisao" target="_blank" rel="noopener">' + ico('i-grid') + ' Tela QR · decisão final</a>' +
         '<a class="btn btn-ghost" href="#/banca" target="_blank" rel="noopener">' + ico('i-eye') + ' Abrir a área da banca</a></div>' +
       '</section>' +
+      '<section class="stack"><h3 class="h3">Avaliações</h3>' + chaveAvaliacoes() + '</section>' +
       '<section class="stack"><h3 class="h3">Decisão final</h3>' +
       '<div class="revelar-box' + (remote.decisao ? ' on' : '') + '"><div class="grow"><b>' + (remote.decisao ? 'A decisão está aberta' : 'A decisão está fechada') + '</b>' +
         '<p class="small">' + (remote.decisao
@@ -4334,6 +4340,18 @@
   function avChip(rotulo, ligado, txtOn, txtOff) {
     return '<span class="av-chip' + (ligado ? ' on' : '') + '"><i></i><span>' + esc(rotulo) + ' <b>' + esc(ligado ? txtOn : txtOff) + '</b></span></span>';
   }
+  function chaveAvaliacoes() {
+    return '<label class="av-vis' + (remote.avaliacoes ? ' on' : '') + '"><input type="checkbox" data-act="toggleAvaliacoes"' + (remote.avaliacoes ? ' checked' : '') + '>' +
+      '<span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>' + (remote.avaliacoes ? 'Avaliações da banca abertas' : 'Avaliações da banca fechadas') + '</b>' +
+      '<span class="tiny">' + (remote.avaliacoes ? 'Os jurados podem dar e mudar notas.' : 'Os jurados leem os projetos, mas ainda não dão nota.') + '</span></span></label>';
+  }
+  function definirAvaliacoes(quer) {
+    if (!remote.on) { toast('Disponível na versão publicada.'); return; }
+    sbRpc('definir_avaliacoes', { p_chave: localState.adminKey || '', p_abertas: !!quer }).then(function (r) {
+      if (r && r.ok) { remote.avaliacoes = !!r.abertas; render(); toast(r.abertas ? 'Avaliações da banca abertas.' : 'Avaliações da banca fechadas.'); }
+      else { render(); if (!(r && r.erro === 'chave_invalida')) toast('Não consegui mudar agora.'); }
+    }).catch(function (e) { render(); toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
+  }
   function adminAoVivo() {
     if (!remote.on) return '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow"><b>Modo prévia.</b> O modo evento funciona na versão publicada, com o banco ligado.</p></div>';
     if (!modoEv.em) setTimeout(function () { aoVivoAtualizar(true); }, 0);
@@ -4385,6 +4403,7 @@
 
     var bancaC = '<section class="av-card">' +
       '<div class="av-cab"><span class="av-tit">' + ico('i-users') + ' Banca</span>' + avChip('Decisão', remote.decisao, 'aberta', 'fechada') + '</div>' +
+      chaveAvaliacoes() +
       '<div class="av-duplo">' +
         '<div class="av-num"><b class="num">' + nJ + '</b><span>' + (nJ === 1 ? 'jurado ativo' : 'jurados ativos') + '</span></div>' +
         (p ? '<div class="av-num"><b class="num">' + noPalco.length + '<small>/' + nJ + '</small></b><span>avaliaram a equipe no palco</span></div>' : '') +
@@ -5729,6 +5748,7 @@
     if (act === 'setPalavra') { flow.palavra = t.value; }
     else if (act === 'palcoEscolher') { definirPalco(t.value || null); }
     else if (act === 'toggleVisivelAv') { definirVisivel(!!t.checked); }
+    else if (act === 'toggleAvaliacoes') { definirAvaliacoes(!!t.checked); }
     else if (act === 'toggleVisivel') {
       var quer = !!t.checked;
       if (!remote.on) { toast('Disponível na versão publicada.'); t.checked = !quer; return; }
