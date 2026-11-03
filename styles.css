@@ -1788,3 +1788,41 @@ body:has(.cta-votar) .topo-btn { bottom: calc(var(--nav-h) + 92px); }
 .tl-c .tl-palavra b { font-size: clamp(20px, 2.2vw, 44px); }
 .tl-c .tl-qr-pe { font-size: clamp(11px, .9vw, 18px); }
 .tl-estilo-portal .tl-cands { gap: 1.3vw; }
+
+/* ---------- Herói: setas nas pontas + passar de página ---------- */
+.det-heroi { position: relative; }
+.det-seta {
+  position: absolute; top: 50%; z-index: 3; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 10px;
+  height: 56px; min-width: 56px; padding: 0 16px;
+  border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.82); color: var(--c-roxo, #4b1d8f);
+  box-shadow: 0 6px 22px rgba(60,20,120,.16);
+  font: inherit; font-weight: 600; font-size: .95rem;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: transform .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.det-seta svg { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.det-seta span { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width .3s ease, opacity .25s ease; }
+.det-seta.esq { left: clamp(10px, 2vw, 32px); }
+.det-seta.dir { right: clamp(10px, 2vw, 32px); }
+.det-seta:hover, .det-seta:focus-visible { background: #fff; box-shadow: 0 10px 30px rgba(60,20,120,.24); }
+.det-seta.esq:hover { transform: translate(-3px, -50%); }
+.det-seta.dir:hover { transform: translate(3px, -50%); }
+@media (hover: hover) and (min-width: 900px) {
+  .det-seta:hover span, .det-seta:focus-visible span { max-width: 180px; opacity: 1; }
+}
+.det-seta.no-cel { display: none; }
+@media (max-width: 899px) {
+  .det-seta.no-pc { display: none; }
+  .det-seta.no-cel { display: flex; height: 46px; min-width: 46px; padding: 0; justify-content: center; }
+  .det-seta.no-cel.esq { left: -4px; } .det-seta.no-cel.dir { right: -4px; }
+  .det-seta.esq:hover, .det-seta.dir:hover { transform: translateY(-50%); }
+  .det-seta svg { width: 22px; height: 22px; }
+}
+/* entrada da página, como quem vira a folha */
+@keyframes heroiEntraDir { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
+@keyframes heroiEntraEsq { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: none; } }
+.view-heroi.entra-dir .det-topo-in { animation: heroiEntraDir .42s cubic-bezier(.2,.8,.2,1) both; }
+.view-heroi.entra-esq .det-topo-in { animation: heroiEntraEsq .42s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .view-heroi .det-topo-in { animation: none !important; } }

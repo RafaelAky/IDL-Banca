@@ -1463,6 +1463,42 @@
   // ilustrações cujo arquivo já termina cortado nos pés (conferido nos arquivos)
   var PE_CORTADO = { 'img/heroi-05.webp': 1, 'img/heroi-06.webp': 1 };
   function clsPe(src) { return PE_CORTADO[src] ? ' class="pe-cortado"' : ''; }
+  /* passar de Herói: setas nas pontas, deslizar o dedo no celular e as setas do teclado */
+  var heroiEntrada = '';
+  function passarHeroi(passo) {
+    var v = document.querySelector('.view-heroi');
+    if (!v) return;
+    var id = v.getAttribute(passo > 0 ? 'data-next' : 'data-prev');
+    if (!id) return;
+    heroiEntrada = passo > 0 ? 'dir' : 'esq';
+    go('heroi/' + id);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-heroi-passo]');
+    if (b) heroiEntrada = b.getAttribute('data-heroi-passo') > 0 ? 'dir' : 'esq';
+  }, true);
+  (function () {
+    var x0 = null, y0 = 0;
+    document.addEventListener('touchstart', function (e) {
+      x0 = null;
+      if (!document.querySelector('.view-heroi') || e.touches.length !== 1) return;
+      if (e.target.closest && e.target.closest('input, textarea, select, video, iframe, .pagenav')) return;
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (x0 == null) return;
+      var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) passarHeroi(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    document.addEventListener('keydown', function (e) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      var t = e.target && e.target.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
+      if (e.key === 'ArrowRight') passarHeroi(1);
+      else if (e.key === 'ArrowLeft') passarHeroi(-1);
+    });
+  })();
+
   function viewHeroi(id) {
     var x = heroById(id);
     if (!x) return notFound('Herói não encontrado', 'herois', 'Voltar aos Heróis');
@@ -1482,9 +1518,15 @@
       '</nav>' : '';
 
     var insp = h.inspiration || '';
+    var setas = list.length > 1 ?
+      '<button class="det-seta esq" data-heroi-passo="-1" data-go="heroi/' + esc(hprev.hero.id) + '" aria-label="Herói anterior: ' + esc(hprev.hero.name) + '">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>' + esc(hprev.hero.name) + '</span></button>' +
+      '<button class="det-seta dir" data-heroi-passo="1" data-go="heroi/' + esc(hnext.hero.id) + '" aria-label="Próximo Herói: ' + esc(hnext.hero.name) + '">' +
+        '<span>' + esc(hnext.hero.name) + '</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>' : '';
+    var entra = heroiEntrada; heroiEntrada = '';
 
-    return '<div class="view detalhe">' +
-      '<section class="faixa fx-tint det-topo det-heroi">' + fundoDetalhe(h.name) +
+    return '<div class="view detalhe view-heroi' + (entra ? ' entra-' + entra : '') + '" data-prev="' + esc(hprev.hero.id) + '" data-next="' + esc(hnext.hero.id) + '">' +
+      '<section class="faixa fx-tint det-topo det-heroi">' + fundoDetalhe(h.name) + setas.replace(/det-seta /g, 'det-seta no-pc ') +
         '<div class="cont det-topo-in">' +
           '<div class="det-txt">' +
             '<button class="voltar" data-go="herois">' + ico('i-arrow-left') + 'Heróis</button>' +
@@ -1494,7 +1536,7 @@
             '<p class="det-nota num">Herói ' + (hidx + 1) + ' de ' + list.length + '</p>' +
             (ehCandidato(h) ? '<p class="det-candidato">' + ico('i-vote') + ' Candidato na votação do público</p>' : '') +
           '</div>' +
-          '<div class="det-figs n1">' + florGirando() +
+          '<div class="det-figs n1">' + florGirando() + setas.replace(/det-seta /g, 'det-seta no-cel ') +
             (h.image ? '<img' + clsPe(h.image) + ' src="' + esc(h.image) + '" alt="Ilustração do Herói ' + esc(h.name) + '">' : '') +
           '</div>' +
         '</div>' +
