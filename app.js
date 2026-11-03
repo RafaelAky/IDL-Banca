@@ -4364,7 +4364,6 @@
 
     // números
     var tot = adminRes.dados && adminRes.dados.liberado ? (adminRes.dados.total || 0) : null;
-    var part = (tot != null && remote.totalTrilheiros) ? Math.round(tot / remote.totalTrilheiros * 100) : null;
     var its = (adminBancaDados.itens || []).filter(function (i) { return i.notas && notasQtd(i.notas); });
     var jur = {}; its.forEach(function (i) { jur[i.jurado] = true; });
     var nJ = Object.keys(jur).length;
@@ -4391,8 +4390,7 @@
 
     var votacao = '<section class="av-card">' +
       '<div class="av-cab"><span class="av-tit">' + ico('i-vote') + ' Votação do público</span>' + avChip('', remote.aberta, 'Aberta', 'Fechada') + '</div>' +
-      '<div class="av-num"><b class="num">' + (tot == null ? '—' : tot) + '</b><span>' + (tot === 1 ? 'voto' : 'votos') +
-        (part != null ? ' · ' + part + '% dos ' + remote.totalTrilheiros + ' trilheiros' : '') + '</span></div>' +
+      '<div class="av-num"><b class="num">' + (tot == null ? '—' : tot) + '</b><span>' + (tot === 1 ? 'voto' : 'votos') + '</span></div>' +
       (remote.aberta
         ? '<button class="btn btn-danger btn-block btn-lg" data-act="askClose">Encerrar a votação</button>'
         : '<button class="btn btn-laranja btn-block btn-lg" data-act="askOpen">' + ico('i-vote') + ' Abrir a votação</button>') +
