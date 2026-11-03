@@ -2551,7 +2551,7 @@
   var admin = { tab: 'geral', editor: null, confirm: null, copy: null, fotosDe: null };
 
   var ADMIN_TABS = [
-    ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
+    ['aovivo', 'Ao vivo'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
     ['programacao', 'Programação'], ['projetos', 'Projetos'],
     ['herois', 'Heróis'], ['banca', 'Banca'], ['retro', 'Trilha 2026'], ['dados', 'Dados']
   ];
@@ -2604,6 +2604,7 @@
 
     var tabs = '<div class="tabs" role="tablist">' + ADMIN_TABS.map(function (t) {
       var curto = { programacao: 'Agenda', retro: 'Fotos', geral: 'Geral' }[t[0]];
+      if (t[0] === 'aovivo') return '<button role="tab" class="tab-aovivo" data-atab="aovivo" aria-selected="' + (admin.tab === 'aovivo') + '"><i class="tab-ponto"></i>Ao vivo</button>';
       return '<button role="tab" data-atab="' + t[0] + '" aria-selected="' + (admin.tab === t[0]) + '">' +
         (curto ? '<span class="tb-l">' + esc(t[1]) + '</span><span class="tb-c">' + esc(curto) + '</span>' : esc(t[1])) + '</button>';
     }).join('') + '</div>';
@@ -2619,6 +2620,7 @@
   }
 
   function adminTab() {
+    if (admin.tab === 'aovivo') return adminAoVivo();
     if (admin.tab === 'geral') return adminGeral();
     if (admin.tab === 'evento') return adminEvento();
     if (admin.tab === 'programacao') return adminPrograma();
@@ -2734,6 +2736,7 @@
     if (remote.on && !adminRes.dados && !adminRes.carregando && !adminRes.erro && localState.adminKey) setTimeout(loadResult, 0);
 
     return '<div class="stack-lg">' +
+      (remote.on ? '<button class="av-chamada" data-atab="aovivo"><span class="tab-ponto"></span><span><b>Modo evento · Ao vivo</b><span class="tiny">Palco, votação, banca e telão numa tela só, feita para o celular.</span></span>' + ico('i-chev') + '</button>' : '') +
       controlePalco() +
       painelResultado() +
       '<section class="stack">' +
@@ -4147,6 +4150,107 @@
   }
 
 
+  /* ============================ MODO EVENTO ============================
+     Aba "Ao vivo" do painel: tudo o que se usa durante a Banca numa tela
+     só, pensada para o celular de quem opera: palco, votação, banca,
+     decisão e telão, com contadores que se atualizam sozinhos.          */
+  var modoEv = { em: 0, timer: null };
+  function aoVivoAtualizar(forcar) {
+    if (!remote.on || !localState.adminKey) return;
+    var antes = JSON.stringify([adminRes.dados && adminRes.dados.total, adminBancaDados.itens, adminBancaDados.decisao]);
+    var p1 = sbRpc('resultado', { p_chave: localState.adminKey }).then(function (r) { if (r && r.liberado) { adminRes.dados = r; adminRes.quando = Date.now(); } }).catch(function () {});
+    var p2 = sbRpc('avaliacoes_banca', { p_chave: localState.adminKey }).then(function (r) { if (r && r.ok) { adminBancaDados.itens = r.itens || []; adminBancaDados.decisao = r.decisao || []; } }).catch(function () {});
+    Promise.all([p1, p2]).then(function () {
+      modoEv.em = Date.now();
+      var depois = JSON.stringify([adminRes.dados && adminRes.dados.total, adminBancaDados.itens, adminBancaDados.decisao]);
+      if ((forcar || antes !== depois) && route.name === 'admin' && admin.tab === 'aovivo' && !admin.confirm && !admin.editor) render();
+      else { var h = $('#avHora'); if (h) h.textContent = horaCurta(modoEv.em); }
+    });
+  }
+  function horaCurta(t) { return new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+  setInterval(function () {
+    if (route.name === 'admin' && admin.tab === 'aovivo' && localState.admin && document.visibilityState !== 'hidden') { syncEstado(); aoVivoAtualizar(); }
+  }, 8000);
+
+  function avChip(rotulo, ligado, txtOn, txtOff) {
+    return '<span class="av-chip' + (ligado ? ' on' : '') + '"><i></i><span>' + esc(rotulo) + ' <b>' + esc(ligado ? txtOn : txtOff) + '</b></span></span>';
+  }
+  function adminAoVivo() {
+    if (!remote.on) return '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow"><b>Modo prévia.</b> O modo evento funciona na versão publicada, com o banco ligado.</p></div>';
+    if (!modoEv.em) setTimeout(function () { aoVivoAtualizar(true); }, 0);
+    var p = palcoAtual(), ant = palcoVizinho(-1), prox = palcoVizinho(1), lista = projetosEmOrdem();
+    var pos = p ? lista.indexOf(p) + 1 : 0;
+    var figs = p ? (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return '<img src="' + esc(h.image) + '" alt="">'; }).join('') : '';
+    var opcoes = '<option value="">Escolher equipe…</option>' + lista.map(function (x) {
+      return '<option value="' + esc(x.id) + '"' + (p && p.id === x.id ? ' selected' : '') + '>' + esc((x.slot ? x.slot + ' · ' : '') + x.name) + '</option>';
+    }).join('');
+
+    // números
+    var tot = adminRes.dados && adminRes.dados.liberado ? (adminRes.dados.total || 0) : null;
+    var part = (tot != null && remote.totalTrilheiros) ? Math.round(tot / remote.totalTrilheiros * 100) : null;
+    var its = (adminBancaDados.itens || []).filter(function (i) { return i.notas && notasQtd(i.notas); });
+    var jur = {}; its.forEach(function (i) { jur[i.jurado] = true; });
+    var nJ = Object.keys(jur).length;
+    var noPalco = p ? its.filter(function (i) { return i.projeto === p.id && notasCompletas(i.notas); }).map(function (i) { return i.jurado; }) : [];
+    var faltam = p ? Object.keys(jur).filter(function (j) { return noPalco.indexOf(j) < 0; }) : [];
+    var nDec = (adminBancaDados.decisao || []).length;
+
+    var palco = '<section class="av-card av-palco">' +
+      '<div class="av-cab"><span class="av-tit">' + ico('i-users') + ' Palco</span>' +
+        (p ? '<span class="av-pos num">' + pos + ' de ' + lista.length + '</span>' : '') + '</div>' +
+      (p ? '<div class="av-palco-atual">' + (figs ? '<span class="av-figs">' + figs + '</span>' : '') +
+            '<div><span class="pc-ao-vivo"><i></i>No palco</span><b class="av-nome">' + esc(p.name) + '</b>' +
+            '<span class="tiny">' + esc([p.slot, p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ')) + '</span></div></div>'
+         : '<p class="av-vazio">Ninguém apresentando agora.</p>') +
+      '<div class="av-seguir">' + (prox ? 'A seguir: <b>' + esc(prox.name) + '</b>' + (prox.slot ? ' · ' + esc(prox.slot) : '') : (p ? '<b>Última equipe.</b>' : '')) + '</div>' +
+      '<div class="av-botoes">' +
+        (p ? '<button class="btn btn-outline av-ant" data-act="palcoAnt"' + (ant ? '' : ' disabled') + ' aria-label="Equipe anterior">' + ico('i-arrow-left') + '</button>' : '') +
+        '<button class="btn btn-primary btn-lg av-prox" data-act="palcoProx"' + (p && !prox ? ' disabled' : '') + '>' +
+          (p ? 'Próxima equipe' : 'Começar: ' + esc((lista[0] || {}).name || '')) + ' ' + ico('i-chev') + '</button>' +
+      '</div>' +
+      '<div class="av-linha"><select data-act="palcoEscolher" aria-label="Escolher a equipe no palco">' + opcoes + '</select>' +
+        (p ? '<button class="btn btn-ghost btn-sm" data-act="palcoLimpar">Encerrar</button>' : '') + '</div>' +
+      '</section>';
+
+    var votacao = '<section class="av-card">' +
+      '<div class="av-cab"><span class="av-tit">' + ico('i-vote') + ' Votação do público</span>' + avChip('', remote.aberta, 'Aberta', 'Fechada') + '</div>' +
+      '<div class="av-num"><b class="num">' + (tot == null ? '—' : tot) + '</b><span>' + (tot === 1 ? 'voto' : 'votos') +
+        (part != null ? ' · ' + part + '% dos ' + remote.totalTrilheiros + ' trilheiros' : '') + '</span></div>' +
+      (remote.aberta
+        ? '<button class="btn btn-danger btn-block btn-lg" data-act="askClose">Encerrar a votação</button>'
+        : '<button class="btn btn-laranja btn-block btn-lg" data-act="askOpen">' + ico('i-vote') + ' Abrir a votação</button>') +
+      (!remote.visivel && !remote.aberta ? '<p class="tiny av-obs">A aba Votação ainda está escondida no site; abrir a votação também a mostra.</p>' : '') +
+      '</section>';
+
+    var bancaC = '<section class="av-card">' +
+      '<div class="av-cab"><span class="av-tit">' + ico('i-users') + ' Banca</span>' + avChip('Decisão', remote.decisao, 'aberta', 'fechada') + '</div>' +
+      '<div class="av-duplo">' +
+        '<div class="av-num"><b class="num">' + nJ + '</b><span>' + (nJ === 1 ? 'jurado ativo' : 'jurados ativos') + '</span></div>' +
+        (p ? '<div class="av-num"><b class="num">' + noPalco.length + '<small>/' + nJ + '</small></b><span>avaliaram a equipe no palco</span></div>' : '') +
+      '</div>' +
+      (p && faltam.length ? '<p class="tiny av-obs">Falta' + (faltam.length > 1 ? 'm' : '') + ': ' + faltam.map(esc).join(', ') + '</p>' : '') +
+      (remote.decisao ? '<p class="small"><b>' + nDec + ' de ' + nJ + '</b> jurados já votaram na decisão final.</p>' : '') +
+      '<button class="btn ' + (remote.decisao ? 'btn-outline' : 'btn-laranja') + ' btn-block btn-lg" data-act="decisaoAbrir" data-v="' + (remote.decisao ? '0' : '1') + '">' +
+        (remote.decisao ? 'Encerrar a decisão final' : 'Abrir a decisão final') + '</button>' +
+      '</section>';
+
+    var telaoC = '<section class="av-card">' +
+      '<div class="av-cab"><span class="av-tit">' + ico('i-eye') + ' Telão</span>' + avChip('', remote.revelar, 'Revelando', 'Votação') + '</div>' +
+      (remote.revelar
+        ? '<button class="btn btn-outline btn-block btn-lg" data-act="desrevelar">Voltar o telão para a votação</button>'
+        : '<button class="btn btn-primary btn-block btn-lg" data-act="askRevelar">' + ico('i-spark') + ' Revelar o Herói no telão</button>') +
+      (remote.aberta && !remote.revelar ? '<p class="tiny av-obs">Dica: encerre a votação antes de revelar.</p>' : '') +
+      '<div class="av-linha"><a class="btn btn-ghost btn-sm" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
+        '<a class="btn btn-ghost btn-sm" href="#/mesa" target="_blank" rel="noopener">QR da banca</a>' +
+        '<a class="btn btn-ghost btn-sm" href="#/mesa/decisao" target="_blank" rel="noopener">QR da decisão</a></div>' +
+      '</section>';
+
+    return '<div class="aovivo">' +
+      '<div class="av-topo"><div><h2 class="h2">Ao vivo</h2><p class="tiny">Atualiza sozinho a cada 8 s · <span id="avHora">' + (modoEv.em ? horaCurta(modoEv.em) : '—') + '</span></p></div>' +
+        '<button class="btn btn-outline btn-sm" data-act="aoVivoAtualizar">Atualizar</button></div>' +
+      palco + votacao + bancaC + telaoC + '</div>';
+  }
+
   /* ===================== PLANILHAS FORMATADAS (.xlsx) =====================
      Gera um arquivo do Excel de verdade, com cores, larguras, cabeçalho
      fixo e filtro, direto no navegador (sem biblioteca externa). Abre no
@@ -5192,6 +5296,7 @@
       renderOverlay();
     }
     else if (act === 'pubResult') setVotacao(null, !remote.resultadoPublico);
+    else if (act === 'aoVivoAtualizar') { syncEstado(); aoVivoAtualizar(true); toast('Atualizado.'); }
     else if (act === 'palcoProx') { var px = palcoVizinho(1); if (px) definirPalco(px.id); }
     else if (act === 'palcoAnt') { var pa2 = palcoVizinho(-1); if (pa2) definirPalco(pa2.id); }
     else if (act === 'palcoLimpar') definirPalco(null);
