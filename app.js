@@ -4548,7 +4548,8 @@
     return '<div class="telao pausa" id="pausaTela">' + telaoFundo() +
       '<div class="pz-grade">' + q + '</div>' +
       '<div class="pz-destaque" aria-hidden="true"></div>' +
-      '<div class="pz-qr"><div class="pz-qr-img" id="pzQr"></div><span class="pz-qr-txt"><b>Conheça o site</b><span>' + esc(siteBase().replace(/^https?:\/\//, '')) + '</span></span></div>' +
+      // QR do site só no mosaico avulso (leilão); no modo pausa do telão não aparece
+      (route.name === 'mosaico' ? '<div class="pz-qr"><div class="pz-qr-img" id="pzQr"></div><span class="pz-qr-txt"><b>Conheça o site</b><span>' + esc(siteBase().replace(/^https?:\/\//, '')) + '</span></span></div>' : '') +
       (route.name === 'mosaico' && route.param !== 'marca' ? '' : '<span class="pz-marca">' + slideMarca() + '<span>Trilha 2026</span></span>') +
       '</div>';
   }
