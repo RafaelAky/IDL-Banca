@@ -213,7 +213,10 @@
   var localState = (function () {
     var raw = safeGet(LOCAL); var o = null;
     if (raw) { try { o = JSON.parse(raw); } catch (e) { o = null; } }
-    return o || { visited: [], voted: null, unlocked: false, code: null, hash: null, name: '', device: uid('dev'), bannerOff: false, admCardOff: false, admin: false, adminKey: '' };
+    o = o || { visited: [], voted: null, unlocked: false, code: null, hash: null, name: '', device: uid('dev'), bannerOff: false, admCardOff: false, admin: false, adminKey: '' };
+    if (!Array.isArray(o.visited)) o.visited = [];   // dado antigo ou incompleto no aparelho
+    if (!o.device) o.device = uid('dev');
+    return o;
   })();
   function saveLocal() { safeSet(LOCAL, JSON.stringify(localState)); }
 
@@ -470,14 +473,23 @@
     return eventPhase() !== 'antes';
   }
   var NAV_BANCA = { id: 'banca', label: 'Banca', shortLabel: 'Banca', icon: 'i-users' };
+  /* MODO PÓS-EVENTO: ligado no painel (aba Evento) quando a Banca termina.
+     O Início vira agradecimento + vencedores + fotos, e a aba Votação dá
+     lugar a "Vencedores". Desligar volta tudo ao modo de evento.          */
+  function posEvento() { return !!(db && db.posEvento); }
+  var NAV_VENC = { id: 'resultado', label: 'Vencedores', shortLabel: 'Vencedores', icon: 'i-spark' };
   function navItens() {
     var base = mostraVotacao() ? NAV_BASE : NAV_BASE.filter(function (n) { return n.id !== 'votacao'; });
+    if (posEvento()) {
+      base = NAV_BASE.filter(function (n) { return n.id !== 'votacao'; });
+      if (!remote.on || remote.resultadoPublico) base = base.concat([NAV_VENC]);
+    }
     if (bancaLogada()) base = base.concat([NAV_BANCA]);
     return ehAdmin() ? base.concat([NAV_ADMIN]) : base;
   }
   function navGroup(cur) {
     if (cur === 'heroi' || cur === 'projeto' || cur === 'herois') return 'projetos';
-    if (cur === 'resultado') return 'votacao';
+    if (cur === 'resultado') return posEvento() ? 'resultado' : 'votacao';
     if (cur === 'decisao') return 'banca';
     return cur;
   }
@@ -827,7 +839,7 @@
   })();
 
   function viewHome() {
-    var ev = db.event, live = liveItem(), nxt = live ? null : nextItem();
+    var ev = db.event, live = liveItem(), nxt = live ? null : nextItem(), pos = posEvento();
     // banner do Herói vencedor (depois do evento) entra como o primeiro
     var temVenc = vencedoresPublicos().length > 0;
     if (carrossel.n !== (temVenc ? 3 : 2)) { carrossel.n = temVenc ? 3 : 2; carrossel.i = 0; }
@@ -844,7 +856,7 @@
       .map(function (m) { return '<span>' + ico(m[0]) + esc(m[1]) + '</span>'; }).join('');
 
     var dp = dayProgress();
-    var rail = (dp.first && aoVivo()) ? '<div class="dayrail">' +
+    var rail = (dp.first && aoVivo() && !pos) ? '<div class="dayrail">' +
       '<div class="row-between"><span class="eyebrow">A trilha do dia</span>' +
       '<span class="dayrail-hora"><span class="livedot"></span><span id="liveClock">' + clockLabel() + '</span></span></div>' +
       '<div class="rl"><div class="fill" id="dayFill" style="width:' + dp.pct.toFixed(1) + '%"></div>' +
@@ -902,6 +914,14 @@
         '</article>';
     }
 
+    if (pos) {
+      nowHtml = '<article class="nowcard is-next pos-prox" id="nowCard">' +
+        '<p class="now-k"><span>Vem aí</span></p>' +
+        '<h2 class="ttl">A próxima Trilha já está sendo preparada</h2>' +
+        '<p class="desc">Os projetos e os Heróis de 2026 continuam aqui. Acompanhe o Instituto Dente de Leão para saber quando começa a próxima turma e a próxima Banca.</p>' +
+        '<a class="btn btn-outline" href="https://institutodentedeleao.com.br/" target="_blank" rel="noopener">Conheça o Instituto ' + ico('i-chev') + '</a>' +
+        '</article>';
+    }
     var shortcuts = '<div class="atalhos">' +
       '<button class="atalho" data-go="projetos">' +
       '<span class="at-t">Conheça os projetos</span>' +
@@ -947,7 +967,14 @@
       : '';
 
     var voteHtml;
-    if (localState.voted) {
+    if (pos) {
+      // no pós-evento, a faixa da votação vira a dos vencedores (se já foram publicados)
+      var vPub = vencedoresPublicos();
+      voteHtml = vPub.length ? '<section class="faixa fx-branco home-venc"><div class="cont">' +
+        '<div class="hv-cab"><span class="eyebrow">Banca Final · ' + esc(ev.dateLabel || '') + '</span><h2 class="titulo">Os vencedores da Trilha 2026</h2></div>' +
+        vencedoresHtml(vPub.map(function (x) { return opcaoPorId(x.hero.id); }).filter(Boolean), pubRes.dados && pubRes.dados.banca) +
+        '</div></section>' : '';
+    } else if (localState.voted) {
       voteHtml = '<section class="faixa fx-escuro home-voto">' + sementesNoAr(4) + '<div class="cont voto-in">' +
         '<span class="eyebrow">Votação dos Heróis</span>' +
         '<h2 class="titulo">Voto registrado</h2>' +
@@ -985,7 +1012,15 @@
       '<section class="faixa fx-escuro dobra car-slide' + (carrossel.i === (temVenc ? 1 : 0) ? ' is-ativo' : '') + '" aria-roledescription="slide">' +
         desfileHerois() +
         '<div class="cont dobra-txt">' +
-          '<span class="eyebrow">' + (firstName(localState.name) ? 'Olá, ' + esc(firstName(localState.name)) : 'Formatura 2026') + '</span>' +
+          (pos
+          ? '<span class="eyebrow">Trilha 2026 · concluída</span>' +
+            '<h1 class="mega">Obrigado por trilhar com a gente</h1>' +
+            '<p class="dobra-sub">' + esc(ev.name) + (ev.dateLabel ? ' · ' + esc(ev.dateLabel) : '') + '</p>' +
+            '<div class="dobra-chamada">' +
+              '<p>Obrigado aos trilheiros, às famílias, aos jurados e aos parceiros. Os ' + nProjetos() + ' projetos e os Heróis criados ao longo do ano continuam aqui.</p>' +
+              '<button class="btn btn-lg btn-laranja inst-btn" data-nav="' + (temVenc ? 'resultado' : 'projetos') + '">' + (temVenc ? 'Ver os vencedores' : 'Conheça os projetos') + '</button>' +
+            '</div>'
+          : '<span class="eyebrow">' + (firstName(localState.name) ? 'Olá, ' + esc(firstName(localState.name)) : 'Formatura 2026') + '</span>' +
           '<h1 class="mega">' + esc(ev.name) + '</h1>' +
           '<p class="dobra-sub">' + esc(ev.subtitle) + '</p>' +
           '<p class="dobra-meta">' + meta + '</p>' +
@@ -994,7 +1029,7 @@
             '<p>Cada projeto é uma ideia que nasceu na Trilha para transformar a comunidade. Conheça os ' +
               nProjetos() + ' projetos e os Heróis criados pelos trilheiros.</p>' +
             '<button class="btn btn-lg btn-laranja inst-btn" data-nav="projetos">Conheça os projetos</button>' +
-          '</div>' +
+          '</div>') +
         '</div>' +
       '</section>' +
       '<section class="faixa dobra-inst car-slide' + (carrossel.i === (temVenc ? 2 : 1) ? ' is-ativo' : '') + '" aria-roledescription="slide">' +
@@ -1015,7 +1050,7 @@
       }).join('') + '</div>' +
       '</section>' +
 
-      cartaoPalco() +
+      (pos ? '' : cartaoPalco()) +
       ((banner || avisoAdmin) ? '<div class="cont home-avisos">' + banner + avisoAdmin + '</div>' : '') +
 
       /* ---- os números ---- */
@@ -1033,12 +1068,13 @@
         '</div>' +
       '</section>' +
 
+      (pos ? voteHtml : '') +
       '<section class="faixa fx-tint home-agora"><div class="cont agora-in">' +
       nowHtml + shortcuts + '</div></section>' +
       turma +
       sepTrilhei() +
       fotos +
-      voteHtml +
+      (pos ? '' : voteHtml) +
       '</div>';
   }
 
@@ -2509,6 +2545,29 @@
   }
 
   /* =============================== RESULTADO ============================== */
+  // os dois prêmios lado a lado: Herói do público e Projeto destaque da banca
+  function vencBancaOpcao(id) {
+    var p = byId(id); if (!p) return null;
+    var hs = p.heroes || [];
+    return { id: id, name: p.name, image: (hs[0] && hs[0].image) || projectImage(p).src,
+      sub: hs.length ? (hs.length > 1 ? 'Heróis: ' : 'Herói: ') + hs.map(function (h) { return String(h.name).split(/\s+[—–-]\s+/)[0]; }).join(', ') : (p.tagline || ''),
+      go: 'projeto/' + id };
+  }
+  function vencedoresHtml(publico, banca) {
+    var bs = (banca || []).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
+    function card(cls, tag, titulo, lista, vazio) {
+      return '<section class="venc-card ' + cls + '"><span class="venc-tag">' + esc(tag) + '</span><h3 class="venc-premio">' + esc(titulo) + '</h3>' +
+        (lista.length ? lista.map(function (o) {
+          return '<div class="venc-item">' + (o.image ? '<figure class="venc-fig"><img src="' + esc(mini(o.image)) + '" alt="" loading="lazy"></figure>' : '') +
+            '<h2 class="h2">' + esc(o.name) + '</h2>' + (o.sub ? '<p class="small">' + esc(o.sub) + '</p>' : '') +
+            (o.go ? '<button class="btn btn-outline btn-sm" data-go="' + esc(o.go) + '">Conheça a história</button>' : '') + '</div>';
+        }).join('') : '<p class="venc-vazio">' + esc(vazio) + '</p>') + '</section>';
+    }
+    return '<div class="venc-grade">' +
+      card('venc-pub', 'Prêmio do público', 'Herói da Trilha', publico || [], 'Ainda sem votos.') +
+      card('venc-banca', 'Prêmio da banca', 'Projeto destaque', bs, 'A banca ainda não decidiu.') +
+      '</div>';
+  }
   function viewResultado(isAdmin) {
     var rows, total;
     var herois = votoEmHerois();
@@ -2522,8 +2581,8 @@
 
     if (remote.on) {
       if (!remote.resultadoPublico && !isAdmin) {
-        return espera('O Herói é revelado no palco',
-          'Acompanhe pelo telão: o resultado é anunciado na cerimônia. Depois do evento, o Herói vencedor aparece em destaque aqui no site.');
+        return espera('Os vencedores são revelados no palco',
+          'Acompanhe pelo telão: os resultados são anunciados na cerimônia. Depois, o Herói escolhido pelo público e o Projeto destaque da banca aparecem aqui no site.');
       }
       if (!pubRes.dados && !pubRes.erro) {
         if (!pubRes.pediu) { pubRes.pediu = true; setTimeout(loadPublicResult, 0); }
@@ -2534,17 +2593,13 @@
           '<button class="btn btn-primary" data-act="reloadResult">Tentar de novo</button>');
       }
       if (pubRes.dados.so_vencedor) {
-        // para o público: só quem venceu, sem números
+        // para o público: só quem venceu (os dois prêmios), sem números
         var vs = (pubRes.dados.vencedores || []).map(function (v) { return opcaoPorId(v.id) || { name: v.nome, id: v.id }; });
         return '<div class="view view-faixa">' +
-          faixaTopo('escuro', 'IDL · Trilha 2026', vs.length > 1 ? 'Os Heróis da Trilha 2026' : 'O Herói da Trilha 2026',
-            'Escolhido pelo público na Banca Final. Obrigado a todos que votaram!', '', '') +
-          '<div class="corpo"><div class="painel-centro painel-resultado">' + vs.map(function (o) {
-            return '<div class="painelinho painelinho-destaque vencedor">' +
-              (o.image ? '<figure class="pr-fig pr-fig-grande"><img src="' + esc(o.image) + '" alt=""></figure>' : '') +
-              '<h2 class="h2">' + esc(o.name) + '</h2>' + (o.sub ? '<p class="small">' + esc(o.sub) + '</p>' : '') +
-              (o.go ? '<button class="btn btn-primary" data-go="' + esc(o.go) + '">Conheça a história</button>' : '') + '</div>';
-          }).join('') + '<div class="botoeira">' + verTodos + '</div></div></div></div>';
+          faixaTopo('escuro', 'IDL · Trilha 2026', 'Os vencedores da Trilha 2026',
+            'Escolhidos pelo público e pela banca na Banca Final. Obrigado a todos que votaram!', '', '') +
+          '<div class="corpo"><div class="painel-centro painel-resultado painel-venc">' + vencedoresHtml(vs, pubRes.dados.banca) +
+          '<div class="botoeira">' + verTodos + '</div></div></div></div>';
       }
       total = pubRes.dados.total || 0;
       rows = (pubRes.dados.projetos || []).map(function (r) {
@@ -2578,12 +2633,13 @@
                : 'Todos estes projetos chegaram até a Banca. Cada um carrega uma jornada de transformação.',
         '', '') +
       '<div class="corpo"><div class="painel-centro painel-resultado">' +
-      (top ? '<div class="painelinho painelinho-destaque vencedor">' +
+      (remote.on ? vencedoresHtml(rows.filter(function (r) { return r.n > 0 && r.n === rows[0].n; }).map(function (r) { return r.p; }), pubRes.dados && pubRes.dados.banca)
+        : (top ? '<div class="painelinho painelinho-destaque vencedor">' +
         (top.image ? '<figure class="pr-fig pr-fig-grande"><img src="' + esc(top.image) + '" alt=""></figure>' : '') +
         '<span class="eyebrow">' + (herois ? 'Herói mais votado' : 'Projeto mais lembrado pelo público') + '</span>' +
         '<h2 class="h2">' + esc(top.name) + '</h2>' +
         (top.sub ? '<p class="small">' + esc(top.sub) + '</p>' : '') +
-        '</div>' : '') +
+        '</div>' : '')) +
       '<section class="painelinho"><span class="eyebrow">Votos · ' + total + ' ' + (total === 1 ? 'voto' : 'votos') + ' no total</span>' +
       '<div>' + bars + '</div></section>' +
       '<div class="botoeira">' +
@@ -2613,7 +2669,7 @@
   var admin = { tab: 'geral', editor: null, confirm: null, copy: null, fotosDe: null };
 
   var ADMIN_TABS = [
-    ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['leilao', 'Leilão'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
+    ['check', 'Checklist'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['leilao', 'Leilão'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
     ['programacao', 'Programação'], ['projetos', 'Projetos'],
     ['herois', 'Heróis'], ['banca', 'Banca'], ['retro', 'Trilha 2026'], ['dados', 'Dados']
   ];
@@ -2641,6 +2697,7 @@
   }
 
   function adminTab() {
+    if (admin.tab === 'check') return adminChecklist();
     if (admin.tab === 'aovivo') return adminAoVivo();
     if (admin.tab === 'apres') return adminApresentacao();
     if (admin.tab === 'leilao') return adminLeilao();
@@ -2677,9 +2734,20 @@
   }
 
   /* --- evento --- */
+  function chavePosEvento() {
+    var on = posEvento();
+    return '<section class="painelinho stack pos-chave"><span class="eyebrow">Depois da Banca</span>' +
+      '<label class="av-vis' + (on ? ' on' : '') + '"><input type="checkbox" data-act="togglePosEvento"' + (on ? ' checked' : '') + '>' +
+      '<span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>' + (on ? 'Modo pós-evento ligado' : 'Modo pós-evento desligado') + '</b>' +
+      '<span class="tiny">' + (on
+        ? 'O Início mostra o agradecimento, os vencedores e as fotos; a aba Votação vira "Vencedores". Desligue para voltar ao modo de evento (ex.: na próxima Banca).'
+        : 'Ligue quando a Banca terminar: o Início troca a contagem e a programação por um agradecimento, os vencedores e as fotos.') + '</span></span></label>' +
+      (on && remote.on && !remote.resultadoPublico ? '<p class="tiny pos-aviso">Os vencedores ainda não estão no site. Para mostrá-los, use "Mostrar os vencedores no site" na aba Votação.</p>' : '') +
+      '</section>';
+  }
   function adminEvento() {
     var e = db.event;
-    return '<form id="eventForm" class="stack">' +
+    return chavePosEvento() + '<form id="eventForm" class="stack">' +
       '<h2 class="h2">Informações gerais do evento</h2>' +
       '<p class="small">Tudo aqui aparece na tela inicial. Nada está fixo no código.</p>' +
       fieldImg('logo', 'Logo do Instituto', e.logo) +
@@ -2731,7 +2799,7 @@
           ? '<button class="btn btn-danger" data-act="askClose">Encerrar votação</button>'
           : '<button class="btn btn-primary" data-act="askOpen">Abrir votação agora</button>') +
           '<button class="btn btn-primary" data-act="askRevelar">' + ico('i-spark') + (remote.revelar ? ' Revelado no telão' : ' Revelar o Herói no telão') + '</button>' +
-          '<button class="btn btn-outline" data-act="pubResult">' + (remote.resultadoPublico ? 'Tirar o vencedor do site' : 'Mostrar o vencedor no site') + '</button>' +
+          '<button class="btn btn-outline" data-act="pubResult">' + (remote.resultadoPublico ? 'Tirar os vencedores do site' : 'Mostrar os vencedores no site') + '</button>' +
           '<button class="btn btn-outline" data-act="loadResult">Atualizar as respostas</button>'
         : '<button class="btn btn-outline" data-atab="votacao">Abrir a aba Votação</button>') +
       '</div>' +
@@ -4692,37 +4760,70 @@
      números entra por ~20 s e o mosaico volta (as fotos seguem por baixo) */
   var PZ_ROD = { mosaico: 180000, tela: 20000 };
   // o que entra no rodízio do mosaico (aba Leilão do painel); vale para todos os telões
-  function leilaoTelas() {
+  function leilaoCfg() {
     var c = (db && db.leilao) || {};
-    var m = c.mosaico !== false, n = c.numeros !== false;
+    var ap = Array.isArray(c.apres) ? c.apres : ['Ismael Akiyama', 'Thais Carneiro'];
+    return { mosaico: c.mosaico !== false, idl: c.idl !== false, apres: [String(ap[0] || '').trim(), String(ap[1] || '').trim()], modo: c.apresModo || 'alternar' };
+  }
+  function leilaoTelas() {
+    var c = leilaoCfg(), m = c.mosaico, n = c.idl;
     if (!m && !n) m = true;          // nunca fica sem nada na tela
-    return { mosaico: m, numeros: n };
+    return { mosaico: m, idl: n };
+  }
+  /* flor do Instituto Dente de Leão, desenhada em SVG (fica nítida em
+     qualquer tamanho): três anéis de pétalas laranja que se sobrepõem   */
+  function idlFlorSvg(cls) {
+    var aneis = [[100, 'rgba(244,160,30,.55)', 0], [78, 'rgba(226,112,8,.55)', 7.5], [52, 'rgba(184,78,0,.6)', 15]];
+    var out = '';
+    aneis.forEach(function (a) {
+      var L = a[0], w = L * .2;
+      for (var i = 0; i < 16; i++) {
+        out += '<path transform="rotate(' + (i * 22.5 + a[2]) + ')" fill="' + a[1] + '" d="M0 0 C' + w + ' ' + (-L * .35) + ' ' + (w * .7) + ' ' + (-L * .75) + ' 0 ' + (-L) + ' C' + (-w * .7) + ' ' + (-L * .75) + ' ' + (-w) + ' ' + (-L * .35) + ' 0 0Z"/>';
+      }
+    });
+    var ast = '';
+    for (var k = 0; k < 8; k++) ast += '<line x1="0" y1="0" x2="0" y2="-11" transform="rotate(' + (k * 45) + ')"/>';
+    return '<svg class="' + (cls || '') + '" viewBox="-110 -110 220 220" aria-hidden="true">' + out +
+      '<circle r="15" fill="#7a3a00" opacity=".55"/><g stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".9">' + ast + '</g></svg>';
+  }
+  // tela do Instituto (visual do IDL, não do IDL Tech) com os apresentadores
+  function telaIdlHtml() {
+    var c = leilaoCfg(), a = c.apres.filter(Boolean), nomes;
+    if (!a.length) nomes = '';
+    else if (c.modo === 'juntos' && a.length > 1) nomes = '<div class="ti-nomes ti-juntos"><span>' + esc(a[0]) + '</span><i>&amp;</i><span>' + esc(a[1]) + '</span></div>';
+    else if (c.modo === 'p1' || a.length === 1) nomes = '<div class="ti-nomes"><span class="ti-fixo">' + esc(c.modo === 'p2' ? a[a.length - 1] : a[0]) + '</span></div>';
+    else if (c.modo === 'p2') nomes = '<div class="ti-nomes"><span class="ti-fixo">' + esc(a[1]) + '</span></div>';
+    else nomes = '<div class="ti-nomes ti-alterna"><span>' + esc(a[0]) + '</span><span>' + esc(a[1]) + '</span></div>';
+    return '<div class="ti-fundo" aria-hidden="true">' + idlFlorSvg('ti-flor ti-flor-a') + idlFlorSvg('ti-flor ti-flor-b') + idlFlorSvg('ti-flor ti-flor-c') + '</div>' +
+      '<div class="ti-centro">' +
+        // logo duplicado por cima de si mesmo: o dourado (semitransparente no arquivo) fica mais firme
+        '<span class="ti-logo"><img src="img/logo-instituto.webp" alt="Instituto Dente de Leão"><img src="img/logo-instituto.webp" alt="" aria-hidden="true"></span>' +
+        '<span class="ti-traco" aria-hidden="true"><i></i>' + idlFlorSvg('ti-mini') + '<i></i></span>' +
+        (nomes ? '<span class="ti-rotulo">Apresentação</span>' + nomes : '') +
+      '</div>' +
+      '<span class="ti-site">institutodentedeleao.com.br</span>';
   }
   function pzRodizio(tela) {
     clearInterval(pz.rod);
     var ms = window.IDL_RODIZIO_MS || PZ_ROD;
     var camada = document.createElement('div');
-    camada.className = 'pz-rodizio tl-slide sl-numeros';
+    camada.className = 'pz-rodizio tela-idl';
     camada.setAttribute('aria-hidden', 'true');
     tela.appendChild(camada);
     /* cada fase dura o tempo dela A PARTIR de quando de fato entrou na tela.
        Assim, mesmo que o navegador atrase os timers (janela coberta por outra,
-       aba em segundo plano, computador lento), a tela de números nunca é
+       aba em segundo plano, computador lento), a tela do IDL nunca é
        "pulada": ela entra no primeiro tique depois do prazo e fica os 20 s.
        O estado vale para a página toda: se a tela for redesenhada, continua. */
-    if (!pz.rodFase) { pz.rodFase = 'mosaico'; pz.rodAte = Date.now() + ms.mosaico; }
-    var mostrando = null;
+    if (!pz.rodFase || pz.rodFase === 'numeros') { pz.rodFase = 'mosaico'; pz.rodAte = Date.now() + ms.mosaico; }
+    var mostrando = null, assin = '';
     function aplicar() {
-      var deve = pz.rodFase === 'numeros';
-      if (deve === mostrando) return;
-      mostrando = deve;
-      if (deve) {
-        var s = null;
-        try { s = deckSlides().filter(function (x) { return x.tipo === 'numeros'; })[0]; } catch (e) {}
-        s = s || { tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } };
-        try { camada.innerHTML = telaoFundo() + slideHtml(s, false); }
-        catch (e) { camada.innerHTML = telaoFundo() + slideHtml({ tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } }, false); }
-      }
+      var deve = pz.rodFase === 'idl';
+      var a2 = deve ? JSON.stringify(leilaoCfg()) : '';
+      if (deve === mostrando && a2 === assin) return;
+      // nomes trocados no painel com a tela no ar: redesenha só o conteúdo
+      if (deve && (deve !== mostrando || a2 !== assin)) camada.innerHTML = telaIdlHtml();
+      mostrando = deve; assin = a2;
       camada.classList.toggle('on', deve);
     }
     function passo() {
@@ -4730,10 +4831,10 @@
       var agora = Date.now(), lig = leilaoTelas();
       if (!lig[pz.rodFase]) {
         // a tela atual foi desligada no painel: vai para a outra
-        pz.rodFase = lig.mosaico ? 'mosaico' : 'numeros';
+        pz.rodFase = lig.mosaico ? 'mosaico' : 'idl';
         pz.rodAte = agora + (pz.rodFase === 'mosaico' ? ms.mosaico : ms.tela);
       } else if (agora >= pz.rodAte) {
-        var prox = pz.rodFase === 'mosaico' ? 'numeros' : 'mosaico';
+        var prox = pz.rodFase === 'mosaico' ? 'idl' : 'mosaico';
         if (lig[prox]) pz.rodFase = prox;          // com só uma ligada, ela fica direto
         pz.rodAte = agora + (pz.rodFase === 'mosaico' ? ms.mosaico : ms.tela);
       }
@@ -4948,29 +5049,43 @@
   }
   /* ---------- aba Leilão: atalhos para as telas usadas no leilão do IDL ---------- */
   function leiChaves() {
-    var lig = leilaoTelas(), c = (db && db.leilao) || {};
+    var lig = leilaoTelas(), c = leilaoCfg();
     function chave(k, titulo, on, off) {
-      var ligado = k === 'mosaico' ? c.mosaico !== false : c.numeros !== false;
+      var ligado = c[k];
       return '<label class="av-vis' + (ligado ? ' on' : '') + '"><input type="checkbox" data-act="leiTela" data-tela="' + k + '"' + (ligado ? ' checked' : '') + '>' +
         '<span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>' + esc(titulo) + '</b>' +
         '<span class="tiny">' + esc(ligado ? on : off) + '</span></span></label>';
     }
-    var resumo = lig.mosaico && lig.numeros ? 'O telão alterna: 3 min de mosaico e 20 s de números.'
-      : lig.mosaico ? 'O telão fica só no mosaico de fotos.' : 'O telão fica parado na tela de números.';
+    var resumo = lig.mosaico && lig.idl ? 'O telão alterna: 3 min de mosaico e 20 s da tela do Instituto.'
+      : lig.mosaico ? 'O telão fica só no mosaico de fotos.' : 'O telão fica parado na tela do Instituto.';
+    var modos = [['alternar', 'Alternar os dois nomes'], ['juntos', 'Os dois nomes juntos'], ['p1', 'Só o 1º apresentador'], ['p2', 'Só o 2º apresentador']];
     return '<section class="painelinho stack lei-chaves"><div><span class="eyebrow">Telas do rodízio</span>' +
-      '<p class="small">' + resumo + ' Vale para o /#/mosaico e o /#/mosaico/marca; o telão aberto muda sozinho em até 30 s.</p></div>' +
+      '<p class="small">' + resumo + ' Vale para o /#/mosaico e o /#/mosaico/marca; o telão aberto muda sozinho em até 30 s. A seta → no telão pula para a próxima tela.</p></div>' +
       '<div class="lei-chaves-l">' +
         chave('mosaico', 'Mosaico de fotos', 'Ligado · 3 min por vez', 'Desligado') +
-        chave('numeros', 'A Trilha 2026 em números', 'Ligado · 20 s por vez', 'Desligado') +
-      '</div></section>';
+        chave('idl', 'Tela do Instituto · apresentação', 'Ligada · 20 s por vez', 'Desligada') +
+      '</div>' +
+      '<div class="lei-apres">' +
+        '<div class="field"><label for="leiAp1">1º apresentador</label><input id="leiAp1" data-act="leiNome" data-i="0" value="' + esc(c.apres[0]) + '" placeholder="Nome"></div>' +
+        '<div class="field"><label for="leiAp2">2º apresentador</label><input id="leiAp2" data-act="leiNome" data-i="1" value="' + esc(c.apres[1]) + '" placeholder="Nome"></div>' +
+        '<div class="field"><label for="leiModo">Na tela</label><select id="leiModo" data-act="leiModo">' + modos.map(function (m) {
+          return '<option value="' + m[0] + '"' + (c.modo === m[0] ? ' selected' : '') + '>' + esc(m[1]) + '</option>'; }).join('') + '</select></div>' +
+      '</div>' +
+      '<div class="lei-ti-prev"><div class="tela-idl lei-ti-mini">' + telaIdlHtml() + '</div></div>' +
+      '</section>';
   }
   function leiDefinirTela(k, on) {
     db.leilao = db.leilao || {};
-    var outra = k === 'mosaico' ? 'numeros' : 'mosaico';
+    var outra = k === 'mosaico' ? 'idl' : 'mosaico';
     if (!on && db.leilao[outra] === false) { toast('Deixe pelo menos uma tela ligada.'); render(); return; }
     db.leilao[k] = !!on;
     save();
-    toast((k === 'mosaico' ? 'Mosaico' : 'Tela de números') + (on ? ' ligada.' : ' desligada.'));
+    toast((k === 'mosaico' ? 'Mosaico' : 'Tela do Instituto') + (on ? ' ligada.' : ' desligada.'));
+  }
+  function leiDefinirApres(i, v) {
+    db.leilao = db.leilao || {};
+    var ap = leilaoCfg().apres.slice(); ap[i] = String(v || '').trim();
+    db.leilao.apres = ap; save(); toast('Nome salvo. O telão atualiza em até 30 s.');
   }
   var leiMedidas = -1;
   function adminLeilao() {
@@ -5006,7 +5121,7 @@
       leiChaves() +
       '<div class="lei-grade">' +
         tela({ destaque: true, marca: true, rota: 'mosaico/marca', titulo: 'Mosaico com marca e rodízio', prev: prevMosaico + '<span class="lei-selo">Trilhei · IDL Tech</span><span class="lei-mini-qr">' + prevQr + '</span>',
-          texto: 'Fotos da Trilha em mosaico, com a marca e o QR do site, alternando com as telas ligadas acima. A seta → (ou o passador) pula para a próxima tela.' }) +
+          texto: 'Fotos da Trilha em mosaico, com a marca e o QR do site, alternando com a tela do Instituto (veja acima). A seta → (ou o passador) pula para a próxima tela.' }) +
         tela({ rota: 'mosaico', titulo: 'Mosaico sem marca', prev: prevMosaico + '<span class="lei-mini-qr">' + prevQr + '</span>',
           texto: 'As fotos e o QR do site, sem a marca. Segue o mesmo rodízio.' }) +
         tela({ rota: '', titulo: 'Site do IDL', prev: '<div class="lei-qr">' + prevQr + '</div>',
@@ -5030,6 +5145,146 @@
       });
     });
     return cfg;
+  }
+
+
+  /* ======================= CHECKLIST PRÉ-EVENTO =======================
+     Confere tudo de uma vez (banco, internet, tempo real, votação, banca,
+     telão e site) e marca verde, amarelo ou vermelho, com o atalho para
+     a aba onde se resolve. Para abrir na manhã do evento e no ensaio.    */
+  var chk = { rodando: false, itens: null, em: 0 };
+  function chkTempo(fn) { var t = performance.now(); return fn().then(function (v) { return { v: v, ms: performance.now() - t }; }); }
+  function chkRealtime() {
+    return new Promise(function (ok) {
+      if (!remote.on || !window.WebSocket) return ok(false);
+      var feito = false, ws;
+      function fim(v) { if (feito) return; feito = true; try { ws.close(); } catch (e) {} ok(v); }
+      try {
+        ws = new WebSocket(String(BE.url).replace(/^http/, 'ws').replace(/\/+$/, '') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(BE.anonKey) + '&vsn=1.0.0');
+      } catch (e) { return ok(false); }
+      ws.onopen = function () {
+        ws.send(JSON.stringify({ topic: 'realtime:idl-check', event: 'phx_join', ref: '1', join_ref: '1',
+          payload: { config: { broadcast: { self: false }, presence: { key: '' }, postgres_changes: [{ event: 'UPDATE', schema: 'public', table: 'estado_votacao' }] }, access_token: BE.anonKey } }));
+      };
+      ws.onmessage = function (ev) { try { var m = JSON.parse(ev.data); if (m.event === 'phx_reply' && m.payload) fim(m.payload.status === 'ok'); } catch (e) {} };
+      ws.onerror = ws.onclose = function () { fim(false); };
+      setTimeout(function () { fim(false); }, 6000);
+    });
+  }
+  function chkRodar() {
+    if (chk.rodando) return;
+    chk.rodando = true; render();
+    var k = localState.adminKey || '';
+    function seguro(p) { return p.then(function (v) { return v; }, function (e) { return { erro: e }; }); }
+    var lat = [];
+    var pEstado = !remote.on ? Promise.resolve({ erro: 'off' }) : seguro(
+      chkTempo(sbEstado).then(function (a) { lat.push(a.ms); return chkTempo(sbEstado); })
+        .then(function (b) { lat.push(b.ms); return chkTempo(sbEstado); })
+        .then(function (c) { lat.push(c.ms); aplicarEstado(c.v, false); return c.v; }));
+    var pDown = seguro(chkTempo(function () {
+      return fetch('img/banner-instituto.webp?chk=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.blob(); });
+    }));
+    var pRes = !remote.on ? Promise.resolve({ erro: 'off' }) : seguro(sbRpc('resultado', { p_chave: k }));
+    var pBanca = !remote.on ? Promise.resolve({ erro: 'off' }) : seguro(sbRpc('avaliacoes_banca', { p_chave: k }));
+    var pCand = !remote.on ? Promise.resolve({ erro: 'off' }) : seguro(fetch(sbUrl('/rest/v1/projetos?select=id,elegivel'), { headers: sbHeaders() }).then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); }));
+    var pRt = chkRealtime();
+    Promise.all([pEstado, pDown, pRes, pBanca, pCand, pRt]).then(function (r) {
+      chk.itens = chkMontar({ estado: r[0], down: r[1], res: r[2], banca: r[3], cand: r[4], rt: r[5], lat: lat });
+      chk.em = Date.now(); chk.rodando = false; render();
+    });
+  }
+  function chkMontar(x) {
+    var L = [];
+    function item(grupo, st, t, d, atab, rot) { L.push({ g: grupo, st: st, t: t, d: d, atab: atab, rot: rot }); }
+    var on = remote.on, row = x.estado && !x.estado.erro ? x.estado : null;
+    // ---- conexão
+    if (!on) item('Conexão', 'erro', 'Banco de dados não configurado', 'O config.js está sem o endereço ou a chave do Supabase: votação e banca não funcionam.');
+    else if (!row) item('Conexão', 'erro', 'Sem resposta do banco de dados', 'Confira a internet deste aparelho. Se ela estiver boa, o projeto do Supabase pode estar pausado: abra o painel do Supabase e reative.');
+    else item('Conexão', 'ok', 'Banco de dados respondendo', 'O Supabase respondeu normalmente.');
+    if (x.lat.length) {
+      var ms = Math.round(x.lat.reduce(function (a, b) { return a + b; }, 0) / x.lat.length);
+      var mbps = x.down && !x.down.erro && x.down.v ? (x.down.v.size * 8 / 1e6) / (x.down.ms / 1000) : 0;
+      var stI = ms > 1200 || (mbps && mbps < 1) ? 'erro' : ms > 450 || (mbps && mbps < 4) ? 'aviso' : 'ok';
+      item('Conexão', stI, 'Internet deste aparelho', 'Resposta do banco em ' + ms + ' ms' + (mbps ? ' · download de ~' + (mbps >= 10 ? Math.round(mbps) : mbps.toFixed(1)) + ' Mbit/s' : '') +
+        (stI === 'ok' ? '. Boa para o telão e o controle.' : stI === 'aviso' ? '. Funciona, mas pode ter atraso: se der, use cabo ou outra rede no computador do telão.' : '. Lenta: troque de rede antes do evento.'));
+    }
+    if (on) item('Conexão', x.rt ? 'ok' : 'aviso', 'Tempo real (telão e controle)', x.rt
+      ? 'Conectou: as trocas de slide chegam ao telão na hora.'
+      : 'Não conectou daqui. O telão segue funcionando pela consulta de 1 em 1 segundo, só com um pouco mais de atraso. Se a rede do local bloquear, é esse o efeito.');
+    // ---- banco atualizado + senha
+    if (row) {
+      var colunas = ['pausa', 'slide', 'revelar_banca', 'avaliacoes_abertas', 'decisao_aberta'].every(function (c) { return c in row; });
+      var temBanca = x.res && !x.res.erro && 'banca' in x.res;
+      var senhaOk = x.res && !x.res.erro && x.res.liberado && !x.res.so_vencedor;
+      item('Banco de dados', colunas && temBanca ? 'ok' : 'erro', 'supabase.sql atualizado', colunas && temBanca
+        ? 'O banco tem tudo o que o site usa (slides, pausa, revelações e os dois prêmios).'
+        : 'O banco está numa versão anterior. Rode o backend/supabase.sql mais recente no SQL Editor do Supabase.');
+      item('Banco de dados', senhaOk ? 'ok' : 'erro', 'Senha da organização', senhaOk ? 'Este aparelho está com a senha certa.' : 'O banco recusou a senha deste aparelho. Saia e entre de novo com a senha da organização.');
+    }
+    // ---- votação do público
+    if (row) {
+      var cands = x.cand && !x.cand.erro ? x.cand.filter(function (r) { return r.elegivel; }) : null;
+      if (cands) item('Votação do público', cands.length ? 'ok' : 'erro', 'Heróis candidatos marcados', cands.length
+        ? cands.length + ' candidato' + (cands.length > 1 ? 's' : '') + ': ' + cands.map(function (c) { var h = heroById(c.id); return h ? String(h.hero.name).split(/\s+[—–-]\s+/)[0] : c.id; }).join(', ') + '.'
+        : 'Nenhum candidato marcado: o público não teria em quem votar.', 'votacao', 'Abrir Votação');
+      var tot = x.res && !x.res.erro && x.res.total != null ? +x.res.total : null;
+      if (tot != null) item('Votação do público', tot === 0 ? 'ok' : 'aviso', 'Votos zerados', tot === 0 ? 'Nenhum voto registrado: a votação começa limpa.'
+        : 'Há ' + tot + ' voto' + (tot > 1 ? 's' : '') + ' registrado' + (tot > 1 ? 's' : '') + '. Se forem do ensaio, use "Zerar tudo" no Ao vivo.', 'aovivo', 'Abrir Ao vivo');
+      item('Votação do público', remote.aberta ? 'aviso' : 'ok', 'Votação fechada', remote.aberta ? 'A votação está aberta agora. Antes do evento, deixe fechada e abra na hora certa.' : 'Fechada: abre pelo painel na hora das campanhas.', 'votacao', 'Abrir Votação');
+      item('Votação do público', remote.resultadoPublico ? 'aviso' : 'ok', 'Vencedores fora do site', remote.resultadoPublico ? 'Os vencedores estão aparecendo no site. Antes do evento, tire do site.' : 'O site ainda não mostra vencedores.', 'votacao', 'Abrir Votação');
+    }
+    // ---- banca
+    if (row) {
+      var b = x.banca && !x.banca.erro && x.banca.ok ? x.banca : null;
+      if (b) {
+        var nA = (b.itens || []).length, nD = (b.decisao || []).length;
+        item('Banca', nA + nD === 0 ? 'ok' : 'aviso', 'Notas da banca zeradas', nA + nD === 0 ? 'Nenhuma avaliação nem voto da decisão: a banca começa limpa.'
+          : 'Há ' + nA + ' avaliaç' + (nA === 1 ? 'ão' : 'ões') + ' e ' + nD + ' voto' + (nD === 1 ? '' : 's') + ' da decisão. Se forem do ensaio, use "Zerar tudo" no Ao vivo.', 'aovivo', 'Abrir Ao vivo');
+      }
+      item('Banca', remote.avaliacoes ? 'aviso' : 'ok', 'Avaliações fechadas', remote.avaliacoes ? 'As avaliações estão abertas. O combinado é abrir só na hora.' : 'Fechadas: os jurados leem os projetos e vocês abrem na hora.', 'banca', 'Abrir Banca');
+      item('Banca', remote.decisao ? 'aviso' : 'ok', 'Decisão final fechada', remote.decisao ? 'A decisão final está aberta agora.' : 'Fechada: abre depois das apresentações.', 'banca', 'Abrir Banca');
+    }
+    // ---- telão
+    var nSl = deckSlides().length;
+    item('Telão', nSl ? 'ok' : 'erro', 'Apresentação', nSl ? nSl + ' slides ligados no roteiro.' : 'Nenhum slide ligado.', 'apres', 'Abrir Apresentação');
+    if (row) {
+      var revel = remote.revelar || remote.revelarBanca;
+      item('Telão', revel || remote.pausa ? 'aviso' : 'ok', 'Telão em estado inicial', revel ? 'Uma revelação está ligada no telão. Volte ao primeiro slide no controle.' : remote.pausa ? 'O modo pausa está ligado no telão.' : 'Sem revelação nem pausa ligadas.', 'apres', 'Abrir Apresentação');
+    }
+    var nF = pausaFotos().length;
+    item('Telão', nF >= 12 ? 'ok' : 'aviso', 'Fotos do mosaico', nF + ' fotos para o modo pausa e o mosaico' + (nF >= 12 ? '.' : '. Com menos de 12, as fotos se repetem bastante.'), 'retro', 'Abrir Fotos');
+    // ---- site
+    var ev = db.event || {};
+    var hoje = new Date().toISOString().slice(0, 10);
+    item('Site', ev.dateISO && ev.dateISO >= hoje ? 'ok' : 'aviso', 'Data do evento', (ev.dateLabel || ev.dateISO || 'Sem data') + (ev.timeLabel ? ' · ' + ev.timeLabel : '') + (ev.place ? ' · ' + ev.place : '') +
+      (ev.dateISO && ev.dateISO < hoje ? '. A data já passou.' : '.'), 'evento', 'Abrir Evento');
+    item('Site', db.clock && db.clock.simulated ? 'erro' : 'ok', 'Ensaio do relógio desligado', db.clock && db.clock.simulated ? 'O relógio de ensaio está ligado: o site mostra um horário falso. Desligue na aba Dados.' : 'O site segue o horário real de Curitiba.', 'dados', 'Abrir Dados');
+    item('Site', posEvento() ? 'aviso' : 'ok', 'Modo pós-evento desligado', posEvento() ? 'O modo pós-evento está ligado: o Início mostra o agradecimento em vez da programação.' : 'O Início está no modo de evento.', 'evento', 'Abrir Evento');
+    return L;
+  }
+  function adminChecklist() {
+    if (!chk.itens && !chk.rodando) setTimeout(chkRodar, 0);
+    var L = chk.itens || [];
+    var n = { ok: 0, aviso: 0, erro: 0 }; L.forEach(function (i) { n[i.st]++; });
+    var grupos = []; L.forEach(function (i) { if (grupos.indexOf(i.g) < 0) grupos.push(i.g); });
+    var resumo = chk.rodando && !L.length ? '<div class="chk-resumo"><b>Conferindo…</b><span class="tiny">Leva uns 5 segundos.</span></div>'
+      : '<div class="chk-resumo ' + (n.erro ? 'is-erro' : n.aviso ? 'is-aviso' : 'is-ok') + '"><b>' +
+        (n.erro ? n.erro + ' ponto' + (n.erro > 1 ? 's' : '') + ' a resolver' : n.aviso ? 'Quase tudo certo · ' + n.aviso + ' para olhar' : 'Tudo certo para a Banca') + '</b>' +
+        '<span class="tiny">' + n.ok + ' ok · ' + n.aviso + ' aviso' + (n.aviso === 1 ? '' : 's') + ' · ' + n.erro + ' problema' + (n.erro === 1 ? '' : 's') +
+        (chk.em ? ' · conferido às ' + new Date(chk.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + '</span></div>';
+    var SIM = { ok: '✓', aviso: '!', erro: '✕' };
+    return '<div class="stack-lg">' +
+      '<section class="stack"><h2 class="h2">Checklist pré-evento</h2>' +
+      '<p class="small">Confere de uma vez se está tudo pronto. Rode no ensaio e de novo na manhã do evento, de preferência no computador do telão e já na internet do local.</p>' +
+      '<div class="row wrap" style="gap:8px">' + resumo +
+      '<button class="btn btn-primary" data-act="chkRodar"' + (chk.rodando ? ' disabled' : '') + '>' + (chk.rodando ? 'Conferindo…' : 'Conferir de novo') + '</button></div></section>' +
+      grupos.map(function (g) {
+        return '<section class="chk-grupo"><h3 class="h3">' + esc(g) + '</h3><ul class="chk-lista">' + L.filter(function (i) { return i.g === g; }).map(function (i) {
+          return '<li class="chk-item is-' + i.st + '"><span class="chk-sim" aria-label="' + i.st + '">' + SIM[i.st] + '</span>' +
+            '<div class="chk-txt"><b>' + esc(i.t) + '</b><span>' + esc(i.d) + '</span></div>' +
+            (i.atab && i.st !== 'ok' ? '<button class="btn btn-sm btn-outline" data-atab="' + i.atab + '">' + esc(i.rot || 'Abrir') + '</button>' : '') + '</li>';
+        }).join('') + '</ul></section>';
+      }).join('') + '</div>';
   }
 
   /* ============================ MODO EVENTO ============================
@@ -5129,6 +5384,34 @@
         (remote.decisao ? 'Encerrar a decisão final' : 'Abrir a decisão final') + '</button>' +
       '</section>';
 
+    // pendências da banca: quem ainda não avaliou cada equipe (e quem falta na decisão)
+    var jurList = Object.keys(jur).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+    var pendC = '';
+    if (nJ) {
+      var linhasP = lista.map(function (x, i) {
+        var feitos = its.filter(function (it) { return it.projeto === x.id && notasCompletas(it.notas); }).map(function (it) { return it.jurado; });
+        var falta = jurList.filter(function (j) { return feitos.indexOf(j) < 0; });
+        var passou = pos ? i < pos - 1 : false, agora = p && p.id === x.id;
+        var st = !falta.length ? 'ok' : (passou ? 'atraso' : agora ? 'agora' : 'futuro');
+        return '<li class="avp-' + st + '"><span class="avp-n num">' + (i + 1) + '</span>' +
+          '<div class="avp-txt"><b>' + esc(x.name) + (agora ? ' <span class="avp-tag">no palco</span>' : '') + '</b>' +
+          (falta.length ? '<span>' + (st === 'futuro' ? 'Ainda não apresentou' : 'Falta' + (falta.length > 1 ? 'm' : '') + ': ' + falta.map(esc).join(', ')) + '</span>' : '<span>Todos avaliaram</span>') + '</div>' +
+          '<span class="avp-cont num">' + feitos.length + '/' + nJ + '</span></li>';
+      }).join('');
+      var atrasos = lista.filter(function (x, i) {
+        if (!(pos ? i < pos - 1 : false)) return false;
+        var f = its.filter(function (it) { return it.projeto === x.id && notasCompletas(it.notas); }).length;
+        return f < nJ;
+      }).length;
+      var decJ = (adminBancaDados.decisao || []).map(function (d) { return d.jurado; });
+      var faltaDec = jurList.filter(function (j) { return decJ.indexOf(j) < 0; });
+      pendC = '<section class="av-card av-pend">' +
+        '<div class="av-cab"><span class="av-tit">' + ico('i-users') + ' Pendências da banca</span>' + avChip('', !atrasos, 'em dia', atrasos + ' atrasada' + (atrasos > 1 ? 's' : '')) + '</div>' +
+        '<p class="tiny" style="margin:0">Quem já avaliou alguma equipe entra na lista de jurados (' + jurList.map(esc).join(', ') + '). Em laranja: equipes que já passaram pelo palco e ainda têm nota faltando.</p>' +
+        (remote.decisao ? '<p class="small av-obs">' + (faltaDec.length ? '<b>Decisão final:</b> falta' + (faltaDec.length > 1 ? 'm' : '') + ' ' + faltaDec.map(esc).join(', ') + '.' : '<b>Decisão final:</b> todos os jurados já votaram.') + '</p>' : '') +
+        '<ul class="avp-lista">' + linhasP + '</ul></section>';
+    }
+
     var telaoC = '<section class="av-card">' +
       '<div class="av-cab"><span class="av-tit">' + ico('i-eye') + ' Telão</span>' + avChip('', remote.revelar || remote.revelarBanca, 'Revelando', 'Votação') + '</div>' +
       ((remote.revelar || remote.revelarBanca)
@@ -5149,7 +5432,7 @@
     return '<div class="aovivo">' +
       '<div class="av-topo"><div><h2 class="h2">Ao vivo</h2><p class="tiny">Atualiza sozinho a cada 8 s · <span id="avHora">' + (modoEv.em ? horaCurta(modoEv.em) : '—') + '</span></p></div>' +
         '<button class="btn btn-outline btn-sm" data-act="aoVivoAtualizar">Atualizar</button></div>' +
-      palco + votacao + bancaC + telaoC +
+      palco + votacao + bancaC + pendC + telaoC +
       '<section class="av-card av-zerar"><div class="av-cab"><span class="av-tit">' + ico('i-trash') + ' Preparar para o evento</span></div>' +
         '<p class="small" style="margin:0">Depois do ensaio: apaga votos, notas e decisão da banca, limpa os projetos conhecidos, fecha votação, avaliações e decisão, e tira a apresentação, a pausa e o palco do telão. Textos, fotos, senhas e candidatos continuam.</p>' +
         '<button class="btn btn-danger btn-block btn-lg" data-act="askZerarTudo">' + ico('i-trash') + ' Zerar tudo</button></section>' +
@@ -5342,9 +5625,9 @@
         : '<button class="btn btn-primary btn-sm" data-act="askRevelar">' + ico('i-spark') + ' Revelar no telão</button>') +
       '</div>' +
       '<div class="revelar-box revelar-site">' +
-      '<div><b>Herói vencedor no site</b><p class="tiny">' + (remote.resultadoPublico
-        ? 'O Início mostra o Herói vencedor em destaque (sem números de votos).'
-        : 'Depois do evento, ligue para o Início mostrar o Herói vencedor em destaque. Ninguém vê números de votos.') + '</p></div>' +
+      '<div><b>Vencedores no site</b><p class="tiny">' + (remote.resultadoPublico
+        ? 'O Início e a página Resultado mostram o Herói do público e o Projeto destaque da banca (sem números).'
+        : 'Depois da revelação, ligue para o site mostrar o Herói do público e o Projeto destaque da banca. Ninguém vê números de votos nem notas.') + '</p></div>' +
       '<button class="btn ' + (remote.resultadoPublico ? 'btn-outline' : 'btn-primary') + ' btn-sm" data-act="pubResult">' + (remote.resultadoPublico ? 'Tirar do site' : 'Mostrar no site') + '</button>' +
       '</div>';
   }
@@ -5772,14 +6055,18 @@
     var vs = vencedoresPublicos();
     if (!vs.length) return '';
     var um = vs.length === 1 ? vs[0] : null;
+    var bs = ((pubRes.dados && pubRes.dados.banca) || []).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
+    var imgs = vs.map(function (x) { return x.hero.image; });
+    bs.forEach(function (o) { if (o.image && imgs.indexOf(o.image) < 0) imgs.push(o.image); });
     return '<section class="faixa fx-escuro dobra dobra-venc car-slide' + (ativo ? ' is-ativo' : '') + '" aria-roledescription="slide">' +
-      '<div class="dv-figs" aria-hidden="true">' + vs.map(function (x) { return x.hero.image ? '<img src="' + esc(x.hero.image) + '" alt="">' : ''; }).join('') + '</div>' +
+      '<div class="dv-figs" aria-hidden="true">' + imgs.filter(Boolean).map(function (src) { return '<img src="' + esc(src) + '" alt="">'; }).join('') + '</div>' +
       '<div class="cont dobra-txt">' +
-        '<span class="eyebrow">' + (um ? 'O Herói da Trilha 2026' : 'Os Heróis da Trilha 2026') + '</span>' +
+        '<span class="eyebrow">Os vencedores da Trilha 2026</span>' +
         '<h1 class="mega">' + esc(vs.map(function (x) { return String(x.hero.name).split(/\s+[—–-]\s+/)[0]; }).join(' e ')) + '</h1>' +
-        '<p class="dobra-sub">' + esc(um ? 'Escolhido pelo público na Banca Final · ' + um.project.name : 'Escolhidos pelo público na Banca Final') + '</p>' +
+        '<p class="dobra-sub">' + esc(um ? 'Herói escolhido pelo público' : 'Heróis escolhidos pelo público') +
+          (bs.length ? '<br><span class="dv-banca">Projeto destaque da banca: <b>' + esc(bs.map(function (o) { return o.name; }).join(' e ')) + '</b></span>' : '') + '</p>' +
         '<div class="dobra-chamada"><p>Obrigado a todos que votaram e acompanharam a Trilha 2026.</p>' +
-        '<button class="btn btn-lg btn-laranja inst-btn" data-go="heroi/' + esc(vs[0].hero.id) + '">' + (um ? 'Conheça o Herói' : 'Conheça os Heróis') + '</button></div>' +
+        '<button class="btn btn-lg btn-laranja inst-btn" data-go="resultado">Ver os vencedores</button></div>' +
       '</div></section>';
   }
 
@@ -6678,6 +6965,7 @@
       if (navigator.clipboard) navigator.clipboard.writeText(lk).then(function () { toast('Link copiado.'); }, function () { toast(lk); });
       else toast(lk);
     }
+    else if (act === 'chkRodar') chkRodar();
     else if (act === 'copyNames') {
       var names = opcoesDeVoto().map(function (p) { return p.name; }).join('\n');
       if (navigator.clipboard) navigator.clipboard.writeText(names).then(function () { toast('Nomes copiados.'); }, function () { toast('Não consegui copiar.'); });
@@ -6889,6 +7177,9 @@
     else if (act === 'toggleVisivelAv') { definirVisivel(!!t.checked); }
     else if (act === 'toggleAvaliacoes') { definirAvaliacoes(!!t.checked); }
     else if (act === 'togglePausa') { definirPausaTelao(!!t.checked); }
+    else if (act === 'togglePosEvento') { db.posEvento = !!t.checked; save(); toast(db.posEvento ? 'Modo pós-evento ligado. O site muda para todos em até 30 s.' : 'Modo pós-evento desligado.'); }
+    else if (act === 'leiNome') { leiDefinirApres(+t.getAttribute('data-i'), t.value); }
+    else if (act === 'leiModo') { db.leilao = db.leilao || {}; db.leilao.apresModo = t.value; save(); toast('Pronto. O telão atualiza em até 30 s.'); }
     else if (act === 'leiTela') { leiDefinirTela(t.getAttribute('data-tela'), !!t.checked); }
     else if (act === 'toggleVisivel') {
       var quer = !!t.checked;
