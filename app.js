@@ -1958,7 +1958,19 @@
      vale o data.js. O relógio de ensaio continua sendo só do aparelho.     */
   var conteudo = { versao: null, timer: null, enviando: false };
 
+  /* A versão do conteúdo só anda para a frente. Uma resposta atrasada (pedida
+     antes de um "salvar" feito aqui ou em outra aba do mesmo navegador) traz
+     uma versão mais velha e é ignorada; assim uma troca feita no painel não
+     "volta sozinha" um segundo depois. Exceção: se o conteúdo do banco foi
+     apagado e recomeçou (versão 1 ou 2), vale o do banco.                 */
+  function versaoConhecida() { return Math.max(+conteudo.versao || 0, +(db && db._versaoNuvem) || 0); }
+  function versaoServeParaAplicar(v) {
+    v = +v || 0;
+    var k = versaoConhecida();
+    return v > k || (v < k && v <= 2);
+  }
   function aplicarConteudo(dados, versao) {
+    if (!versaoServeParaAplicar(versao)) return;
     var clock = db && db.clock;
     var voting = db && db.voting;
     db = corrigirTextos(dados);
@@ -1979,7 +1991,7 @@
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (rows) {
         var v = rows && rows[0] ? rows[0].versao : null;
-        if (v == null || v === conteudo.versao) return;
+        if (v == null || !versaoServeParaAplicar(v)) return;
         return fetch(sbUrl('/rest/v1/conteudo?select=versao,dados&id=eq.1'), { headers: sbHeaders() })
           .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
           .then(function (rows2) {
@@ -7351,7 +7363,16 @@
 
   /* ------------------------------ sincronismo ---------------------------- */
   window.addEventListener('storage', function (e) {
-    if (e.key === KEY) { load(); render(); }
+    if (e.key !== KEY) return;
+    // esta aba tem uma edição ainda não publicada: não deixa outra aba passar por cima
+    if (conteudo.timer || conteudo.enviando) return;
+    var antes = versaoConhecida();
+    var veio = null; try { veio = JSON.parse(e.newValue || 'null'); } catch (x) { veio = null; }
+    // a outra aba gravou um conteúdo mais velho do que o que esta já conhece: ignora
+    if (veio && veio._versaoNuvem != null && +veio._versaoNuvem < antes && !(+veio._versaoNuvem <= 2)) return;
+    load();
+    conteudo.versao = Math.max(antes, +(db && db._versaoNuvem) || 0) || conteudo.versao;
+    render();
   });
 
   /* rede de segurança para imagens novas: se o arquivo novo não estiver no
