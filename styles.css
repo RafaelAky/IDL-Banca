@@ -2622,3 +2622,5 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
   .lei-card.lei-principal { flex-direction: column; }
   .lei-principal .lei-prev { width: 100%; aspect-ratio: 16 / 9; min-height: 0; }
 }
+.lei-chaves-l { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 700px) { .lei-chaves-l { grid-template-columns: 1fr; } }
