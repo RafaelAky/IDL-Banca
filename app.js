@@ -4702,48 +4702,83 @@
     else if (!ligar && el) el.remove();
   }
 
-  // ---------- controlador (#/controle) ----------
+  // ---------- controlador (#/controle) · opção A: blocos separados ----------
+  function previaPausa() {
+    var fs = pausaFotos().slice(0, 6);
+    return '<div class="telao tl-slide sl-previa pausa"><div class="pv-mosaico">' +
+      fs.map(function (f) { return '<span style="background-image:url(\'' + String(f.src).replace(/'/g, '%27') + '\')"></span>'; }).join('') +
+      '</div><span class="pv-selo">❚❚ Modo pausa · fotos passando</span></div>';
+  }
+  function previaTela(s, rotuloVazio) {
+    var dentro;
+    if (s === 'pausa') dentro = previaPausa();
+    else if (s && s.tipo) dentro = '<div class="telao tl-slide sl-previa sl-' + s.tipo + '">' + slideHtml(s, true) + '</div>';
+    else dentro = '<div class="telao tl-slide sl-previa"><div class="sl-centro"><span class="sl-eyebrow">Telão</span><h1 class="sl-mega sl-mega-m">' + esc(rotuloVazio || 'Fim do roteiro') + '</h1></div></div>';
+    return '<div class="ctl-tela"><div class="ctl-escala">' + dentro + '</div></div>';
+  }
   function viewControle() {
     if (!localState.admin) return viewEntrar('admin', 'Controle da apresentação: entre como organização.');
     if (!remote.on) return '<div class="view"><div class="corpo"><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">O controle funciona na versão publicada, com o banco ligado.</p></div></div></div>';
-    var l = deckSlides(), i = deckIndice(remote.slide), atual = l[i], prox = l[i + 1] || (i < 0 ? l[0] : null);
-    var modo = remote.pausa ? 'Modo pausa · fotos passando' : remote.revelarBanca ? 'Revelando o Projeto destaque' : remote.revelar ? 'Revelando o Herói' : atual ? (atual.tipo === 'votacao' ? 'Votação (QR)' : 'Apresentação') : 'Votação (QR) · fora da apresentação';
-    var previa = function (s, cls) {
-      return '<div class="ctl-tela ' + (cls || '') + '"><div class="ctl-escala"><div class="telao tl-slide sl-previa sl-' + (s ? s.tipo : 'vazio') + '">' +
-        (s ? slideHtml(s, true) : '<div class="sl-centro"><h1 class="sl-mega sl-mega-m">Fim</h1></div>') + '</div></div></div>';
-    };
-    var grupos = '', ult = '';
+    var l = deckSlides(), i = deckIndice(remote.slide), atual = l[i] || null, prox = i < 0 ? l[0] : (l[i + 1] || null);
+    // o que está DE FATO no telão agora
+    var agora, estado, cor;
+    if (remote.pausa) { agora = 'pausa'; estado = 'Modo pausa · fotos passando'; cor = 'pausa'; }
+    else if (remote.revelarBanca) { agora = { tipo: 'revelaBanca' }; estado = 'Revelando o Projeto destaque'; cor = 'revela'; }
+    else if (remote.revelar) { agora = { tipo: 'revelaHeroi' }; estado = 'Revelando o Herói'; cor = 'revela'; }
+    else if (atual) { agora = atual; estado = 'Apresentação · slide ' + (i + 1) + ' de ' + l.length; cor = 'apres'; }
+    else { agora = { tipo: 'votacao' }; estado = 'Fora da apresentação · votação no telão'; cor = 'fora'; }
+
+    var roteiro = '', ult = '';
     l.forEach(function (s, j) {
       var g = s.grupo || '';
-      if (g && g !== ult) grupos += '<li class="ctl-grupo">' + esc(g) + '</li>';
+      if (g && g !== ult) roteiro += '<li class="ctl-grupo">' + esc(g) + '</li>';
       ult = g;
-      grupos += '<li><button class="ctl-item' + (j === i ? ' on' : '') + '" data-act="slideIr" data-k="' + esc(s.key) + '"><span class="num">' + (j + 1) + '</span>' + esc(s.rotulo) + '</button></li>';
+      roteiro += '<li><button class="ctl-item' + (j === i ? ' on' : '') + '" data-act="slideIr" data-k="' + esc(s.key) + '"><span class="num">' + (j + 1) + '</span><span class="ctl-item-t">' + esc(s.rotulo) + '</span>' + (j === i ? '<span class="ctl-item-ar">No ar</span>' : '') + '</button></li>';
     });
-    return '<div class="view controle">' +
-      '<div class="ctl-topo"><div><span class="eyebrow">Controle · IDL</span><b class="ctl-modo">' + esc(modo) + '</b></div>' +
+
+    return '<div class="view controle ctlA">' +
+      '<div class="ctlA-status ' + cor + '"><span class="ctlA-ponto"></span><div class="grow"><span class="eyebrow">Controle · IDL</span><b>' + esc(estado) + '</b></div>' +
         '<div class="ctl-chips">' + avChip('Votação', remote.aberta, 'aberta', 'fechada') + avChip('Decisão', remote.decisao, 'aberta', 'fechada') + '</div></div>' +
-      '<div class="ctl-grade">' +
-        '<div class="ctl-esq">' +
-          '<span class="ctl-rot">Agora no telão' + (atual ? ' · ' + (i + 1) + ' de ' + l.length : '') + '</span>' + previa(atual, 'ctl-atual') +
-          '<div class="ctl-botoes"><button class="btn btn-outline btn-lg" data-act="slideAnt"' + (i <= 0 ? ' disabled' : '') + '>' + ico('i-arrow-left') + ' Anterior</button>' +
-            '<button class="btn btn-primary btn-lg" data-act="slideProx"' + (i >= l.length - 1 ? ' disabled' : '') + '>' + (i < 0 ? 'Começar a apresentação' : 'Próximo') + ' ' + ico('i-chev') + '</button></div>' +
-          '<span class="ctl-rot">A seguir</span>' + previa(prox, 'ctl-prox') +
-        '</div>' +
-        '<div class="ctl-dir">' +
-          '<div class="ctl-acoes">' +
-            (remote.pausa
-              ? '<button class="btn btn-block btn-lg ctl-pausa on" data-act="pausaOff">■ Sair do modo pausa (volta ao slide)</button>'
-              : '<button class="btn btn-block btn-lg ctl-pausa" data-act="pausaOn">❚❚ Modo pausa · fotos da Trilha</button>') +
-            (remote.aberta ? '<button class="btn btn-danger btn-block" data-act="askClose">Encerrar a votação</button>' : '<button class="btn btn-laranja btn-block" data-act="askOpen">' + ico('i-vote') + ' Abrir a votação</button>') +
-            '<button class="btn btn-outline btn-block" data-act="slideIr" data-k="votacao">Mostrar a votação (QR)</button>' +
-            '<button class="btn btn-laranja btn-block" data-act="slideIr" data-k="revelaBanca">' + ico('i-spark') + ' Revelar o Projeto destaque (banca)</button>' +
-            '<button class="btn btn-primary btn-block" data-act="slideIr" data-k="revelaHeroi">' + ico('i-spark') + ' Revelar o Herói (público)</button>' +
-            (atual ? '<button class="btn btn-ghost btn-block" data-act="slideSair">Sair da apresentação (telão volta à votação)</button>' : '') +
+      '<div class="ctlA-grade">' +
+        '<section class="ctlA-esq">' +
+          '<div class="ctlA-previas">' +
+            '<div class="ctlA-pv ctlA-agora"><span class="ctl-rot">No telão agora</span>' + previaTela(agora) + '</div>' +
+            '<div class="ctlA-pv ctlA-seguir"><span class="ctl-rot">A seguir</span>' + previaTela(prox, 'Fim do roteiro') + (prox ? '<span class="ctlA-pv-nome">' + esc(prox.rotulo) + '</span>' : '') + '</div>' +
           '</div>' +
-          '<ol class="ctl-lista">' + grupos + '</ol>' +
-          '<p class="tiny">Atalhos no computador do telão: → ou passador = próximo · ← = anterior. <a href="#/telao" target="_blank" rel="noopener">Abrir o telão</a></p>' +
-        '</div>' +
+          '<div class="ctlA-nav">' +
+            '<button class="btn btn-outline btn-lg" data-act="slideAnt"' + (i <= 0 ? ' disabled' : '') + '>' + ico('i-arrow-left') + ' Anterior</button>' +
+            '<button class="btn btn-primary btn-lg" data-act="slideProx"' + (i >= l.length - 1 ? ' disabled' : '') + '>' + (i < 0 ? 'Começar' : 'Próximo') + ' ' + ico('i-chev') + '</button>' +
+          '</div>' +
+          '<p class="tiny ctlA-dica">No computador do telão: → ou passador avança · ← volta · P liga a pausa · B escurece. <a href="#/telao" target="_blank" rel="noopener">Abrir o telão</a></p>' +
+        '</section>' +
+        '<section class="ctlA-dir">' +
+          '<div class="ctlA-card"><span class="ctlA-tit">' + ico('i-eye') + ' Telão</span>' +
+            '<label class="av-vis' + (remote.pausa ? ' on' : '') + '"><input type="checkbox" data-act="togglePausa"' + (remote.pausa ? ' checked' : '') + '>' +
+              '<span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>Modo pausa · fotos da Trilha</b><span class="tiny">' + (remote.pausa ? 'Mosaico de fotos no telão. Desligar volta ao slide.' : 'Para intervalos: fotos passando em mosaico.') + '</span></span></label>' +
+            (atual ? '<button class="btn btn-ghost btn-sm" data-act="slideSair">Sair da apresentação (telão volta à votação)</button>' : '') +
+          '</div>' +
+          '<div class="ctlA-card"><span class="ctlA-tit">' + ico('i-vote') + ' Votação do público</span>' +
+            '<div class="ctlA-par">' +
+              (remote.aberta ? '<button class="btn btn-danger" data-act="askClose">Encerrar votação</button>' : '<button class="btn btn-laranja" data-act="askOpen">Abrir votação</button>') +
+              '<button class="btn btn-outline" data-act="slideIr" data-k="votacao">Mostrar o QR</button>' +
+            '</div></div>' +
+          '<div class="ctlA-card ctlA-revela"><span class="ctlA-tit">' + ico('i-spark') + ' Revelações</span>' +
+            '<div class="ctlA-par">' +
+              '<button class="btn ctlA-rv banca' + (remote.revelarBanca ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaBanca"><b>Projeto destaque</b><span>banca</span></button>' +
+              '<button class="btn ctlA-rv heroi' + (remote.revelar ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaHeroi"><b>Herói da Trilha</b><span>público</span></button>' +
+            '</div><p class="tiny" style="margin:0">Pede confirmação antes de revelar. Encerre a votação/decisão antes.</p></div>' +
+          '<div class="ctlA-card ctlA-roteiro"><span class="ctlA-tit">' + ico('i-grid') + ' Roteiro <span class="tiny">· toque para ir direto</span></span>' +
+            '<ol class="ctl-lista">' + roteiro + '</ol></div>' +
+        '</section>' +
       '</div></div>';
+  }
+  // mantém o slide atual visível na lista do roteiro (só quando muda)
+  var ctlUltimoRolado = null;
+  function ctlRolarRoteiro() {
+    var on = document.querySelector('.ctlA .ctl-item.on'), lista = document.querySelector('.ctlA .ctl-lista');
+    if (!on || !lista || ctlUltimoRolado === remote.slide) return;
+    ctlUltimoRolado = remote.slide;
+    lista.scrollTop = on.offsetTop - lista.offsetTop - lista.clientHeight / 2 + on.clientHeight / 2;
   }
   function ajustarPrevias() {
     Array.prototype.forEach.call(document.querySelectorAll('.ctl-tela'), function (b) {
@@ -5823,7 +5858,7 @@
     lastLiveId = lv ? lv.id : null;
 
     countUp();
-    if (route.name === 'controle') ajustarPrevias();
+    if (route.name === 'controle') { ajustarPrevias(); ctlRolarRoteiro(); }
     tickLive();
     telaoMontar();
     pausaMontar();
@@ -6352,6 +6387,13 @@
     else if (act === 'slideAnt') passoSlide(-1);
     else if (act === 'slideIr') irSlide(el.getAttribute('data-k'));
     else if (act === 'slideSair') irSlide('');
+    else if (act === 'askSlideRevela') {
+      var kR = el.getAttribute('data-k'), ehB = kR === 'revelaBanca';
+      admin.confirm = { title: ehB ? 'Revelar o Projeto destaque?' : 'Revelar o Herói da Trilha?',
+        body: ehB ? 'O telão começa a revelação do projeto escolhido pela banca (suspense, contagem e o vencedor).' : 'O telão começa a revelação do Herói escolhido pelo público (suspense, contagem e o vencedor).',
+        yes: 'Sim, revelar agora', run: function () { irSlide(kR); } };
+      renderOverlay();
+    }
     else if (act === 'pausaOn') definirPausaTelao(true);
     else if (act === 'pausaOff') definirPausaTelao(false);
     else if (act === 'apMover') {
@@ -6630,6 +6672,7 @@
     else if (act === 'palcoEscolher') { definirPalco(t.value || null); }
     else if (act === 'toggleVisivelAv') { definirVisivel(!!t.checked); }
     else if (act === 'toggleAvaliacoes') { definirAvaliacoes(!!t.checked); }
+    else if (act === 'togglePausa') { definirPausaTelao(!!t.checked); }
     else if (act === 'toggleVisivel') {
       var quer = !!t.checked;
       if (!remote.on) { toast('Disponível na versão publicada.'); t.checked = !quer; return; }
