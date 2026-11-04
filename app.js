@@ -4640,7 +4640,7 @@
     var qrEl = $('#pzQr');
     if (qrEl && !qrEl.firstChild) { var svgQr = qrPara(siteBase()); if (svgQr) qrEl.innerHTML = svgQr; }
     var ativo = route.name === 'mosaico' || (route.name === 'telao' && remote.pausa);
-    if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); clearTimeout(pz.rod); pz.troca = pz.dest = null; return; }
+    if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); clearInterval(pz.rod); pz.rodPular = null; pz.troca = pz.dest = null; return; }
     if (tela.getAttribute('data-vivo')) return;
     tela.setAttribute('data-vivo', '1');
     var fotos = pausaFotos();
@@ -4683,31 +4683,41 @@
       };
       im.src = f.src;
     }, 12000);
+    pz.rodPular = null; clearInterval(pz.rod);
     if (route.name === 'mosaico' && route.param === 'marca') pzRodizio(tela);
   }
   /* rodízio do /#/mosaico/marca: o mosaico fica ~3 min, depois a tela de
      números entra por ~20 s e o mosaico volta (as fotos seguem por baixo) */
   var PZ_ROD = { mosaico: 180000, tela: 20000 };
   function pzRodizio(tela) {
-    clearTimeout(pz.rod);
-    var ms = window.IDL_RODIZIO_MS || PZ_ROD;
+    clearInterval(pz.rod);
+    var ms = window.IDL_RODIZIO_MS || PZ_ROD, ciclo = ms.mosaico + ms.tela;
     var camada = document.createElement('div');
     camada.className = 'pz-rodizio tl-slide sl-numeros';
     camada.setAttribute('aria-hidden', 'true');
     tela.appendChild(camada);
-    function mostrar() {
-      if (!document.body.contains(tela)) return;
-      var s = deckSlides().filter(function (x) { return x.tipo === 'numeros'; })[0] || { tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } };
-      camada.innerHTML = telaoFundo() + slideHtml(s, false);
-      camada.classList.add('on');
-      pz.rod = setTimeout(esconder, ms.tela);
+    // a fase sai do relógio (não de um timer longo): mesmo com a aba em
+    // segundo plano ou o computador lento, a troca acontece na hora certa
+    pz.rodT0 = Date.now();
+    var naTela = false;
+    function passo() {
+      if (!document.body.contains(tela)) { clearInterval(pz.rod); return; }
+      var deve = (Date.now() - pz.rodT0) % ciclo >= ms.mosaico;
+      if (deve === naTela) return;
+      naTela = deve;
+      if (deve) {
+        var s = deckSlides().filter(function (x) { return x.tipo === 'numeros'; })[0] || { tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } };
+        camada.innerHTML = telaoFundo() + slideHtml(s, false);
+      }
+      camada.classList.toggle('on', deve);
     }
-    function esconder() {
-      if (!document.body.contains(tela)) return;
-      camada.classList.remove('on');
-      pz.rod = setTimeout(mostrar, ms.mosaico);
-    }
-    pz.rod = setTimeout(mostrar, ms.mosaico);
+    // seta para a direita (ou o passador): pula para a próxima tela na hora
+    pz.rodPular = function () {
+      var dt = (Date.now() - pz.rodT0) % ciclo;
+      pz.rodT0 -= (dt < ms.mosaico ? ms.mosaico : ciclo) - dt;
+      passo();
+    };
+    pz.rod = setInterval(passo, 500);
   }
   function definirPausaTelao(v) {
     if (!remote.on || !localState.adminKey) { toast('Entre como organização para usar o modo pausa.'); return; }
@@ -4781,6 +4791,8 @@
      ← ↑ PageUp (volta). O botão "iniciar" do passador manda F5, que aqui NÃO
      recarrega a página; o botão de "tela preta" (B ou .) escurece o telão.  */
   document.addEventListener('keydown', function (e) {
+    // no /#/mosaico/marca, a seta (ou o passador) pula para a próxima tela do rodízio
+    if (route.name === 'mosaico' && pz.rodPular && /^(ArrowRight|ArrowDown|PageDown| |Enter)$/.test(e.key)) { e.preventDefault(); pz.rodPular(); return; }
     if (route.name !== 'telao' || e.altKey || e.ctrlKey || e.metaKey) return;
     var k = e.key;
     if (k === 'F5') { e.preventDefault(); return; }
