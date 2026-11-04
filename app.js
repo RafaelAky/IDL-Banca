@@ -4795,11 +4795,18 @@
     else if (c.modo === 'p2' && a.length > 1) nomes = '<div class="ti-nomes">' + nm(a[1]) + '</div>';
     else if (c.modo === 'p1' || c.modo === 'p2' || a.length === 1) nomes = '<div class="ti-nomes">' + nm(a[0]) + '</div>';
     else nomes = '<div class="ti-nomes ti-alterna">' + nm(a[0]) + nm(a[1]) + '</div>';
-    return '<div class="ti-fundo" aria-hidden="true">' + idlFlorSvg('ti-flor ti-flor-a') + idlFlorSvg('ti-flor ti-flor-b') + idlFlorSvg('ti-flor ti-flor-c') + '</div>' +
+    // sementes de dente-de-leão subindo devagar com o vento, bem de leve
+    var sem = '';
+    for (var i = 0; i < 14; i++) {
+      var dur = 26 + (i * 7) % 18;
+      sem += '<span class="ti-sem" style="left:' + ((i * 37) % 100) + '%;--t:' + (2.6 + (i * 1.3) % 3).toFixed(1) + 'cqh;--dur:' + dur + 's;--atr:' + (-((i * 9.7) % dur)).toFixed(1) +
+        's;--dx:' + (18 + (i * 11) % 26) + 'cqw;--bal:' + (1.5 + (i % 4) * .8).toFixed(1) + 'cqw;--op:' + (.14 + (i % 3) * .05).toFixed(2) + '">' + sementeSvg() + '</span>';
+    }
+    return '<div class="ti-fundo" aria-hidden="true">' + idlFlorSvg('ti-flor ti-flor-a') + idlFlorSvg('ti-flor ti-flor-b') + idlFlorSvg('ti-flor ti-flor-c') + sem + '</div>' +
       '<div class="ti-centro">' +
         '<img class="ti-logo" src="img/logo-idl-telao.webp" alt="Instituto Dente de Leão">' +
         '<span class="ti-traco" aria-hidden="true"><i></i>' + idlFlorSvg('ti-mini') + '<i></i></span>' +
-        (nomes ? '<span class="ti-rotulo">Apresentação</span>' + nomes : '') +
+        nomes +
       '</div>' +
       '<span class="ti-site">institutodentedeleao.com.br</span>';
   }

@@ -2749,3 +2749,10 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
 @font-face { font-family: "Montserrat IDL"; font-weight: 200; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-200-normal.woff2") format("woff2"); }
 @font-face { font-family: "Montserrat IDL"; font-weight: 300; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-300-normal.woff2") format("woff2"); }
 @font-face { font-family: "Montserrat IDL"; font-weight: 800; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-800-normal.woff2") format("woff2"); }
+/* tela do Instituto: sementes de dente-de-leão bem de leve no fundo */
+.ti-sem { position: absolute; bottom: -8cqh; width: var(--t, 3cqh); color: #b98a3e; opacity: var(--op, .16);
+  animation: tiSemVoa var(--dur, 30s) linear var(--atr, 0s) infinite; }
+.ti-sem svg { display: block; width: 100%; height: auto; animation: tiSemBal 5s ease-in-out infinite alternate; }
+@keyframes tiSemVoa { 0% { transform: translate(0, 0); opacity: 0; } 8% { opacity: var(--op, .16); } 92% { opacity: var(--op, .16); } 100% { transform: translate(var(--dx, 25cqw), -118cqh); opacity: 0; } }
+@keyframes tiSemBal { from { transform: translateX(calc(var(--bal, 2cqw) * -1)) rotate(-16deg); } to { transform: translateX(var(--bal, 2cqw)) rotate(16deg); } }
+@media (prefers-reduced-motion: reduce) { .ti-sem, .ti-sem svg { animation: none; } }
