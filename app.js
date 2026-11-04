@@ -2613,7 +2613,7 @@
   var admin = { tab: 'geral', editor: null, confirm: null, copy: null, fotosDe: null };
 
   var ADMIN_TABS = [
-    ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
+    ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['leilao', 'Leilão'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
     ['programacao', 'Programação'], ['projetos', 'Projetos'],
     ['herois', 'Heróis'], ['banca', 'Banca'], ['retro', 'Trilha 2026'], ['dados', 'Dados']
   ];
@@ -2624,7 +2624,7 @@
     if (!localState.admin) return viewEntrar('admin');
 
     var tabs = '<div class="tabs" role="tablist">' + ADMIN_TABS.map(function (t) {
-      var curto = { programacao: 'Agenda', retro: 'Fotos', geral: 'Geral' }[t[0]];
+      var curto = { programacao: 'Agenda', retro: 'Fotos', geral: 'Geral', apres: 'Slides' }[t[0]];
       if (t[0] === 'aovivo') return '<button role="tab" class="tab-aovivo" data-atab="aovivo" aria-selected="' + (admin.tab === 'aovivo') + '"><i class="tab-ponto"></i>Ao vivo</button>';
       return '<button role="tab" data-atab="' + t[0] + '" aria-selected="' + (admin.tab === t[0]) + '">' +
         (curto ? '<span class="tb-l">' + esc(t[1]) + '</span><span class="tb-c">' + esc(curto) + '</span>' : esc(t[1])) + '</button>';
@@ -2643,6 +2643,7 @@
   function adminTab() {
     if (admin.tab === 'aovivo') return adminAoVivo();
     if (admin.tab === 'apres') return adminApresentacao();
+    if (admin.tab === 'leilao') return adminLeilao();
     if (admin.tab === 'geral') return adminGeral();
     if (admin.tab === 'evento') return adminEvento();
     if (admin.tab === 'programacao') return adminPrograma();
@@ -4921,6 +4922,55 @@
       '<form id="apForm" class="stack"><ol class="ap-lista">' + linhas + '</ol>' +
       '<button class="btn btn-primary btn-lg" type="submit">' + ico('i-save') + ' Salvar a apresentação</button></form></div>';
   }
+  /* ---------- aba Leilão: atalhos para as telas usadas no leilão do IDL ---------- */
+  var leiMedidas = -1;
+  function adminLeilao() {
+    var base = siteBase(), fotos = pausaFotos();
+    pzMedir(fotos);
+    var medidas = fotos.filter(function (f) { return pz.info[f.src]; });
+    var nitidas = medidas.filter(function (f) { return pzUtil(f) >= PZ_NITIDA && !pzRetrato(f); }).length;
+    // as medidas chegam aos poucos: redesenha enquanto a aba estiver aberta
+    if (medidas.length < fotos.length && medidas.length !== leiMedidas) {
+      leiMedidas = medidas.length;
+      setTimeout(function () { if (route.name === 'admin' && admin.tab === 'leilao') render(); }, 1200);
+    }
+    var miniFotos = fotos.slice(0, 6).map(function (f) { return '<span style="background-image:url(\'' + String(mini(f.src)).replace(/'/g, '%27') + '\')"></span>'; }).join('');
+    function tela(o) {
+      var url = o.rota ? base + '/#/' + o.rota : base;
+      return '<article class="lei-card' + (o.destaque ? ' lei-principal' : '') + '">' +
+        '<div class="lei-prev' + (o.marca ? ' com-marca' : '') + '">' + o.prev + '</div>' +
+        '<div class="lei-info">' + (o.destaque ? '<span class="lei-tag">Tela principal</span>' : '') +
+          '<h3 class="h3">' + esc(o.titulo) + '</h3><p class="small">' + o.texto + '</p>' +
+          '<code class="lei-url">' + esc(url.replace(/^https?:\/\//, '')) + '</code>' +
+          '<div class="row wrap" style="gap:8px"><a class="btn btn-sm ' + (o.destaque ? 'btn-primary' : 'btn-outline') + '" href="' + (o.rota ? '#/' + o.rota : esc(base)) + '" target="_blank" rel="noopener">' + ico('i-play') + ' Abrir</a>' +
+          '<button type="button" class="btn btn-sm btn-ghost" data-act="leiCopiar" data-url="' + esc(url) + '">Copiar link</button></div>' +
+        '</div></article>';
+    }
+    var prevMosaico = '<div class="lei-mos">' + miniFotos + '</div>';
+    var prevQr = qrPara(base) || '';
+    var espera = [['Painel do lote atual', 'Item, foto e lance atual, atualizados pelo celular'], ['Contagem regressiva', 'Tempo até o próximo lote'],
+      ['Termômetro da arrecadação', 'Precisa da meta'], ['Heróis da Trilha 2026', 'Já dá para ligar: usa o que está no site'],
+      ['QR de apoio', 'Precisa do link ou da chave de doação'], ['Agradecimento aos apoiadores', 'Precisa dos logos']];
+    return '<div class="stack-lg">' +
+      '<section class="stack"><h2 class="h2">Leilão</h2>' +
+      '<p class="small">Atalhos para as telas do leilão do IDL. Abra no computador do telão e aperte <b>F11</b> para tela cheia; o cursor some sozinho.</p></section>' +
+      '<div class="lei-grade">' +
+        tela({ destaque: true, marca: true, rota: 'mosaico/marca', titulo: 'Mosaico com marca e rodízio', prev: prevMosaico + '<span class="lei-selo">Trilhei · IDL Tech</span><span class="lei-mini-qr">' + prevQr + '</span>',
+          texto: 'Fotos da Trilha em mosaico, com a marca e o QR do site. A cada <b>3 min</b> entra a tela <b>A Trilha 2026 em números</b> por <b>20 s</b>. A seta → (ou o passador) pula para a próxima tela.' }) +
+        tela({ rota: 'mosaico', titulo: 'Mosaico simples', prev: prevMosaico + '<span class="lei-mini-qr">' + prevQr + '</span>',
+          texto: 'Só as fotos e o QR do site, sem marca e sem rodízio.' }) +
+        tela({ rota: '', titulo: 'Site do IDL', prev: '<div class="lei-qr">' + prevQr + '</div>',
+          texto: 'É para onde aponta o QR no canto do mosaico.' }) +
+      '</div>' +
+      '<section class="painelinho lei-fotos"><div><span class="eyebrow">Fotos do mosaico</span>' +
+        '<p class="lei-num"><b class="num">' + fotos.length + '</b> fotos · <b class="num">' + nitidas + '</b> em alta resolução' + (medidas.length < fotos.length ? ' <span class="tiny">(medindo ' + medidas.length + '/' + fotos.length + ')</span>' : '') + '</p>' +
+        '<p class="tiny">As fotos em alta resolução têm prioridade nos quadros grandes e no destaque. Para incluir mais, use a aba Fotos.</p></div>' +
+        '<button type="button" class="btn btn-sm btn-outline" data-atab="retro">Gerenciar fotos</button></section>' +
+      '<section class="stack"><h3 class="h3">Próximas telas</h3>' +
+        '<p class="small">Entram no rodízio quando o roteiro do leilão chegar.</p>' +
+        '<ul class="lei-espera">' + espera.map(function (e) { return '<li><b>' + esc(e[0]) + '</b><span>' + esc(e[1]) + '</span><i>em espera</i></li>'; }).join('') + '</ul></section>' +
+      '</div>';
+  }
   function apLerForm() {
     var cfg = deckConfig();
     Array.prototype.forEach.call(document.querySelectorAll('.ap-item'), function (li) {
@@ -6572,6 +6622,11 @@
     else if (act === 'bancaPlanilha') {
       if (!adminBancaDados.itens) { toast('Atualize as notas primeiro.'); return; }
       XL.baixar('notas-da-banca-idl.xlsx', planilhaBanca());
+    }
+    else if (act === 'leiCopiar') {
+      var lk = el.getAttribute('data-url');
+      if (navigator.clipboard) navigator.clipboard.writeText(lk).then(function () { toast('Link copiado.'); }, function () { toast(lk); });
+      else toast(lk);
     }
     else if (act === 'copyNames') {
       var names = opcoesDeVoto().map(function (p) { return p.name; }).join('\n');
