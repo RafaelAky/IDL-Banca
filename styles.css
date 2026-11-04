@@ -2587,3 +2587,7 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
 .pz-qr-txt { display: grid; gap: .4vh; color: var(--c-roxo); }
 .pz-qr-txt b { font-size: clamp(14px, 1.5vw, 30px); line-height: 1.1; }
 .pz-qr-txt span { font-size: clamp(11px, 1vw, 20px); font-weight: 700; color: var(--c-acao); }
+/* rodízio do mosaico/marca: tela de números por cima do mosaico */
+.pausa .pz-rodizio { position: absolute; inset: 0; z-index: 9; opacity: 0; visibility: hidden; transition: opacity 1.2s ease, visibility 0s linear 1.2s; }
+.pausa .pz-rodizio.on { opacity: 1; visibility: visible; transition: opacity 1.2s ease; }
+.pausa .pz-rodizio:not(.on) .sl-nums div { animation: none; }

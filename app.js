@@ -4640,7 +4640,7 @@
     var qrEl = $('#pzQr');
     if (qrEl && !qrEl.firstChild) { var svgQr = qrPara(siteBase()); if (svgQr) qrEl.innerHTML = svgQr; }
     var ativo = route.name === 'mosaico' || (route.name === 'telao' && remote.pausa);
-    if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); pz.troca = pz.dest = null; return; }
+    if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); clearTimeout(pz.rod); pz.troca = pz.dest = null; return; }
     if (tela.getAttribute('data-vivo')) return;
     tela.setAttribute('data-vivo', '1');
     var fotos = pausaFotos();
@@ -4683,6 +4683,31 @@
       };
       im.src = f.src;
     }, 12000);
+    if (route.name === 'mosaico' && route.param === 'marca') pzRodizio(tela);
+  }
+  /* rodízio do /#/mosaico/marca: o mosaico fica ~3 min, depois a tela de
+     números entra por ~20 s e o mosaico volta (as fotos seguem por baixo) */
+  var PZ_ROD = { mosaico: 180000, tela: 20000 };
+  function pzRodizio(tela) {
+    clearTimeout(pz.rod);
+    var ms = window.IDL_RODIZIO_MS || PZ_ROD;
+    var camada = document.createElement('div');
+    camada.className = 'pz-rodizio tl-slide sl-numeros';
+    camada.setAttribute('aria-hidden', 'true');
+    tela.appendChild(camada);
+    function mostrar() {
+      if (!document.body.contains(tela)) return;
+      var s = deckSlides().filter(function (x) { return x.tipo === 'numeros'; })[0] || { tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } };
+      camada.innerHTML = telaoFundo() + slideHtml(s, false);
+      camada.classList.add('on');
+      pz.rod = setTimeout(esconder, ms.tela);
+    }
+    function esconder() {
+      if (!document.body.contains(tela)) return;
+      camada.classList.remove('on');
+      pz.rod = setTimeout(mostrar, ms.mosaico);
+    }
+    pz.rod = setTimeout(mostrar, ms.mosaico);
   }
   function definirPausaTelao(v) {
     if (!remote.on || !localState.adminKey) { toast('Entre como organização para usar o modo pausa.'); return; }
