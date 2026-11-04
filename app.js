@@ -626,7 +626,7 @@
       '<div class="rf-base"><div class="cont">© ' + new Date().getFullYear() + ' Instituto Dente de Leão. Todos os direitos reservados.</div></div>' +
       '</footer>';
   }
-  function comRodape() { return !/^(telao|mesa|admin|banca|decisao)$/.test(route.name); }
+  function comRodape() { return !/^(telao|mesa|admin|banca|decisao|mosaico|controle)$/.test(route.name); }
 
   /* faixa de abertura das páginas internas
      tom: 'escuro' (degradê roxo → lilás) ou 'claro'
@@ -4527,6 +4527,14 @@
       (s.tipo !== 'video' && s.tipo !== 'videoHeroi' && s.tipo !== 'fotos' ? '<span class="sl-rodape">' + slideMarca() + '</span>' : '') + '</div>';
   }
 
+  // telão e mosaico: o cursor some depois de 3 s parado
+  (function () {
+    var t = null;
+    document.addEventListener('mousemove', function () {
+      document.body.classList.remove('cursor-oculto'); clearTimeout(t);
+      if (/^(telao|mosaico)$/.test(route.name)) t = setTimeout(function () { document.body.classList.add('cursor-oculto'); }, 3000);
+    });
+  })();
   /* ---------- MODO PAUSA: mosaico de fotos da Trilha ----------
      Liga pelo controle (ou tecla P no telão) e fica por cima de qualquer
      slide. As fotos trocam sozinhas, em quadros de tamanhos diferentes, em
@@ -4539,7 +4547,7 @@
     return '<div class="telao pausa" id="pausaTela">' + telaoFundo() +
       '<div class="pz-grade">' + q + '</div>' +
       '<div class="pz-destaque" aria-hidden="true"></div>' +
-      '<span class="pz-marca">' + slideMarca() + '<span>Trilha 2026</span></span>' +
+      (route.name === 'mosaico' && route.param !== 'marca' ? '' : '<span class="pz-marca">' + slideMarca() + '<span>Trilha 2026</span></span>') +
       '</div>';
   }
   var pz = { troca: null, dest: null, ult: -1, visiveis: [] };
@@ -4579,7 +4587,8 @@
   }
   function pausaMontar() {
     var tela = $('#pausaTela');
-    if (!tela || route.name !== 'telao' || !remote.pausa) { clearInterval(pz.troca); clearInterval(pz.dest); pz.troca = pz.dest = null; return; }
+    var ativo = route.name === 'mosaico' || (route.name === 'telao' && remote.pausa);
+    if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); pz.troca = pz.dest = null; return; }
     if (tela.getAttribute('data-vivo')) return;
     tela.setAttribute('data-vivo', '1');
     var fotos = pausaFotos();
@@ -5587,7 +5596,7 @@
     }
     window.addEventListener('scroll', function () {
       if (!b) cria();
-      var mostra = window.scrollY > window.innerHeight * 1.2 && !/^(telao|admin|mesa)$/.test(route.name);
+      var mostra = window.scrollY > window.innerHeight * 1.2 && !/^(telao|admin|mesa|mosaico)$/.test(route.name);
       b.classList.toggle('is-vis', mostra);
     }, { passive: true });
   })();
@@ -5612,6 +5621,7 @@
       case 'banca': return viewBanca();
       case 'entrar': return viewEntrar();
       case 'controle': return viewControle();
+      case 'mosaico': return viewPausa();
       case 'decisao': return viewDecisao();
       case 'mesa': return viewMesa();
       default: return viewHome();
@@ -5804,7 +5814,7 @@
   // chamada fixa para votar, em todas as telas, enquanto a votação estiver aberta
   function ctaVotar() {
     if (!votacaoAberta() || localState.voted) return '';
-    if (/^(votacao|admin|telao|resultado|banca|decisao|mesa)$/.test(route.name)) return '';
+    if (/^(votacao|admin|telao|resultado|banca|decisao|mesa|mosaico|controle)$/.test(route.name)) return '';
     return '<a class="cta-votar" href="#/votacao"><span class="cta-ponto" aria-hidden="true"></span>' +
       '<span><b>A votação está aberta</b><span class="cta-sub">Toque para escolher o seu Herói</span></span>' + ico('i-chev') + '</a>';
   }
@@ -5814,7 +5824,7 @@
     var r = route.name, nome = {
       trilhei: 'Por que Trilhei?', programacao: 'Programação', projetos: 'Projetos', herois: 'Heróis',
       trilha2026: 'A Trilha em 2026', votacao: 'Votação', resultado: 'Resultado', admin: 'Painel',
-      banca: 'Banca', decisao: 'Decisão final', entrar: 'Entrar', telao: 'Telão', controle: 'Controle'
+      banca: 'Banca', decisao: 'Decisão final', entrar: 'Entrar', telao: 'Telão', controle: 'Controle', mosaico: 'Mosaico de fotos'
     }[r] || '';
     if (r === 'projeto') { var p = byId(route.param); nome = p ? p.name : 'Projeto'; }
     if (r === 'heroi') { var x = heroById(route.param); nome = x ? String(x.hero.name).split(/\s+[—–-]\s+/)[0] : 'Herói'; }
@@ -5830,7 +5840,9 @@
     var app = $('#app');
     var ehTelao = route.name === 'telao';
     var ehMesa = route.name === 'mesa';
+    var ehMosaico = route.name === 'mosaico';
     document.body.classList.toggle('is-mesa', ehMesa);
+    document.body.classList.toggle('is-mosaico', ehMosaico);
     document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao' || route.name === 'controle');
     document.body.classList.toggle('is-revela', ehTelao && remote.on && (remote.revelar || remote.revelarBanca));
     document.body.classList.toggle('is-revela-banca', ehTelao && remote.on && remote.revelarBanca);
@@ -5841,14 +5853,14 @@
     // o site é aberto a todos: o CPF só é pedido na tela de votação, quando ela abre
     var gated = false;
     document.body.classList.toggle('is-gated', gated);
-    document.body.classList.toggle('is-telao', ehTelao);
+    document.body.classList.toggle('is-telao', ehTelao || ehMosaico);
     var adminFull = route.name === 'admin' && localState.admin;
     document.body.classList.toggle('is-painel', adminFull);
-    app.className = gated || ehTelao || ehMesa ? '' : (adminFull ? '' : 'shell');
+    app.className = gated || ehTelao || ehMesa || ehMosaico ? '' : (adminFull ? '' : 'shell');
     var htmlNovo = (gated ? viewEntrada() : currentView()) + (!gated && comRodape() ? idlFooter() : '') + ctaVotar();
     // no telão, se nada mudou, não redesenha (vídeo não reinicia, imagem não pisca)
-    if (ehTelao && htmlNovo === render.ultimoTelao && app.firstChild) { renderOverlay(); pausaMontar(); return; }
-    render.ultimoTelao = ehTelao ? htmlNovo : null;
+    if ((ehTelao || ehMosaico) && htmlNovo === render.ultimoTelao && app.firstChild) { renderOverlay(); pausaMontar(); return; }
+    render.ultimoTelao = (ehTelao || ehMosaico) ? htmlNovo : null;
     app.innerHTML = htmlNovo;
     renderOverlay();
 
