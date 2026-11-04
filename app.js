@@ -4710,7 +4710,7 @@
     var qrEl = $('#pzQr');
     if (qrEl && !qrEl.firstChild) { var svgQr = qrPara(siteBase()); if (svgQr) qrEl.innerHTML = svgQr; }
     var ativo = route.name === 'mosaico' || (route.name === 'telao' && remote.pausa);
-    if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); clearInterval(pz.rod); pz.rodPular = null; pz.troca = pz.dest = null; return; }
+    if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); clearInterval(pz.rod); pz.troca = pz.dest = null; return; }
     if (tela.getAttribute('data-vivo')) return;
     tela.setAttribute('data-vivo', '1');
     var fotos = pausaFotos();
@@ -4753,22 +4753,18 @@
       };
       im.src = f.src;
     }, 12000);
-    pz.rodPular = null; clearInterval(pz.rod);
+    clearInterval(pz.rod);
     if (route.name === 'mosaico') pzRodizio(tela);
   }
-  /* rodízio do /#/mosaico/marca: o mosaico fica ~3 min, depois a tela de
-     números entra por ~20 s e o mosaico volta (as fotos seguem por baixo) */
+  /* telão do leilão (/#/mosaico e /#/mosaico/marca): mostra UMA tela por vez,
+     escolhida no painel (aba Leilão): o mosaico de fotos ou a tela do
+     Instituto com os apresentadores. Não há rodízio automático.          */
   var PZ_ROD = { mosaico: 180000, tela: 20000 };
   // o que entra no rodízio do mosaico (aba Leilão do painel); vale para todos os telões
   function leilaoCfg() {
     var c = (db && db.leilao) || {};
     var ap = Array.isArray(c.apres) ? c.apres : ['Ismael Akiyama', 'Thais Carneiro'];
-    return { mosaico: c.mosaico !== false, idl: c.idl !== false, apres: [String(ap[0] || '').trim(), String(ap[1] || '').trim()], modo: c.apresModo || 'alternar' };
-  }
-  function leilaoTelas() {
-    var c = leilaoCfg(), m = c.mosaico, n = c.idl;
-    if (!m && !n) m = true;          // nunca fica sem nada na tela
-    return { mosaico: m, idl: n };
+    return { tela: c.tela === 'idl' ? 'idl' : 'mosaico', apres: [String(ap[0] || '').trim(), String(ap[1] || '').trim()], modo: c.apresModo || 'alternar' };
   }
   /* flor do Instituto Dente de Leão, desenhada em SVG (fica nítida em
      qualquer tamanho): três anéis de pétalas laranja que se sobrepõem   */
@@ -4805,44 +4801,22 @@
   }
   function pzRodizio(tela) {
     clearInterval(pz.rod);
-    var ms = window.IDL_RODIZIO_MS || PZ_ROD;
     var camada = document.createElement('div');
     camada.className = 'pz-rodizio tela-idl';
     camada.setAttribute('aria-hidden', 'true');
     tela.appendChild(camada);
-    /* cada fase dura o tempo dela A PARTIR de quando de fato entrou na tela.
-       Assim, mesmo que o navegador atrase os timers (janela coberta por outra,
-       aba em segundo plano, computador lento), a tela do IDL nunca é
-       "pulada": ela entra no primeiro tique depois do prazo e fica os 20 s.
-       O estado vale para a página toda: se a tela for redesenhada, continua. */
-    if (!pz.rodFase || pz.rodFase === 'numeros') { pz.rodFase = 'mosaico'; pz.rodAte = Date.now() + ms.mosaico; }
+    // segue a escolha do painel (chega ao telão aberto em até 30 s); confere 2x por segundo
     var mostrando = null, assin = '';
-    function aplicar() {
-      var deve = pz.rodFase === 'idl';
-      var a2 = deve ? JSON.stringify(leilaoCfg()) : '';
+    function passo() {
+      if (!document.body.contains(tela)) { clearInterval(pz.rod); return; }
+      var c = leilaoCfg(), deve = c.tela === 'idl';
+      var a2 = deve ? JSON.stringify(c.apres) + c.modo : '';
       if (deve === mostrando && a2 === assin) return;
-      // nomes trocados no painel com a tela no ar: redesenha só o conteúdo
-      if (deve && (deve !== mostrando || a2 !== assin)) camada.innerHTML = telaIdlHtml();
+      if (deve) camada.innerHTML = telaIdlHtml();   // nomes trocados no painel com a tela no ar: redesenha só o conteúdo
       mostrando = deve; assin = a2;
       camada.classList.toggle('on', deve);
     }
-    function passo() {
-      if (!document.body.contains(tela)) { clearInterval(pz.rod); return; }
-      var agora = Date.now(), lig = leilaoTelas();
-      if (!lig[pz.rodFase]) {
-        // a tela atual foi desligada no painel: vai para a outra
-        pz.rodFase = lig.mosaico ? 'mosaico' : 'idl';
-        pz.rodAte = agora + (pz.rodFase === 'mosaico' ? ms.mosaico : ms.tela);
-      } else if (agora >= pz.rodAte) {
-        var prox = pz.rodFase === 'mosaico' ? 'idl' : 'mosaico';
-        if (lig[prox]) pz.rodFase = prox;          // com só uma ligada, ela fica direto
-        pz.rodAte = agora + (pz.rodFase === 'mosaico' ? ms.mosaico : ms.tela);
-      }
-      aplicar();
-    }
-    // seta para a direita (ou o passador): pula para a próxima tela na hora
-    pz.rodPular = function () { pz.rodAte = 0; passo(); };
-    aplicar();
+    passo();
     pz.rod = setInterval(passo, 500);
   }
   function definirPausaTelao(v) {
@@ -4917,8 +4891,6 @@
      ← ↑ PageUp (volta). O botão "iniciar" do passador manda F5, que aqui NÃO
      recarrega a página; o botão de "tela preta" (B ou .) escurece o telão.  */
   document.addEventListener('keydown', function (e) {
-    // no /#/mosaico/marca, a seta (ou o passador) pula para a próxima tela do rodízio
-    if (route.name === 'mosaico' && pz.rodPular && /^(ArrowRight|ArrowDown|PageDown| |Enter)$/.test(e.key)) { e.preventDefault(); pz.rodPular(); return; }
     if (route.name !== 'telao' || e.altKey || e.ctrlKey || e.metaKey) return;
     var k = e.key;
     if (k === 'F5') { e.preventDefault(); return; }
@@ -5049,38 +5021,34 @@
   }
   /* ---------- aba Leilão: atalhos para as telas usadas no leilão do IDL ---------- */
   function leiChaves() {
-    var lig = leilaoTelas(), c = leilaoCfg();
-    function chave(k, titulo, on, off) {
-      var ligado = c[k];
-      return '<label class="av-vis' + (ligado ? ' on' : '') + '"><input type="checkbox" data-act="leiTela" data-tela="' + k + '"' + (ligado ? ' checked' : '') + '>' +
-        '<span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>' + esc(titulo) + '</b>' +
-        '<span class="tiny">' + esc(ligado ? on : off) + '</span></span></label>';
+    var c = leilaoCfg();
+    function opcao(k, titulo, sub) {
+      var sel = c.tela === k;
+      return '<label class="lei-opcao' + (sel ? ' on' : '') + '"><input type="radio" name="leiTela" data-act="leiTelaSel" value="' + k + '"' + (sel ? ' checked' : '') + '>' +
+        '<span class="lei-radio" aria-hidden="true"></span><span><b>' + esc(titulo) + '</b><span class="tiny">' + esc(sel ? 'No telão agora' : sub) + '</span></span></label>';
     }
-    var resumo = lig.mosaico && lig.idl ? 'O telão alterna: 3 min de mosaico e 20 s da tela do Instituto.'
-      : lig.mosaico ? 'O telão fica só no mosaico de fotos.' : 'O telão fica parado na tela do Instituto.';
     var modos = [['alternar', 'Alternar os dois nomes'], ['juntos', 'Os dois nomes juntos'], ['p1', 'Só o 1º apresentador'], ['p2', 'Só o 2º apresentador']];
-    return '<section class="painelinho stack lei-chaves"><div><span class="eyebrow">Telas do rodízio</span>' +
-      '<p class="small">' + resumo + ' Vale para o /#/mosaico e o /#/mosaico/marca; o telão aberto muda sozinho em até 30 s. A seta → no telão pula para a próxima tela.</p></div>' +
+    return '<section class="painelinho stack lei-chaves"><div><span class="eyebrow">O que aparece no telão</span>' +
+      '<p class="small">Escolha uma das duas telas: um clique já troca. Vale para o /#/mosaico e o /#/mosaico/marca; o telão aberto muda sozinho em até 30 s (ou na hora, com um clique na janela do telão).</p></div>' +
       '<div class="lei-chaves-l">' +
-        chave('mosaico', 'Mosaico de fotos', 'Ligado · 3 min por vez', 'Desligado') +
-        chave('idl', 'Tela do Instituto · apresentação', 'Ligada · 20 s por vez', 'Desligada') +
+        opcao('mosaico', 'Mosaico de fotos', 'Fotos da Trilha passando, com o QR do site') +
+        opcao('idl', 'Tela do Instituto · apresentação', 'Logo do IDL e os nomes dos apresentadores') +
       '</div>' +
       '<div class="lei-apres">' +
         '<div class="field"><label for="leiAp1">1º apresentador</label><input id="leiAp1" data-act="leiNome" data-i="0" value="' + esc(c.apres[0]) + '" placeholder="Nome"></div>' +
         '<div class="field"><label for="leiAp2">2º apresentador</label><input id="leiAp2" data-act="leiNome" data-i="1" value="' + esc(c.apres[1]) + '" placeholder="Nome"></div>' +
-        '<div class="field"><label for="leiModo">Na tela</label><select id="leiModo" data-act="leiModo">' + modos.map(function (m) {
+        '<div class="field"><label for="leiModo">Nomes na tela</label><select id="leiModo" data-act="leiModo">' + modos.map(function (m) {
           return '<option value="' + m[0] + '"' + (c.modo === m[0] ? ' selected' : '') + '>' + esc(m[1]) + '</option>'; }).join('') + '</select></div>' +
       '</div>' +
       '<div class="lei-ti-prev"><div class="tela-idl lei-ti-mini">' + telaIdlHtml() + '</div></div>' +
       '</section>';
   }
-  function leiDefinirTela(k, on) {
+  function leiEscolherTela(k) {
     db.leilao = db.leilao || {};
-    var outra = k === 'mosaico' ? 'idl' : 'mosaico';
-    if (!on && db.leilao[outra] === false) { toast('Deixe pelo menos uma tela ligada.'); render(); return; }
-    db.leilao[k] = !!on;
+    if (leilaoCfg().tela === k) return;
+    db.leilao.tela = k === 'idl' ? 'idl' : 'mosaico';
     save();
-    toast((k === 'mosaico' ? 'Mosaico' : 'Tela do Instituto') + (on ? ' ligada.' : ' desligada.'));
+    toast(k === 'idl' ? 'Telão: tela do Instituto. Muda em até 30 s.' : 'Telão: mosaico de fotos. Muda em até 30 s.');
   }
   function leiDefinirApres(i, v) {
     db.leilao = db.leilao || {};
@@ -5120,10 +5088,10 @@
       '<p class="small">Atalhos para as telas do leilão do IDL. Abra no computador do telão e aperte <b>F11</b> para tela cheia; o cursor some sozinho.</p></section>' +
       leiChaves() +
       '<div class="lei-grade">' +
-        tela({ destaque: true, marca: true, rota: 'mosaico/marca', titulo: 'Mosaico com marca e rodízio', prev: prevMosaico + '<span class="lei-selo">Trilhei · IDL Tech</span><span class="lei-mini-qr">' + prevQr + '</span>',
-          texto: 'Fotos da Trilha em mosaico, com a marca e o QR do site, alternando com a tela do Instituto (veja acima). A seta → (ou o passador) pula para a próxima tela.' }) +
+        tela({ destaque: true, marca: true, rota: 'mosaico/marca', titulo: 'Telão com a marca', prev: prevMosaico + '<span class="lei-selo">Trilhei · IDL Tech</span><span class="lei-mini-qr">' + prevQr + '</span>',
+          texto: 'Mostra a tela escolhida acima (mosaico de fotos ou tela do Instituto). No mosaico, aparecem a marca Trilhei · IDL Tech e o QR do site.' }) +
         tela({ rota: 'mosaico', titulo: 'Mosaico sem marca', prev: prevMosaico + '<span class="lei-mini-qr">' + prevQr + '</span>',
-          texto: 'As fotos e o QR do site, sem a marca. Segue o mesmo rodízio.' }) +
+          texto: 'Igual, mas sem a marca no mosaico. Também segue a tela escolhida acima.' }) +
         tela({ rota: '', titulo: 'Site do IDL', prev: '<div class="lei-qr">' + prevQr + '</div>',
           texto: 'É para onde aponta o QR no canto do mosaico.' }) +
       '</div>' +
@@ -5132,7 +5100,7 @@
         '<p class="tiny">As fotos em alta resolução têm prioridade nos quadros grandes e no destaque. Para incluir mais, use a aba Fotos.</p></div>' +
         '<button type="button" class="btn btn-sm btn-outline" data-atab="retro">Gerenciar fotos</button></section>' +
       '<section class="stack"><h3 class="h3">Próximas telas</h3>' +
-        '<p class="small">Entram no rodízio quando o roteiro do leilão chegar.</p>' +
+        '<p class="small">Ideias para encaixar quando o roteiro do leilão chegar.</p>' +
         '<ul class="lei-espera">' + espera.map(function (e) { return '<li><b>' + esc(e[0]) + '</b><span>' + esc(e[1]) + '</span><i>em espera</i></li>'; }).join('') + '</ul></section>' +
       '</div>';
   }
@@ -7180,7 +7148,7 @@
     else if (act === 'togglePosEvento') { db.posEvento = !!t.checked; save(); toast(db.posEvento ? 'Modo pós-evento ligado. O site muda para todos em até 30 s.' : 'Modo pós-evento desligado.'); }
     else if (act === 'leiNome') { leiDefinirApres(+t.getAttribute('data-i'), t.value); }
     else if (act === 'leiModo') { db.leilao = db.leilao || {}; db.leilao.apresModo = t.value; save(); toast('Pronto. O telão atualiza em até 30 s.'); }
-    else if (act === 'leiTela') { leiDefinirTela(t.getAttribute('data-tela'), !!t.checked); }
+    else if (act === 'leiTelaSel') { leiEscolherTela(t.value); }
     else if (act === 'toggleVisivel') {
       var quer = !!t.checked;
       if (!remote.on) { toast('Disponível na versão publicada.'); t.checked = !quer; return; }

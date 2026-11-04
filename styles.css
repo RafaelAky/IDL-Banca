@@ -2733,3 +2733,14 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
 .lei-ti-prev { border-radius: 16px; overflow: hidden; border: 1px solid var(--c-linha); box-shadow: 0 10px 26px rgba(46,0,106,.10); }
 .lei-ti-mini { position: relative; width: 100%; aspect-ratio: 16 / 9; }
 @media (max-width: 700px) { .lei-apres { grid-template-columns: 1fr; } }
+/* painel · escolha da tela do leilão (uma ou outra) */
+.lei-opcao { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--c-linha-forte); cursor: pointer; background: #fff; }
+.lei-opcao input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.lei-opcao b { display: block; color: var(--c-roxo); }
+.lei-opcao .tiny { color: var(--c-texto-2); }
+.lei-radio { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--c-linha-forte); display: grid; place-items: center; background: #fff; }
+.lei-opcao.on { border-color: var(--c-acao); background: #faf6ff; box-shadow: 0 0 0 3px rgba(122,63,196,.12); }
+.lei-opcao.on .lei-radio { border-color: var(--c-acao); }
+.lei-opcao.on .lei-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c-acao); }
+.lei-opcao.on .tiny { color: var(--c-acao); font-weight: 700; }
+.lei-opcao input:focus-visible + .lei-radio { outline: 2px solid var(--c-acao); outline-offset: 2px; }
