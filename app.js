@@ -4523,7 +4523,7 @@
       var k = Math.floor(Date.now() / 6000) % figs.length;
       Array.prototype.forEach.call(figs, function (f, j) { f.classList.toggle('on', j === k); });
     }, 1000);
-    return '<div class="telao sl sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + telaoFundo() + slideHtml(s, false) +
+    return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + telaoFundo() + slideHtml(s, false) +
       (s.tipo !== 'video' && s.tipo !== 'videoHeroi' && s.tipo !== 'fotos' ? '<span class="sl-rodape">' + slideMarca() + '</span>' : '') + '</div>';
   }
 
@@ -4709,7 +4709,7 @@
     var l = deckSlides(), i = deckIndice(remote.slide), atual = l[i], prox = l[i + 1] || (i < 0 ? l[0] : null);
     var modo = remote.pausa ? 'Modo pausa · fotos passando' : remote.revelarBanca ? 'Revelando o Projeto destaque' : remote.revelar ? 'Revelando o Herói' : atual ? (atual.tipo === 'votacao' ? 'Votação (QR)' : 'Apresentação') : 'Votação (QR) · fora da apresentação';
     var previa = function (s, cls) {
-      return '<div class="ctl-tela ' + (cls || '') + '"><div class="ctl-escala"><div class="telao sl sl-previa sl-' + (s ? s.tipo : 'vazio') + '">' +
+      return '<div class="ctl-tela ' + (cls || '') + '"><div class="ctl-escala"><div class="telao tl-slide sl-previa sl-' + (s ? s.tipo : 'vazio') + '">' +
         (s ? slideHtml(s, true) : '<div class="sl-centro"><h1 class="sl-mega sl-mega-m">Fim</h1></div>') + '</div></div></div>';
     };
     var grupos = '', ult = '';
@@ -4906,7 +4906,11 @@
     return '<div class="aovivo">' +
       '<div class="av-topo"><div><h2 class="h2">Ao vivo</h2><p class="tiny">Atualiza sozinho a cada 8 s · <span id="avHora">' + (modoEv.em ? horaCurta(modoEv.em) : '—') + '</span></p></div>' +
         '<button class="btn btn-outline btn-sm" data-act="aoVivoAtualizar">Atualizar</button></div>' +
-      palco + votacao + bancaC + telaoC + '</div>';
+      palco + votacao + bancaC + telaoC +
+      '<section class="av-card av-zerar"><div class="av-cab"><span class="av-tit">' + ico('i-trash') + ' Preparar para o evento</span></div>' +
+        '<p class="small" style="margin:0">Depois do ensaio: apaga votos, notas e decisão da banca, limpa os projetos conhecidos, fecha votação, avaliações e decisão, e tira a apresentação, a pausa e o palco do telão. Textos, fotos, senhas e candidatos continuam.</p>' +
+        '<button class="btn btn-danger btn-block btn-lg" data-act="askZerarTudo">' + ico('i-trash') + ' Zerar tudo</button></section>' +
+      '</div>';
   }
 
   /* ===================== PLANILHAS FORMATADAS (.xlsx) =====================

@@ -2364,8 +2364,8 @@ body.is-revela-banca .telao, .telao.tl-banca { background: radial-gradient(1200p
 .som-painel .sp-off { background: rgba(255,255,255,.18); animation: none; }
 
 /* ============================ APRESENTAÇÃO (slides no telão) ============================ */
-.sl { display: grid; place-items: center; text-align: center; color: #fff; background: radial-gradient(1200px 800px at 30% 20%, #4b1597 0%, #2e006a 55%, #16002f 100%); }
-.sl > *:not(.tl-fundo) { position: relative; z-index: 2; }
+.tl-slide { display: grid; place-items: center; text-align: center; color: #fff; background: radial-gradient(1200px 800px at 30% 20%, #4b1597 0%, #2e006a 55%, #16002f 100%); }
+.tl-slide > *:not(.tl-fundo) { position: relative; z-index: 2; }
 .sl-entra > :not(.tl-fundo) { animation: slEntra .45s cubic-bezier(.2,.8,.2,1) both; will-change: opacity, transform; }
 @keyframes slEntra { from { opacity: 0; transform: translateY(2vh) scale(.985); } }
 .sl-centro { display: grid; justify-items: center; gap: 2.4vh; padding: 0 8vw; max-width: 1600px; }
@@ -2514,3 +2514,5 @@ body.is-revela-banca .telao, .telao.tl-banca { background: radial-gradient(1200p
 /* botão do modo pausa no controle e no Ao vivo */
 .ctl-pausa { background: #1d0045; color: #fff; border: 0; }
 .ctl-pausa.on { background: #e5262a; }
+.av-zerar { border: 1.5px dashed rgba(180,35,90,.45); background: rgba(180,35,90,.03); }
+.av-zerar .av-tit, .av-zerar .av-tit svg { color: var(--c-perigo); }
