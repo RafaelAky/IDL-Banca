@@ -4550,7 +4550,7 @@
       (route.name === 'mosaico' && route.param !== 'marca' ? '' : '<span class="pz-marca">' + slideMarca() + '<span>Trilha 2026</span></span>') +
       '</div>';
   }
-  var pz = { troca: null, dest: null, ult: -1, visiveis: [], destVistas: {}, destUltima: '' };
+  var pz = { troca: null, dest: null, ult: -1, visiveis: [], destVistas: {}, destUltima: '', info: {}, medindo: {} };
   function pausaFotos() {
     var fs = todasAsFotos().filter(function (f) { return f[0] || f[3]; });
     if (!fs.length) fs = (db.retro && db.retro.photos) || [];
@@ -4562,11 +4562,44 @@
     });
     return out;
   }
-  function pzSorteia(lista, evitar) {
+  var PZ_GRANDES = [0, 2, 9], PZ_ALTOS = [4, 7, 8];   // quadros 2x2 e quadros em pé do mosaico
+  function pzSorteia(lista, evitar, quadro) {
     if (!lista.length) return null;
+    pzMedir(lista);
     var livres = lista.filter(function (f) { return evitar.indexOf(f.src) < 0; });
     var base = livres.length ? livres : lista;
+    if (quadro != null) {
+      var pref = PZ_GRANDES.indexOf(quadro) >= 0 ? base.filter(function (f) { return pzUtil(f) >= PZ_NITIDA && !pzRetrato(f); })
+               : PZ_ALTOS.indexOf(quadro) >= 0 ? base.filter(function (f) { return pzRetrato(f); })
+               : base.filter(function (f) { return !pzRetrato(f); });   // fotos em pé ficam para os quadros em pé
+      if (pref.length) base = pref;
+    }
     return base[Math.floor(Math.random() * base.length)];
+  }
+  /* qualidade de cada foto: o site mede a resolução real (largura x altura)
+     ao carregar. "Largura útil" = quanto da foto aproveita um quadro
+     deitado 3:2 (o formato do destaque): min(largura, altura x 1,5).     */
+  var PZ_NITIDA = 1200;   // a partir disso a foto fica nítida no destaque em tela Full HD
+  function pzMedir(lista) {
+    lista.forEach(function (f) {
+      if (pz.info[f.src] || pz.medindo[f.src]) return;
+      pz.medindo[f.src] = true;
+      var im = new Image();
+      im.onload = function () { pz.info[f.src] = { w: im.naturalWidth, h: im.naturalHeight }; };
+      im.src = f.src;
+    });
+  }
+  function pzUtil(f) { var i = pz.info[f.src]; return i ? Math.min(i.w, i.h * 1.5) : 0; }
+  function pzRetrato(f) { var i = pz.info[f.src]; return !!(i && i.h > i.w * 1.1); }
+  // só entram no destaque as fotos nítidas; se houver poucas, as melhores que existirem
+  function pzCandidatasDestaque(lista) {
+    pzMedir(lista);
+    var medidas = lista.filter(function (f) { return pz.info[f.src]; });
+    if (!medidas.length) return lista;
+    var boas = medidas.filter(function (f) { return pzUtil(f) >= PZ_NITIDA && !pzRetrato(f); });
+    if (boas.length >= 3) return boas;
+    var ord = medidas.slice().sort(function (a, b) { return pzUtil(b) - pzUtil(a); });
+    return ord.slice(0, Math.max(3, Math.ceil(ord.length / 2)));
   }
   /* foto de destaque SEM repetição: passa por todas as fotos, em ordem
      sorteada, antes de qualquer uma voltar. Ao recomeçar a rodada, a última
@@ -4609,10 +4642,20 @@
     var fotos = pausaFotos();
     var quadros = Array.prototype.slice.call(tela.querySelectorAll('.pz-t'));
     var usadas = [];
-    quadros.forEach(function (q, i) {
-      var f = pzSorteia(fotos, usadas); if (f) usadas.push(f.src);
-      setTimeout(function () { pzColoca(q, f, false); }, 120 + i * 140);   // entram uma a uma
-    });
+    function encher() {
+      // escolhe primeiro para os quadros em pé e os grandes; entram na tela uma a uma
+      var ordem = PZ_ALTOS.concat(PZ_GRANDES), escolha = {};
+      quadros.forEach(function (q, i) { if (ordem.indexOf(i) < 0) ordem.push(i); });
+      ordem.forEach(function (i) { var f = pzSorteia(fotos, usadas, i); if (f) usadas.push(f.src); escolha[i] = f; });
+      quadros.forEach(function (q, i) { setTimeout(function () { pzColoca(q, escolha[i], false); }, 120 + i * 140); });
+    }
+    // mede as fotos primeiro (até 1,5 s) para já começar com as nítidas nos quadros grandes
+    pzMedir(fotos);
+    var t0 = Date.now();
+    (function esperar() {
+      var medidas = fotos.filter(function (f) { return pz.info[f.src]; }).length;
+      if (medidas >= fotos.length || Date.now() - t0 > 1500) encher(); else setTimeout(esperar, 100);
+    })();
     clearInterval(pz.troca); clearInterval(pz.dest);
     pz.troca = setInterval(function () {
       if (!document.body.contains(tela)) { clearInterval(pz.troca); return; }
@@ -4620,11 +4663,11 @@
       var i; do { i = Math.floor(Math.random() * quadros.length); } while (quadros.length > 1 && i === pz.ult);
       pz.ult = i;
       var vis = quadros.map(function (q) { return q.getAttribute('data-src'); });
-      pzColoca(quadros[i], pzSorteia(fotos, vis), false);
+      pzColoca(quadros[i], pzSorteia(fotos, vis, i), false);
     }, 1700);
     pz.dest = setInterval(function () {
       if (!document.body.contains(tela)) { clearInterval(pz.dest); return; }
-      var f = pzProximoDestaque(pausaFotos()), d = tela.querySelector('.pz-destaque');
+      var f = pzProximoDestaque(pzCandidatasDestaque(pausaFotos())), d = tela.querySelector('.pz-destaque');
       if (!f || !d) return;
       var im = new Image();
       im.onload = function () {
