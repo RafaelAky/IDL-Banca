@@ -4550,7 +4550,7 @@
       (route.name === 'mosaico' && route.param !== 'marca' ? '' : '<span class="pz-marca">' + slideMarca() + '<span>Trilha 2026</span></span>') +
       '</div>';
   }
-  var pz = { troca: null, dest: null, ult: -1, visiveis: [] };
+  var pz = { troca: null, dest: null, ult: -1, visiveis: [], destVistas: {}, destUltima: '' };
   function pausaFotos() {
     var fs = todasAsFotos().filter(function (f) { return f[0] || f[3]; });
     if (!fs.length) fs = (db.retro && db.retro.photos) || [];
@@ -4567,6 +4567,21 @@
     var livres = lista.filter(function (f) { return evitar.indexOf(f.src) < 0; });
     var base = livres.length ? livres : lista;
     return base[Math.floor(Math.random() * base.length)];
+  }
+  /* foto de destaque SEM repetição: passa por todas as fotos, em ordem
+     sorteada, antes de qualquer uma voltar. Ao recomeçar a rodada, a última
+     mostrada nunca é a primeira da rodada nova. Fotos novas entram na roda. */
+  function pzProximoDestaque(lista) {
+    if (!lista.length) return null;
+    var faltam = lista.filter(function (f) { return !pz.destVistas[f.src]; });
+    if (!faltam.length) {
+      pz.destVistas = {};
+      faltam = lista.filter(function (f) { return f.src !== pz.destUltima; });
+      if (!faltam.length) faltam = lista;
+    }
+    var f = faltam[Math.floor(Math.random() * faltam.length)];
+    pz.destVistas[f.src] = true; pz.destUltima = f.src;
+    return f;
   }
   function pzColoca(quadro, foto, instantaneo) {
     if (!foto) return;
@@ -4609,7 +4624,7 @@
     }, 1700);
     pz.dest = setInterval(function () {
       if (!document.body.contains(tela)) { clearInterval(pz.dest); return; }
-      var f = pzSorteia(pausaFotos(), []), d = tela.querySelector('.pz-destaque');
+      var f = pzProximoDestaque(pausaFotos()), d = tela.querySelector('.pz-destaque');
       if (!f || !d) return;
       var im = new Image();
       im.onload = function () {
