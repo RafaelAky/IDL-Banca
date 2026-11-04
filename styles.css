@@ -2685,31 +2685,32 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
 .avp-atraso .avp-txt > span { color: #9a4a00; font-weight: 600; }
 .avp-agora { border-color: var(--c-acao) !important; }
 .avp-futuro { opacity: .65; }
-/* ---------- tela do Instituto (rodízio do leilão): visual do IDL ---------- */
-.tela-idl { container-type: size; overflow: hidden; display: grid; place-items: center; font-family: var(--fonte);
-  color: #2b2118; background: radial-gradient(120% 95% at 50% 0%, #fffaf1 0%, #fdf1dc 55%, #f6dfb8 100%); }
+/* ---------- tela do Instituto (telão do leilão): visual do IDL ---------- */
+.tela-idl { container-type: size; overflow: hidden; display: grid; place-items: center; font-family: "Montserrat IDL", "Montserrat", var(--fonte);
+  color: #666; background: radial-gradient(85% 75% at 50% 45%, #ffffff 0%, #fffcf5 45%, #fbefd8 100%); }
 .pausa .pz-rodizio.tela-idl { position: absolute; inset: 0; }
-.tela-idl::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(42cqw 26cqh at 50% 33%, rgba(255,255,255,.9), transparent 75%), radial-gradient(50cqw 30cqh at 50% 68%, rgba(255,255,255,.55), transparent 75%); }
 .ti-fundo { position: absolute; inset: 0; pointer-events: none; }
 .ti-flor { position: absolute; display: block; }
-.ti-flor-a { width: 70cqh; right: -16cqh; top: -20cqh; opacity: .22; animation: tiGira 110s linear infinite; }
-.ti-flor-b { width: 52cqh; left: -15cqh; bottom: -18cqh; opacity: .17; animation: tiGira 140s linear infinite reverse; }
-.ti-flor-c { width: 15cqh; left: 13cqw; top: 11cqh; opacity: .12; animation: tiGira 70s linear infinite; }
+.ti-flor-a { width: 70cqh; right: -16cqh; top: -20cqh; opacity: .2; animation: tiGira 110s linear infinite; }
+.ti-flor-b { width: 52cqh; left: -15cqh; bottom: -18cqh; opacity: .15; animation: tiGira 140s linear infinite reverse; }
+.ti-flor-c { width: 15cqh; left: 13cqw; top: 11cqh; opacity: .1; animation: tiGira 70s linear infinite; }
 @keyframes tiGira { to { transform: rotate(360deg); } }
-.ti-centro { position: relative; z-index: 1; display: grid; justify-items: center; gap: 3.2cqh; text-align: center; }
-.ti-logo { position: relative; width: 46cqw; display: block; }
-.ti-logo img { display: block; width: 100%; height: auto; }
-.ti-logo img + img { position: absolute; inset: 0; }
+.ti-centro { position: relative; z-index: 1; display: grid; justify-items: center; gap: 3.4cqh; text-align: center; }
+/* 40% da largura: em Full HD fica no tamanho real do arquivo (sem ampliar e borrar) */
+.ti-logo { width: 40cqw; height: auto; display: block; }
 .ti-traco { display: flex; align-items: center; gap: 1.6cqw; }
-.ti-traco i { display: block; width: 11cqw; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, #e0a63a); }
-.ti-traco i:last-child { background: linear-gradient(90deg, #e0a63a, transparent); }
+.ti-traco i { display: block; width: 11cqw; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, #f2c94c); }
+.ti-traco i:last-child { background: linear-gradient(90deg, #f2c94c, transparent); }
 .ti-mini { width: 4.6cqh; height: 4.6cqh; display: block; }
-.ti-rotulo { margin-top: 1.4cqh; font-size: 2.3cqh; font-weight: 600; letter-spacing: .42em; text-transform: uppercase; color: #c45c00; padding-left: .42em; }
-.ti-nomes { display: grid; place-items: center; min-height: 13cqh; min-width: 70cqw; }
-.ti-nomes span { grid-area: 1 / 1; font-size: 10.5cqh; font-weight: 700; line-height: 1.05; letter-spacing: -.015em; color: #2b2118; white-space: nowrap; }
-.ti-alterna span { opacity: 0; animation: tiAlt 10s cubic-bezier(.3,.7,.2,1) infinite both; }
-.ti-alterna span:nth-child(2) { animation-delay: -5s; }
+/* "APRESENTAÇÃO" como o "INSTITUTO" do logo: fino, cinza e bem espaçado */
+.ti-rotulo { margin-top: 1.2cqh; font-size: 2.6cqh; font-weight: 300; letter-spacing: .62em; padding-left: .62em; text-transform: uppercase; color: #666; }
+.ti-nomes { display: grid; place-items: center; min-height: 14cqh; min-width: 80cqw; }
+/* nome como "DENTE DE LEÃO": 1ª palavra forte em amarelo, o resto fino em cinza */
+.ti-nome { grid-area: 1 / 1; display: inline-flex; align-items: baseline; gap: .28em; font-size: 10.5cqh; line-height: 1; text-transform: uppercase; letter-spacing: -.01em; white-space: nowrap; }
+.ti-nome b { font-weight: 800; color: #f5d257; }
+.ti-nome em { font-style: normal; font-weight: 300; color: #5f5f5f; }
+.ti-alterna .ti-nome { opacity: 0; animation: tiAlt 10s cubic-bezier(.3,.7,.2,1) infinite both; }
+.ti-alterna .ti-nome:nth-child(2) { animation-delay: -5s; }
 @keyframes tiAlt {
   0%   { opacity: 0; transform: translateY(2.4cqh); filter: blur(8px); }
   7%   { opacity: 1; transform: none; filter: blur(0); }
@@ -2717,11 +2718,11 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
   50%  { opacity: 0; transform: translateY(-2.4cqh); filter: blur(8px); }
   100% { opacity: 0; transform: translateY(-2.4cqh); }
 }
-.ti-juntos { display: flex; align-items: baseline; gap: 2.6cqw; }
-.ti-juntos span { grid-area: auto; font-size: 7.4cqh; }
-.ti-juntos i { font-style: normal; font-weight: 300; font-size: 7cqh; color: #e07a10; }
-.ti-site { position: absolute; z-index: 1; left: 0; right: 0; bottom: 4.4cqh; text-align: center; font-size: 1.9cqh; letter-spacing: .24em; color: #a0702e; font-weight: 500; }
-/* entrada quando a tela aparece no rodízio */
+.ti-juntos { display: grid; justify-items: center; gap: 1.2cqh; }
+.ti-juntos .ti-nome { grid-area: auto; font-size: 7.6cqh; }
+.ti-juntos i { font-style: normal; font-weight: 200; font-size: 5cqh; line-height: 1; color: #dd7c24; }
+.ti-site { position: absolute; z-index: 1; left: 0; right: 0; bottom: 4.4cqh; text-align: center; font-size: 1.9cqh; font-weight: 300; letter-spacing: .3em; color: #888; }
+/* entrada quando a tela aparece no telão */
 .pz-rodizio.tela-idl.on .ti-logo { animation: tiEntra 1.3s cubic-bezier(.2,.8,.2,1) both; }
 .pz-rodizio.tela-idl.on .ti-traco { animation: tiEntra 1.3s .25s cubic-bezier(.2,.8,.2,1) both; }
 .pz-rodizio.tela-idl.on .ti-rotulo, .pz-rodizio.tela-idl.on .ti-nomes { animation: tiEntra 1.3s .45s cubic-bezier(.2,.8,.2,1) both; }
@@ -2744,3 +2745,7 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
 .lei-opcao.on .lei-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c-acao); }
 .lei-opcao.on .tiny { color: var(--c-acao); font-weight: 700; }
 .lei-opcao input:focus-visible + .lei-radio { outline: 2px solid var(--c-acao); outline-offset: 2px; }
+/* Montserrat (a fonte do logo do Instituto), no próprio site: o telão não depende do Google Fonts */
+@font-face { font-family: "Montserrat IDL"; font-weight: 200; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-200-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat IDL"; font-weight: 300; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-300-normal.woff2") format("woff2"); }
+@font-face { font-family: "Montserrat IDL"; font-weight: 800; font-style: normal; font-display: swap; src: url("fonts/montserrat-latin-800-normal.woff2") format("woff2"); }

@@ -4785,15 +4785,19 @@
   // tela do Instituto (visual do IDL, não do IDL Tech) com os apresentadores
   function telaIdlHtml() {
     var c = leilaoCfg(), a = c.apres.filter(Boolean), nomes;
+    // nome no estilo do logo: 1ª palavra forte em amarelo (como DENTE), o resto fino em cinza (como DE)
+    function nm(n) {
+      var p = String(n).trim().split(/\s+/), pri = p.shift();
+      return '<span class="ti-nome"><b>' + esc(pri) + '</b>' + (p.length ? '<em>' + esc(p.join(' ')) + '</em>' : '') + '</span>';
+    }
     if (!a.length) nomes = '';
-    else if (c.modo === 'juntos' && a.length > 1) nomes = '<div class="ti-nomes ti-juntos"><span>' + esc(a[0]) + '</span><i>&amp;</i><span>' + esc(a[1]) + '</span></div>';
-    else if (c.modo === 'p1' || a.length === 1) nomes = '<div class="ti-nomes"><span class="ti-fixo">' + esc(c.modo === 'p2' ? a[a.length - 1] : a[0]) + '</span></div>';
-    else if (c.modo === 'p2') nomes = '<div class="ti-nomes"><span class="ti-fixo">' + esc(a[1]) + '</span></div>';
-    else nomes = '<div class="ti-nomes ti-alterna"><span>' + esc(a[0]) + '</span><span>' + esc(a[1]) + '</span></div>';
+    else if (c.modo === 'juntos' && a.length > 1) nomes = '<div class="ti-nomes ti-juntos">' + nm(a[0]) + '<i>&amp;</i>' + nm(a[1]) + '</div>';
+    else if (c.modo === 'p2' && a.length > 1) nomes = '<div class="ti-nomes">' + nm(a[1]) + '</div>';
+    else if (c.modo === 'p1' || c.modo === 'p2' || a.length === 1) nomes = '<div class="ti-nomes">' + nm(a[0]) + '</div>';
+    else nomes = '<div class="ti-nomes ti-alterna">' + nm(a[0]) + nm(a[1]) + '</div>';
     return '<div class="ti-fundo" aria-hidden="true">' + idlFlorSvg('ti-flor ti-flor-a') + idlFlorSvg('ti-flor ti-flor-b') + idlFlorSvg('ti-flor ti-flor-c') + '</div>' +
       '<div class="ti-centro">' +
-        // logo duplicado por cima de si mesmo: o dourado (semitransparente no arquivo) fica mais firme
-        '<span class="ti-logo"><img src="img/logo-instituto.webp" alt="Instituto Dente de Leão"><img src="img/logo-instituto.webp" alt="" aria-hidden="true"></span>' +
+        '<img class="ti-logo" src="img/logo-idl-telao.webp" alt="Instituto Dente de Leão">' +
         '<span class="ti-traco" aria-hidden="true"><i></i>' + idlFlorSvg('ti-mini') + '<i></i></span>' +
         (nomes ? '<span class="ti-rotulo">Apresentação</span>' + nomes : '') +
       '</div>' +
@@ -4805,6 +4809,9 @@
     camada.className = 'pz-rodizio tela-idl';
     camada.setAttribute('aria-hidden', 'true');
     tela.appendChild(camada);
+    // já baixa a fonte e o logo da tela do Instituto, para ela entrar pronta (sem piscar)
+    try { ['200', '300', '800'].forEach(function (w) { document.fonts.load(w + ' 40px "Montserrat IDL"'); }); } catch (e) {}
+    (new Image()).src = 'img/logo-idl-telao.webp';
     // segue a escolha do painel (chega ao telão aberto em até 30 s); confere 2x por segundo
     var mostrando = null, assin = '';
     function passo() {
