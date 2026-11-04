@@ -4547,6 +4547,7 @@
     return '<div class="telao pausa" id="pausaTela">' + telaoFundo() +
       '<div class="pz-grade">' + q + '</div>' +
       '<div class="pz-destaque" aria-hidden="true"></div>' +
+      '<div class="pz-qr"><div class="pz-qr-img" id="pzQr"></div><span class="pz-qr-txt"><b>Conheça o site</b><span>' + esc(siteBase().replace(/^https?:\/\//, '')) + '</span></span></div>' +
       (route.name === 'mosaico' && route.param !== 'marca' ? '' : '<span class="pz-marca">' + slideMarca() + '<span>Trilha 2026</span></span>') +
       '</div>';
   }
@@ -4635,6 +4636,9 @@
   }
   function pausaMontar() {
     var tela = $('#pausaTela');
+    // QR do site no canto (preenchido aqui, sem redesenhar a tela)
+    var qrEl = $('#pzQr');
+    if (qrEl && !qrEl.firstChild) { var svgQr = qrPara(siteBase()); if (svgQr) qrEl.innerHTML = svgQr; }
     var ativo = route.name === 'mosaico' || (route.name === 'telao' && remote.pausa);
     if (!tela || !ativo) { clearInterval(pz.troca); clearInterval(pz.dest); pz.troca = pz.dest = null; return; }
     if (tela.getAttribute('data-vivo')) return;
