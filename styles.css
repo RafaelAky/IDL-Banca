@@ -2580,7 +2580,7 @@ body.is-revela-banca .telao, .telao.tl-banca { background: radial-gradient(1200p
 .ctlA-status .av-chip { white-space: nowrap; }
 body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
 /* QR do site no canto do mosaico */
-.pz-qr { position: absolute; left: 3vw; bottom: 3.6vh; z-index: 6; display: flex; align-items: center; gap: 1.2vw; padding: 1.4vh 1.4vw 1.4vh 1.4vh;
+.pz-qr { position: absolute; left: 3vw; bottom: 3.6vh; z-index: 3; display: flex; align-items: center; gap: 1.2vw; padding: 1.4vh 1.4vw 1.4vh 1.4vh;
   border-radius: 2.4vh; background: #fff; box-shadow: 0 16px 40px rgba(0,0,0,.45); }
 .pz-qr-img { width: 15vh; height: 15vh; min-width: 90px; min-height: 90px; }
 .pz-qr-img svg { width: 100%; height: 100%; display: block; }
