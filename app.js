@@ -1761,7 +1761,7 @@
 
   /* ============================ BANCO DE VOTOS ============================ */
   var BE = (window.IDL_BACKEND || {});
-  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, revelarBanca: false, slide: null, decisao: false, avaliacoes: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
+  var remote = { on: !!(BE.url && BE.anonKey), rodada: 0, visivel: false, palco: null, revelar: false, revelarBanca: false, slide: null, pausa: false, decisao: false, avaliacoes: false, aberta: false, resultadoPublico: false, exigeChave: false, totalTrilheiros: 0, carregou: false, erro: '' };
   var adminRes = { carregando: false, dados: null, erro: '' };
   var pubRes = { carregando: false, dados: null, erro: '', pediu: false };
 
@@ -1802,14 +1802,27 @@
 
   function syncEstado(then) {
     if (!remote.on) return;
+    var pedido = Date.now();
     sbEstado().then(function (row) {
+      // resposta pedida antes da última troca de slide feita aqui terminar: velha, ignora
+      if (pedido < apres.corte) return;
+      aplicarEstado(row, then);
+    }).catch(function () { remote.erro = 'offline'; });
+  }
+  function aplicarEstado(row, then) {
       if (!row) return;
+      // troca de slide feita neste aparelho e ainda não confirmada: mantém a nossa
+      if (apres.pend) {
+        if ((row.slide || '') === (apres.pend.key || '') || Date.now() - apres.pend.t > 5000) { if (!apres.voando) apres.pend = null; }
+        else { row = JSON.parse(JSON.stringify(row)); row.pausa = false; row.slide = apres.pend.key || null; row.revelar_telao = apres.pend.key === 'revelaHeroi'; row.revelar_banca = apres.pend.key === 'revelaBanca'; if (apres.pend.palco !== null) row.palco = apres.pend.palco || null; else row.palco = remote.palco; }
+      }
       var total = parseInt(row.total_trilheiros, 10) > 0 ? parseInt(row.total_trilheiros, 10) : 0;
       var mudou = (remote.aberta !== row.votacao_aberta) || (remote.resultadoPublico !== row.resultado_publico) ||
                   (remote.exigeChave !== !!row.exige_chave) || (remote.totalTrilheiros !== total) || !remote.carregou;
       if (remote.resultadoPublico !== !!row.resultado_publico) { pubRes.dados = null; pubRes.erro = ''; pubRes.pediu = false; }
       if (remote.visivel !== !!row.votacao_visivel) mudou = true;
       remote.visivel = !!row.votacao_visivel;
+      if (row.pausa != null && remote.pausa !== !!row.pausa) { remote.pausa = !!row.pausa; mudou = true; }
       if (row.slide !== undefined && remote.slide !== (row.slide || null)) { remote.slide = row.slide || null; mudou = true; }
       if (row.revelar_banca != null && remote.revelarBanca !== !!row.revelar_banca) {
         remote.revelarBanca = !!row.revelar_banca; mudou = true;
@@ -1852,7 +1865,39 @@
       }
       remote.carregou = true; remote.erro = '';
       if (mudou && then !== false) render();
-    }).catch(function () { remote.erro = 'offline'; });
+  }
+
+  /* tempo real (Supabase Realtime, WebSocket): no telão e no controle, cada
+     mudança do estado chega na hora. Se a conexão não abrir ou cair, segue
+     tudo pela consulta de 1 em 1 segundo, como antes.                     */
+  var rt = { ws: null, ok: false, ref: 0, hb: null, falhas: 0, espera: null };
+  function rtEnviar(o) { try { rt.ws.send(JSON.stringify(o)); } catch (e) { /* conexão caiu */ } }
+  function rtConectar() {
+    if (!remote.on || rt.ws || rt.espera || !window.WebSocket || !/^(telao|controle)$/.test(route.name)) return;
+    var url = String(BE.url).replace(/^http/, 'ws').replace(/\/+$/, '') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(BE.anonKey) + '&vsn=1.0.0';
+    var ws;
+    try { ws = new WebSocket(url); } catch (e) { return; }
+    rt.ws = ws;
+    ws.onopen = function () {
+      rtEnviar({ topic: 'realtime:idl-estado', event: 'phx_join', ref: String(++rt.ref), join_ref: '1',
+        payload: { config: { broadcast: { self: false }, presence: { key: '' }, postgres_changes: [{ event: 'UPDATE', schema: 'public', table: 'estado_votacao' }] }, access_token: BE.anonKey } });
+      rt.hb = setInterval(function () { rtEnviar({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: String(++rt.ref) }); }, 25000);
+    };
+    ws.onmessage = function (ev) {
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.event === 'phx_reply' && m.topic === 'realtime:idl-estado' && m.payload && m.payload.status === 'ok') { rt.ok = true; rt.falhas = 0; }
+      if (m.event === 'postgres_changes' && m.payload && m.payload.data && m.payload.data.record) aplicarEstado(m.payload.data.record);
+    };
+    ws.onclose = ws.onerror = function () {
+      if (rt.ws !== ws) return;
+      clearInterval(rt.hb); rt.ws = null; rt.ok = false; rt.falhas++;
+      rt.espera = setTimeout(function () { rt.espera = null; rtConectar(); }, Math.min(30000, 1000 * Math.pow(2, rt.falhas)));
+    };
+  }
+  function rtFechar() {
+    if (!rt.ws) return;
+    var ws = rt.ws; rt.ws = null; rt.ok = false; clearInterval(rt.hb);
+    try { ws.close(); } catch (e) { /* já fechou */ }
   }
 
   function syncMeuVoto() {
@@ -3474,6 +3519,7 @@
     }).catch(function () {});
   }
   function viewTelao() {
+    if (remote.on && remote.pausa) return viewPausa();
     if (remote.on && remote.revelarBanca) return viewTelaoRevelacaoBanca();
     if (remote.on && remote.revelar) return viewTelaoRevelacao();
     if (remote.on && remote.slide) { var sl = slideTelao(remote.slide); if (sl) return sl; }
@@ -4481,8 +4527,107 @@
       (s.tipo !== 'video' && s.tipo !== 'videoHeroi' && s.tipo !== 'fotos' ? '<span class="sl-rodape">' + slideMarca() + '</span>' : '') + '</div>';
   }
 
+  /* ---------- MODO PAUSA: mosaico de fotos da Trilha ----------
+     Liga pelo controle (ou tecla P no telão) e fica por cima de qualquer
+     slide. As fotos trocam sozinhas, em quadros de tamanhos diferentes, em
+     ordem aleatória; de tempos em tempos uma foto cresce no centro com a
+     legenda. Desligar volta exatamente para o slide em que estava.      */
+  var PZ_QUADROS = 12;
+  function viewPausa() {
+    var q = '';
+    for (var i = 0; i < PZ_QUADROS; i++) q += '<div class="pz-t pz-' + i + '"></div>';
+    return '<div class="telao pausa" id="pausaTela">' + telaoFundo() +
+      '<div class="pz-grade">' + q + '</div>' +
+      '<div class="pz-destaque" aria-hidden="true"></div>' +
+      '<span class="pz-marca">' + slideMarca() + '<span>Trilha 2026</span></span>' +
+      '</div>';
+  }
+  var pz = { troca: null, dest: null, ult: -1, visiveis: [] };
+  function pausaFotos() {
+    var fs = todasAsFotos().filter(function (f) { return f[0] || f[3]; });
+    if (!fs.length) fs = (db.retro && db.retro.photos) || [];
+    var out = [];
+    fs.forEach(function (f) {
+      var src = f[0] || (f[3] && nuvem.dados[f[3]]) || '';
+      if (!src && f[3]) { pedirDado(f[3]); return; }
+      if (src) out.push({ src: src, leg: f[2] || '' });
+    });
+    return out;
+  }
+  function pzSorteia(lista, evitar) {
+    if (!lista.length) return null;
+    var livres = lista.filter(function (f) { return evitar.indexOf(f.src) < 0; });
+    var base = livres.length ? livres : lista;
+    return base[Math.floor(Math.random() * base.length)];
+  }
+  function pzColoca(quadro, foto, instantaneo) {
+    if (!foto) return;
+    var im = new Image(); im.decoding = 'async';
+    im.onload = function () {
+      var c = document.createElement('div');
+      c.className = 'pz-cam' + (instantaneo ? ' ja' : '');
+      c.style.setProperty('--px', (Math.random() * 6 - 3).toFixed(1) + '%');
+      c.style.setProperty('--py', (Math.random() * 6 - 3).toFixed(1) + '%');
+      c.style.setProperty('--dur', (9 + Math.random() * 6).toFixed(1) + 's');
+      c.appendChild(im);
+      quadro.appendChild(c);
+      quadro.setAttribute('data-src', foto.src);
+      var velhas = quadro.querySelectorAll('.pz-cam');
+      if (velhas.length > 1) setTimeout(function () { for (var i = 0; i < velhas.length - 1; i++) if (velhas[i].parentNode) velhas[i].parentNode.removeChild(velhas[i]); }, 1600);
+    };
+    im.src = foto.src;
+  }
+  function pausaMontar() {
+    var tela = $('#pausaTela');
+    if (!tela || route.name !== 'telao' || !remote.pausa) { clearInterval(pz.troca); clearInterval(pz.dest); pz.troca = pz.dest = null; return; }
+    if (tela.getAttribute('data-vivo')) return;
+    tela.setAttribute('data-vivo', '1');
+    var fotos = pausaFotos();
+    var quadros = Array.prototype.slice.call(tela.querySelectorAll('.pz-t'));
+    var usadas = [];
+    quadros.forEach(function (q, i) {
+      var f = pzSorteia(fotos, usadas); if (f) usadas.push(f.src);
+      setTimeout(function () { pzColoca(q, f, false); }, 120 + i * 140);   // entram uma a uma
+    });
+    clearInterval(pz.troca); clearInterval(pz.dest);
+    pz.troca = setInterval(function () {
+      if (!document.body.contains(tela)) { clearInterval(pz.troca); return; }
+      fotos = pausaFotos(); if (!fotos.length) return;
+      var i; do { i = Math.floor(Math.random() * quadros.length); } while (quadros.length > 1 && i === pz.ult);
+      pz.ult = i;
+      var vis = quadros.map(function (q) { return q.getAttribute('data-src'); });
+      pzColoca(quadros[i], pzSorteia(fotos, vis), false);
+    }, 1700);
+    pz.dest = setInterval(function () {
+      if (!document.body.contains(tela)) { clearInterval(pz.dest); return; }
+      var f = pzSorteia(pausaFotos(), []), d = tela.querySelector('.pz-destaque');
+      if (!f || !d) return;
+      var im = new Image();
+      im.onload = function () {
+        d.innerHTML = '';
+        var fig = document.createElement('figure'); fig.appendChild(im);
+        if (f.leg) { var cap = document.createElement('figcaption'); cap.textContent = f.leg; fig.appendChild(cap); }
+        d.appendChild(fig);
+        d.classList.remove('on'); void d.offsetWidth; d.classList.add('on');
+      };
+      im.src = f.src;
+    }, 12000);
+  }
+  function definirPausaTelao(v) {
+    if (!remote.on || !localState.adminKey) { toast('Entre como organização para usar o modo pausa.'); return; }
+    var antes = remote.pausa;
+    remote.pausa = !!v; render();
+    sbRpc('definir_pausa', { p_chave: localState.adminKey, p_pausa: !!v }).then(function (r) {
+      if (!r || !r.ok) throw new Error((r && r.erro) || 'falhou');
+      toast(v ? 'Modo pausa ligado: fotos passando no telão.' : 'Modo pausa desligado.');
+    }).catch(function (e) {
+      remote.pausa = antes; render();
+      toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente para usar o modo pausa.' : 'Não consegui mudar o modo pausa.');
+    });
+  }
+
   // ---------- navegação ----------
-  var apres = { enviando: false };
+  var apres = { pend: null, voando: false, fila: null, corte: 0 };
   function irSlide(key) {
     if (!remote.on || !localState.adminKey) { toast('Entre como organização para controlar a apresentação.'); return; }
     var l = deckSlides(), i = deckIndice(key), s = l[i];
@@ -4491,16 +4636,42 @@
     if (s && s.tipo === 'equipe') palco = s.pid;
     else if (ultEq >= 0 && i > ultEq) palco = '';
     var antes = { slide: remote.slide, palco: remote.palco, rev: remote.revelar, revB: remote.revelarBanca };
-    remote.slide = key || null;
+    remote.slide = key || null; remote.pausa = false;
     if (palco !== null) remote.palco = palco || null;
     if ((key === 'revelaHeroi') !== remote.revelar) { remote.revelar = key === 'revelaHeroi'; if (remote.revelar) telao.revelInicio = Date.now(); telao.vencedores = null; }
     if ((key === 'revelaBanca') !== remote.revelarBanca) { remote.revelarBanca = key === 'revelaBanca'; if (remote.revelarBanca) telao.revelInicio = Date.now(); telao.vencBanca = null; }
+    apres.pend = { key: key || '', palco: palco, t: Date.now() };
     render();
-    sbRpc('definir_slide', { p_chave: localState.adminKey, p_slide: key || '', p_palco: palco }).then(function (r) {
+    preCarregarVizinho();
+    enviarSlide({ key: key || '', palco: palco, antes: antes });
+  }
+  // envia uma troca por vez; se o passador for apertado várias vezes seguidas,
+  // só a última posição vai para o banco (sem vai-e-volta no telão)
+  function enviarSlide(m) {
+    if (apres.voando) { if (apres.fila && apres.fila.palco !== null && m.palco === null) m.palco = apres.fila.palco; apres.fila = m; return; }
+    apres.voando = true;
+    sbRpc('definir_slide', { p_chave: localState.adminKey, p_slide: m.key, p_palco: m.palco }).then(function (r) {
       if (!r || !r.ok) throw new Error((r && r.erro) || 'falhou');
     }).catch(function (e) {
-      remote.slide = antes.slide; remote.palco = antes.palco; remote.revelar = antes.rev; remote.revelarBanca = antes.revB; render();
-      toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente para usar a apresentação.' : 'Não consegui trocar o slide. Tente de novo.');
+      if (!apres.fila) {
+        remote.slide = m.antes.slide; remote.palco = m.antes.palco; remote.revelar = m.antes.rev; remote.revelarBanca = m.antes.revB; apres.pend = null; render();
+        toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente para usar a apresentação.' : 'Não consegui trocar o slide. Tente de novo.');
+      }
+    }).then(function () {
+      apres.voando = false;
+      if (apres.fila) { var f = apres.fila; apres.fila = null; enviarSlide(f); return; }
+      // gravado: a partir de agora o banco já tem a nossa troca
+      apres.pend = null; apres.corte = Date.now();
+    });
+  }
+  // deixa as imagens do próximo slide já carregadas
+  function preCarregarVizinho() {
+    var l = deckSlides(), i = deckIndice(remote.slide);
+    [l[i + 1], l[i + 2]].forEach(function (s) {
+      if (!s) return;
+      var srcs = [];
+      if (s.tipo === 'equipe') { var p = byId(s.pid); if (p) (p.heroes || []).forEach(function (h) { if (h.image) srcs.push(h.image); }); }
+      srcs.forEach(function (u) { var im = new Image(); im.decoding = 'async'; im.src = u; });
     });
   }
   function passoSlide(d) {
@@ -4519,6 +4690,9 @@
     if (k === 'F5') { e.preventDefault(); return; }
     if (k === 'b' || k === 'B' || k === '.' || k === 'w' || k === 'W') { e.preventDefault(); telaoPreta(); return; }
     if (!localState.admin) return;
+    if (k === 'p' || k === 'P') { e.preventDefault(); definirPausaTelao(!remote.pausa); return; }
+    var nav = /^(ArrowRight|ArrowDown|PageDown| |Enter|ArrowLeft|ArrowUp|PageUp|Backspace)$/.test(k);
+    if (nav && remote.pausa) { e.preventDefault(); definirPausaTelao(false); return; }   // sai da pausa e volta ao slide
     if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); telaoPreta(false); passoSlide(1); }
     else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); telaoPreta(false); passoSlide(-1); }
   });
@@ -4533,7 +4707,7 @@
     if (!localState.admin) return viewEntrar('admin', 'Controle da apresentação: entre como organização.');
     if (!remote.on) return '<div class="view"><div class="corpo"><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">O controle funciona na versão publicada, com o banco ligado.</p></div></div></div>';
     var l = deckSlides(), i = deckIndice(remote.slide), atual = l[i], prox = l[i + 1] || (i < 0 ? l[0] : null);
-    var modo = remote.revelarBanca ? 'Revelando o Projeto destaque' : remote.revelar ? 'Revelando o Herói' : atual ? (atual.tipo === 'votacao' ? 'Votação (QR)' : 'Apresentação') : 'Votação (QR) · fora da apresentação';
+    var modo = remote.pausa ? 'Modo pausa · fotos passando' : remote.revelarBanca ? 'Revelando o Projeto destaque' : remote.revelar ? 'Revelando o Herói' : atual ? (atual.tipo === 'votacao' ? 'Votação (QR)' : 'Apresentação') : 'Votação (QR) · fora da apresentação';
     var previa = function (s, cls) {
       return '<div class="ctl-tela ' + (cls || '') + '"><div class="ctl-escala"><div class="telao sl sl-previa sl-' + (s ? s.tipo : 'vazio') + '">' +
         (s ? slideHtml(s, true) : '<div class="sl-centro"><h1 class="sl-mega sl-mega-m">Fim</h1></div>') + '</div></div></div>';
@@ -4557,6 +4731,9 @@
         '</div>' +
         '<div class="ctl-dir">' +
           '<div class="ctl-acoes">' +
+            (remote.pausa
+              ? '<button class="btn btn-block btn-lg ctl-pausa on" data-act="pausaOff">■ Sair do modo pausa (volta ao slide)</button>'
+              : '<button class="btn btn-block btn-lg ctl-pausa" data-act="pausaOn">❚❚ Modo pausa · fotos da Trilha</button>') +
             (remote.aberta ? '<button class="btn btn-danger btn-block" data-act="askClose">Encerrar a votação</button>' : '<button class="btn btn-laranja btn-block" data-act="askOpen">' + ico('i-vote') + ' Abrir a votação</button>') +
             '<button class="btn btn-outline btn-block" data-act="slideIr" data-k="votacao">Mostrar a votação (QR)</button>' +
             '<button class="btn btn-laranja btn-block" data-act="slideIr" data-k="revelaBanca">' + ico('i-spark') + ' Revelar o Projeto destaque (banca)</button>' +
@@ -4718,6 +4895,7 @@
           '<button class="btn btn-laranja btn-block btn-lg" data-act="askRevelarBanca">' + ico('i-spark') + ' Revelar o Projeto destaque (banca)</button>') +
       (remote.aberta && !remote.revelar ? '<p class="tiny av-obs">Dica: encerre a votação antes de revelar o Herói.</p>' : '') +
       (remote.decisao && !remote.revelarBanca ? '<p class="tiny av-obs">Dica: encerre a decisão final antes de revelar o Projeto destaque.</p>' : '') +
+      (remote.pausa ? '<button class="btn btn-block ctl-pausa on" data-act="pausaOff">■ Sair do modo pausa</button>' : '<button class="btn btn-block ctl-pausa" data-act="pausaOn">❚❚ Modo pausa · fotos da Trilha</button>') +
       '<a class="btn btn-outline btn-block" href="#/controle">Controle da apresentação</a>' +
       '<div class="av-linha"><a class="btn btn-ghost btn-sm" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
         '<a class="btn btn-ghost btn-sm" href="#/mesa/entrar" target="_blank" rel="noopener">QR de login</a>' +
@@ -5609,6 +5787,7 @@
     if (route.name === 'banca' && bancaEditando()) { banca.renderPendente = true; renderNav(); return; }
     renderBrand(); renderNav();
     document.title = tituloPagina();
+    if (/^(telao|controle)$/.test(route.name)) rtConectar(); else rtFechar();
     var app = $('#app');
     var ehTelao = route.name === 'telao';
     var ehMesa = route.name === 'mesa';
@@ -5627,7 +5806,11 @@
     var adminFull = route.name === 'admin' && localState.admin;
     document.body.classList.toggle('is-painel', adminFull);
     app.className = gated || ehTelao || ehMesa ? '' : (adminFull ? '' : 'shell');
-    app.innerHTML = (gated ? viewEntrada() : currentView()) + (!gated && comRodape() ? idlFooter() : '') + ctaVotar();
+    var htmlNovo = (gated ? viewEntrada() : currentView()) + (!gated && comRodape() ? idlFooter() : '') + ctaVotar();
+    // no telão, se nada mudou, não redesenha (vídeo não reinicia, imagem não pisca)
+    if (ehTelao && htmlNovo === render.ultimoTelao && app.firstChild) { renderOverlay(); pausaMontar(); return; }
+    render.ultimoTelao = ehTelao ? htmlNovo : null;
+    app.innerHTML = htmlNovo;
     renderOverlay();
 
     // microanimação quando a atividade ao vivo muda
@@ -5639,6 +5822,7 @@
     if (route.name === 'controle') ajustarPrevias();
     tickLive();
     telaoMontar();
+    pausaMontar();
     if (ehTelao) return;
     revelar(app);
     ajustarTurmas(app);
@@ -6164,6 +6348,8 @@
     else if (act === 'slideAnt') passoSlide(-1);
     else if (act === 'slideIr') irSlide(el.getAttribute('data-k'));
     else if (act === 'slideSair') irSlide('');
+    else if (act === 'pausaOn') definirPausaTelao(true);
+    else if (act === 'pausaOff') definirPausaTelao(false);
     else if (act === 'apMover') {
       var cfgM = apLerForm(), li = el.closest('.ap-item'), iM = +li.getAttribute('data-i'), dM = +el.getAttribute('data-d'), jM = iM + dM;
       if (jM < 0 || jM >= cfgM.length) return;
