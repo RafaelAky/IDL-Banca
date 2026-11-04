@@ -4686,39 +4686,50 @@
       im.src = f.src;
     }, 12000);
     pz.rodPular = null; clearInterval(pz.rod);
-    if (route.name === 'mosaico' && route.param === 'marca') pzRodizio(tela);
+    if (route.name === 'mosaico') pzRodizio(tela);
   }
   /* rodízio do /#/mosaico/marca: o mosaico fica ~3 min, depois a tela de
      números entra por ~20 s e o mosaico volta (as fotos seguem por baixo) */
   var PZ_ROD = { mosaico: 180000, tela: 20000 };
   function pzRodizio(tela) {
     clearInterval(pz.rod);
-    var ms = window.IDL_RODIZIO_MS || PZ_ROD, ciclo = ms.mosaico + ms.tela;
+    var ms = window.IDL_RODIZIO_MS || PZ_ROD;
     var camada = document.createElement('div');
     camada.className = 'pz-rodizio tl-slide sl-numeros';
     camada.setAttribute('aria-hidden', 'true');
     tela.appendChild(camada);
-    // a fase sai do relógio (não de um timer longo): mesmo com a aba em
-    // segundo plano ou o computador lento, a troca acontece na hora certa
-    pz.rodT0 = Date.now();
-    var naTela = false;
-    function passo() {
-      if (!document.body.contains(tela)) { clearInterval(pz.rod); return; }
-      var deve = (Date.now() - pz.rodT0) % ciclo >= ms.mosaico;
-      if (deve === naTela) return;
-      naTela = deve;
+    /* cada fase dura o tempo dela A PARTIR de quando de fato entrou na tela.
+       Assim, mesmo que o navegador atrase os timers (janela coberta por outra,
+       aba em segundo plano, computador lento), a tela de números nunca é
+       "pulada": ela entra no primeiro tique depois do prazo e fica os 20 s.
+       O estado vale para a página toda: se a tela for redesenhada, continua. */
+    if (!pz.rodFase) { pz.rodFase = 'mosaico'; pz.rodAte = Date.now() + ms.mosaico; }
+    var mostrando = null;
+    function aplicar() {
+      var deve = pz.rodFase === 'numeros';
+      if (deve === mostrando) return;
+      mostrando = deve;
       if (deve) {
-        var s = deckSlides().filter(function (x) { return x.tipo === 'numeros'; })[0] || { tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } };
-        camada.innerHTML = telaoFundo() + slideHtml(s, false);
+        var s = null;
+        try { s = deckSlides().filter(function (x) { return x.tipo === 'numeros'; })[0]; } catch (e) {}
+        s = s || { tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } };
+        try { camada.innerHTML = telaoFundo() + slideHtml(s, false); }
+        catch (e) { camada.innerHTML = telaoFundo() + slideHtml({ tipo: 'numeros', item: { titulo: 'A Trilha 2026 em números' } }, false); }
       }
       camada.classList.toggle('on', deve);
     }
+    function passo() {
+      if (!document.body.contains(tela)) { clearInterval(pz.rod); return; }
+      var agora = Date.now();
+      if (agora >= pz.rodAte) {
+        pz.rodFase = pz.rodFase === 'mosaico' ? 'numeros' : 'mosaico';
+        pz.rodAte = agora + (pz.rodFase === 'mosaico' ? ms.mosaico : ms.tela);
+      }
+      aplicar();
+    }
     // seta para a direita (ou o passador): pula para a próxima tela na hora
-    pz.rodPular = function () {
-      var dt = (Date.now() - pz.rodT0) % ciclo;
-      pz.rodT0 -= (dt < ms.mosaico ? ms.mosaico : ciclo) - dt;
-      passo();
-    };
+    pz.rodPular = function () { pz.rodAte = 0; passo(); };
+    aplicar();
     pz.rod = setInterval(passo, 500);
   }
   function definirPausaTelao(v) {
@@ -4958,8 +4969,8 @@
       '<div class="lei-grade">' +
         tela({ destaque: true, marca: true, rota: 'mosaico/marca', titulo: 'Mosaico com marca e rodízio', prev: prevMosaico + '<span class="lei-selo">Trilhei · IDL Tech</span><span class="lei-mini-qr">' + prevQr + '</span>',
           texto: 'Fotos da Trilha em mosaico, com a marca e o QR do site. A cada <b>3 min</b> entra a tela <b>A Trilha 2026 em números</b> por <b>20 s</b>. A seta → (ou o passador) pula para a próxima tela.' }) +
-        tela({ rota: 'mosaico', titulo: 'Mosaico simples', prev: prevMosaico + '<span class="lei-mini-qr">' + prevQr + '</span>',
-          texto: 'Só as fotos e o QR do site, sem marca e sem rodízio.' }) +
+        tela({ rota: 'mosaico', titulo: 'Mosaico sem marca', prev: prevMosaico + '<span class="lei-mini-qr">' + prevQr + '</span>',
+          texto: 'As fotos e o QR do site, sem a marca. Também tem o rodízio com a tela de números.' }) +
         tela({ rota: '', titulo: 'Site do IDL', prev: '<div class="lei-qr">' + prevQr + '</div>',
           texto: 'É para onde aponta o QR no canto do mosaico.' }) +
       '</div>' +
