@@ -545,6 +545,7 @@
     bn.setAttribute('data-n', itens.length);
 
     var dn = $('#deskNav');
+    dn.setAttribute('data-n', itens.length);   // com muitos itens (painel, banca), o menu usa os rótulos curtos
     dn.innerHTML = itens.map(function (n) {
       var sel = cur === n.id;
       return '<button class="navbtn' + (n.admin ? ' navbtn-adm' : '') + '" data-nav="' + n.id + '"' +
@@ -4994,6 +4995,15 @@
     else if (atual) { agora = atual; estado = 'Apresentação · slide ' + (i + 1) + ' de ' + l.length; cor = 'apres'; }
     else { agora = { tipo: 'votacao' }; estado = 'Fora da apresentação · votação no telão'; cor = 'fora'; }
 
+    // números da votação e da banca (atualizam sozinhos a cada 8 s nesta tela)
+    if (!modoEv.em) setTimeout(function () { aoVivoAtualizar(true); }, 0);
+    var ctlTot = adminRes.dados && adminRes.dados.liberado ? (adminRes.dados.total || 0) : null;
+    var ctlIts = (adminBancaDados.itens || []).filter(function (x) { return x.notas && notasQtd(x.notas); });
+    var ctlJur = {}; ctlIts.forEach(function (x) { ctlJur[x.jurado] = true; });
+    var ctlNJ = Object.keys(ctlJur).length, ctlNDec = (adminBancaDados.decisao || []).length;
+    var ctlP = palcoAtual(), ctlPalco = '';
+    if (ctlP && ctlNJ) ctlPalco = ctlIts.filter(function (x) { return x.projeto === ctlP.id && notasCompletas(x.notas); }).length + ' de ' + ctlNJ + ' já avaliaram ' + ctlP.name + '.';
+
     var roteiro = '', ult = '';
     l.forEach(function (s, j) {
       var g = s.grupo || '';
@@ -5004,7 +5014,7 @@
 
     return '<div class="view controle ctlA">' +
       '<div class="ctlA-status ' + cor + '"><span class="ctlA-ponto"></span><div class="grow"><span class="eyebrow">Controle · IDL</span><b>' + esc(estado) + '</b></div>' +
-        '<div class="ctl-chips">' + avChip('Votação', remote.aberta, 'aberta', 'fechada') + avChip('Decisão', remote.decisao, 'aberta', 'fechada') + '</div></div>' +
+        '<div class="ctl-chips">' + avChip('Votação', remote.aberta, 'aberta', 'fechada') + avChip('Banca', remote.avaliacoes, 'aberta', 'fechada') + avChip('Decisão', remote.decisao, 'aberta', 'fechada') + '</div></div>' +
       '<div class="ctlA-grade">' +
         '<section class="ctlA-esq">' +
           '<div class="ctlA-previas">' +
@@ -5016,6 +5026,8 @@
             '<button class="btn btn-primary btn-lg" data-act="slideProx"' + (i >= l.length - 1 ? ' disabled' : '') + '>' + (i < 0 ? 'Começar' : 'Próximo') + ' ' + ico('i-chev') + '</button>' +
           '</div>' +
           '<p class="tiny ctlA-dica">No computador do telão: → ou passador avança · ← volta · P liga a pausa · B escurece. <a href="#/telao" target="_blank" rel="noopener">Abrir o telão</a></p>' +
+          ('wakeLock' in navigator ? '<p class="tiny ctlA-dica">A tela deste aparelho fica sempre acesa enquanto o controle estiver aberto.</p>'
+            : '<p class="tiny ctlA-dica">Este navegador não deixa o site manter a tela acesa: desligue o bloqueio automático nas configurações do tablet (Tela → Bloqueio automático → Nunca).</p>') +
         '</section>' +
         '<section class="ctlA-dir">' +
           '<div class="ctlA-card"><span class="ctlA-tit">' + ico('i-eye') + ' Telão</span>' +
@@ -5023,11 +5035,18 @@
               '<span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>Modo pausa · fotos da Trilha</b><span class="tiny">' + (remote.pausa ? 'Mosaico de fotos no telão. Desligar volta ao slide.' : 'Para intervalos: fotos passando em mosaico.') + '</span></span></label>' +
             (atual ? '<button class="btn btn-ghost btn-sm" data-act="slideSair">Sair da apresentação (telão volta à votação)</button>' : '') +
           '</div>' +
-          '<div class="ctlA-card"><span class="ctlA-tit">' + ico('i-vote') + ' Votação do público</span>' +
+          '<div class="ctlA-card"><span class="ctlA-tit">' + ico('i-vote') + ' Votação do público' + (ctlTot != null ? '<span class="ctlA-num">' + ctlTot + (ctlTot === 1 ? ' voto' : ' votos') + '</span>' : '') + '</span>' +
             '<div class="ctlA-par">' +
               (remote.aberta ? '<button class="btn btn-danger" data-act="askClose">Encerrar votação</button>' : '<button class="btn btn-laranja" data-act="askOpen">Abrir votação</button>') +
               '<button class="btn btn-outline" data-act="slideIr" data-k="votacao">Mostrar o QR</button>' +
             '</div></div>' +
+          // banca: avaliações (notas por equipe) e decisão final (voto fechado), cada uma com abrir/encerrar
+          '<div class="ctlA-card ctlA-banca"><span class="ctlA-tit">' + ico('i-users') + ' Banca' + (ctlNJ ? '<span class="ctlA-num">' + ctlNJ + (ctlNJ === 1 ? ' jurado ativo' : ' jurados ativos') + '</span>' : '') + '</span>' +
+            '<div class="ctlA-linha"><div class="grow"><b>Avaliações das equipes</b><span class="tiny">' + (remote.avaliacoes ? 'Abertas: os jurados dão notas.' + (ctlPalco ? ' ' + ctlPalco : '') : 'Fechadas: os jurados só leem os projetos.') + '</span></div>' +
+              (remote.avaliacoes ? '<button class="btn btn-danger" data-act="ctlAval" data-v="0">Encerrar avaliações</button>' : '<button class="btn btn-laranja" data-act="ctlAval" data-v="1">Abrir avaliações</button>') + '</div>' +
+            '<div class="ctlA-linha"><div class="grow"><b>Decisão final da banca</b><span class="tiny">' + (remote.decisao ? 'Aberta: ' + ctlNDec + ' de ' + (ctlNJ || '—') + ' jurados já votaram.' : 'Voto fechado dos jurados para o Projeto destaque.') + '</span></div>' +
+              (remote.decisao ? '<button class="btn btn-danger" data-act="decisaoAbrir" data-v="0">Encerrar decisão</button>' : '<button class="btn btn-laranja" data-act="decisaoAbrir" data-v="1">Abrir decisão final</button>') + '</div>' +
+          '</div>' +
           '<div class="ctlA-card ctlA-revela"><span class="ctlA-tit">' + ico('i-spark') + ' Revelações</span>' +
             '<div class="ctlA-par">' +
               '<button class="btn ctlA-rv banca' + (remote.revelarBanca ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaBanca"><b>Projeto destaque</b><span>banca</span></button>' +
@@ -5328,13 +5347,13 @@
     Promise.all([p1, p2]).then(function () {
       modoEv.em = Date.now();
       var depois = JSON.stringify([adminRes.dados && adminRes.dados.total, adminBancaDados.itens, adminBancaDados.decisao]);
-      if ((forcar || antes !== depois) && route.name === 'admin' && admin.tab === 'aovivo' && !admin.confirm && !admin.editor) render();
+      if ((forcar || antes !== depois) && ((route.name === 'admin' && admin.tab === 'aovivo') || route.name === 'controle') && !admin.confirm && !admin.editor) render();
       else { var h = $('#avHora'); if (h) h.textContent = horaCurta(modoEv.em); }
     });
   }
   function horaCurta(t) { return new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
   setInterval(function () {
-    if (route.name === 'admin' && admin.tab === 'aovivo' && localState.admin && document.visibilityState !== 'hidden') { syncEstado(); aoVivoAtualizar(); }
+    if (((route.name === 'admin' && admin.tab === 'aovivo') || route.name === 'controle') && localState.admin && document.visibilityState !== 'hidden') { syncEstado(); aoVivoAtualizar(); }
   }, 8000);
 
   function avChip(rotulo, ligado, txtOn, txtOff) {
@@ -6967,6 +6986,7 @@
     else if (act === 'decEscolher') { banca.dec.escolha = el.getAttribute('data-id'); render(); }
     else if (act === 'decVotar') decVotar();
     else if (act === 'mesaImprimir') window.print();
+    else if (act === 'ctlAval') { definirAvaliacoes(el.getAttribute('data-v') === '1'); }
     else if (act === 'decisaoAbrir') {
       var abrir = el.getAttribute('data-v') === '1';
       var fazer = function () {
@@ -7405,6 +7425,29 @@
       else if (taps === 1) { if (route.name !== 'home') go('home'); }
     });
   })();
+
+  /* ----------------------- tela sempre acesa ------------------------------
+     No controle (tablet), no telão, no mosaico e no painel, o aparelho não
+     apaga a tela sozinho enquanto a página estiver aberta (Wake Lock). Ao
+     voltar para a aba, pede de novo; nas outras telas do site, libera.    */
+  var acesa = { lock: null, pedindo: false };
+  function telaAcesaDeve() { return /^(controle|telao|mosaico|admin|banca|decisao)$/.test(route.name) && document.visibilityState === 'visible'; }
+  function telaAcesa() {
+    if (!('wakeLock' in navigator)) return;
+    if (telaAcesaDeve()) {
+      if (acesa.lock || acesa.pedindo) return;
+      acesa.pedindo = true;
+      navigator.wakeLock.request('screen').then(function (l) {
+        acesa.pedindo = false; acesa.lock = l;
+        l.addEventListener('release', function () { acesa.lock = null; });
+      }).catch(function () { acesa.pedindo = false; });
+    } else if (acesa.lock) { var l = acesa.lock; acesa.lock = null; l.release().catch(function () {}); }
+  }
+  document.addEventListener('visibilitychange', telaAcesa);
+  window.addEventListener('hashchange', function () { setTimeout(telaAcesa, 0); });
+  // alguns navegadores (Safari) só liberam depois de um toque: tenta de novo no primeiro toque
+  document.addEventListener('pointerdown', telaAcesa, { passive: true });
+  setTimeout(telaAcesa, 0);
 
   /* ------------------------- tema claro / escuro --------------------------
      Segue o sistema. O botão de sol/lua do topo força o outro tema e guarda
