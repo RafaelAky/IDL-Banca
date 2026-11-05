@@ -2711,11 +2711,13 @@
   function abaDaRota(p) { return ADMIN_TABS.some(function (t) { return t[0] === p; }) ? p : 'geral'; }
   var admin = { tab: (f5Volta && f5Volta.tab) || 'geral', editor: null, confirm: null, copy: null, fotosDe: (f5Volta && f5Volta.fotosDe) || null };
 
+  // aba Leilão: desligada depois do leilão (o código continua aqui; para religar, troque para true)
+  var LEILAO_ATIVO = false;
   var ADMIN_TABS = [
-    ['check', 'Checklist'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['leilao', 'Leilão'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
+    ['check', 'Checklist'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []).concat([['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
     ['programacao', 'Programação'], ['projetos', 'Projetos'],
     ['herois', 'Heróis'], ['banca', 'Banca'], ['retro', 'Trilha 2026'], ['dados', 'Dados']
-  ];
+  ]);
 
   var login = { erro: '', ocupado: false };
 
@@ -2740,10 +2742,11 @@
   }
 
   function adminTab() {
+    admin.tab = abaDaRota(admin.tab);   // aba que não existe mais (ex.: Leilão desligado) cai na Visão geral
     if (admin.tab === 'check') return adminChecklist();
     if (admin.tab === 'aovivo') return adminAoVivo();
     if (admin.tab === 'apres') return adminApresentacao();
-    if (admin.tab === 'leilao') return adminLeilao();
+    if (admin.tab === 'leilao' && LEILAO_ATIVO) return adminLeilao();
     if (admin.tab === 'geral') return adminGeral();
     if (admin.tab === 'evento') return adminEvento();
     if (admin.tab === 'programacao') return adminPrograma();
@@ -4866,7 +4869,7 @@
     var mostrando = null, assin = '';
     function passo() {
       if (!document.body.contains(tela)) { clearInterval(pz.rod); return; }
-      var c = leilaoCfg(), deve = c.tela === 'idl';
+      var c = leilaoCfg(), deve = LEILAO_ATIVO && c.tela === 'idl';   // com o Leilão desligado, fica só o mosaico
       var a2 = deve ? JSON.stringify(c.apres) + c.modo : '';
       if (deve === mostrando && a2 === assin) return;
       if (deve) camada.innerHTML = telaIdlHtml();   // nomes trocados no painel com a tela no ar: redesenha só o conteúdo
