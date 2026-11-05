@@ -403,6 +403,26 @@
      abre um projeto ou um Herói e volta cai exatamente onde parou; nas
      demais trocas de tela, a página começa do topo.                       */
   var posicoes = {};
+  /* F5 / recarregar: a página volta para o mesmo lugar (mesma tela, mesma
+     aba do painel e mesma altura da rolagem). Fica só nesta aba do navegador
+     e só vale para recarregar logo em seguida (até 30 min).               */
+  var F5_CHAVE = 'idl.f5';
+  var f5Volta = (function () {
+    try {
+      var o = JSON.parse(sessionStorage.getItem(F5_CHAVE) || 'null');
+      sessionStorage.removeItem(F5_CHAVE);
+      if (!o || Date.now() - o.t > 30 * 60000 || o.h !== (location.hash || '#/')) return null;
+      return o;
+    } catch (e) { return null; }
+  })();
+  function f5Guardar() {
+    try {
+      sessionStorage.setItem(F5_CHAVE, JSON.stringify({ h: location.hash || '#/', y: Math.round(window.scrollY), t: Date.now(),
+        tab: typeof admin !== 'undefined' ? admin.tab : null, fotosDe: typeof admin !== 'undefined' ? admin.fotosDe : null }));
+    } catch (e) { /* sem sessionStorage: segue sem lembrar */ }
+  }
+  window.addEventListener('pagehide', f5Guardar);
+  window.addEventListener('beforeunload', f5Guardar);
   var LISTAS = { home: 1, projetos: 1, herois: 1, programacao: 1, trilha2026: 1, trilhei: 1 };
   var DETALHES = { projeto: 1, heroi: 1 };
   try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch (e) { /* segue */ }
@@ -417,14 +437,15 @@
     // 'instant' passa por cima do scroll-behavior: smooth do CSS (troca de tela é seca)
     try { window.scrollTo({ top: y, behavior: 'instant' }); } catch (e) { window.scrollTo(0, y); }
   }
-  function restaurarPosicao(chave) {
+  function restaurarPosicao(chave, longo) {
     var y = posicoes[chave];
     restaurando = true;
-    // a página ainda pode crescer enquanto as imagens carregam: confirma algumas vezes
-    var tentativas = [0, 80, 250, 600], mexeu = false;
+    // a página ainda pode crescer enquanto as imagens e os dados chegam: confirma algumas vezes
+    var tentativas = longo ? [0, 120, 300, 600, 1000, 1600, 2400, 3200] : [0, 80, 250, 600], mexeu = false;
     function parar() { mexeu = true; }
     window.addEventListener('touchstart', parar, { once: true, passive: true });
     window.addEventListener('wheel', parar, { once: true, passive: true });
+    window.addEventListener('keydown', parar, { once: true });
     tentativas.forEach(function (ms, i) {
       setTimeout(function () {
         if (!mexeu && (location.hash || '#/') === chave) irPara(y);
@@ -2678,7 +2699,7 @@
   }
 
   /* ========================= PAINEL ADMINISTRATIVO ======================== */
-  var admin = { tab: 'geral', editor: null, confirm: null, copy: null, fotosDe: null };
+  var admin = { tab: (f5Volta && f5Volta.tab) || 'geral', editor: null, confirm: null, copy: null, fotosDe: (f5Volta && f5Volta.fotosDe) || null };
 
   var ADMIN_TABS = [
     ['check', 'Checklist'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['leilao', 'Leilão'], ['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
@@ -7430,6 +7451,8 @@
   load();
   var r0 = parseHash(); route.name = r0.name; route.param = r0.param;
   render();
+  // voltou de um F5: devolve a rolagem de onde estava
+  if (f5Volta && f5Volta.y > 0) { posicoes[location.hash || '#/'] = f5Volta.y; restaurarPosicao(location.hash || '#/', true); }
 
   if (remote.on) {
     syncEstado();
