@@ -13,6 +13,10 @@
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#300068" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#120a20" media="(prefers-color-scheme: dark)">
+<script>
+  /* tema escolhido no botão de sol/lua (antes de desenhar, para não piscar) */
+  try { var t = localStorage.getItem('idl.tema'); if (t === 'claro' || t === 'escuro') document.documentElement.setAttribute('data-tema', t); } catch (e) {}
+</script>
 <meta name="description" content="Encerramento da Trilha 2026 · 14 de novembro, 9h às 13h, no Sebrae. Conheça os projetos dos trilheiros e vote no seu Herói.">
 <!-- prévia do link (WhatsApp, Instagram, LinkedIn…) -->
 <meta property="og:type" content="website">
@@ -70,6 +74,10 @@
       <span class="bs" id="brandSub">Trilha 2026</span>
     </a>
     <nav class="desknav" id="deskNav" aria-label="Navegação principal"></nav>
+    <button type="button" class="tema-btn" id="temaBtn" aria-label="Mudar para o modo escuro" title="Modo escuro">
+      <svg class="tema-lua" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 14.6A8.4 8.4 0 0 1 9.4 3.8a8.4 8.4 0 1 0 10.8 10.8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      <svg class="tema-sol" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4 7 7M17 17l1.6 1.6M5.4 18.6 7 17M17 7l1.6-1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
   </div>
 </header>
 

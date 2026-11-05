@@ -7406,6 +7406,39 @@
     });
   })();
 
+  /* ------------------------- tema claro / escuro --------------------------
+     Segue o sistema. O botão de sol/lua do topo força o outro tema e guarda
+     a escolha neste aparelho; voltar para o tema do sistema apaga a escolha
+     (e o site volta a seguir o sistema sozinho).                          */
+  (function () {
+    var btn = $('#temaBtn'); if (!btn) return;
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    function sistema() { return mq && mq.matches ? 'escuro' : 'claro'; }
+    function atual() { return document.documentElement.getAttribute('data-tema') || sistema(); }
+    function pintar() {
+      var esc = atual() === 'escuro';
+      btn.classList.toggle('is-escuro', esc);
+      btn.setAttribute('aria-label', esc ? 'Mudar para o modo claro' : 'Mudar para o modo escuro');
+      btn.title = esc ? 'Modo claro' : 'Modo escuro';
+      // cor da barra do navegador no celular
+      Array.prototype.forEach.call(document.querySelectorAll('meta[name="theme-color"]'), function (m) {
+        if (document.documentElement.getAttribute('data-tema')) { m.setAttribute('content', esc ? '#120a20' : '#300068'); m.removeAttribute('media'); }
+      });
+    }
+    btn.addEventListener('click', function () {
+      var novo = atual() === 'escuro' ? 'claro' : 'escuro';
+      try {
+        if (novo === sistema()) { document.documentElement.removeAttribute('data-tema'); localStorage.removeItem('idl.tema'); }
+        else { document.documentElement.setAttribute('data-tema', novo); localStorage.setItem('idl.tema', novo); }
+      } catch (e) { document.documentElement.setAttribute('data-tema', novo); }
+      document.documentElement.classList.add('tema-trocando');
+      setTimeout(function () { document.documentElement.classList.remove('tema-trocando'); }, 350);
+      pintar();
+    });
+    if (mq) { var f = function () { pintar(); }; if (mq.addEventListener) mq.addEventListener('change', f); else if (mq.addListener) mq.addListener(f); }
+    pintar();
+  })();
+
   /* ------------------------------ sincronismo ---------------------------- */
   window.addEventListener('storage', function (e) {
     if (e.key !== KEY) return;
