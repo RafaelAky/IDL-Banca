@@ -194,6 +194,67 @@
   };
   // conteúdo salvo antes com o endereço sem o "?v=3"
   Object.keys(IMAGENS_NOVAS).forEach(function (k) { IMAGENS_NOVAS[IMAGENS_NOVAS[k].split('?')[0]] = IMAGENS_NOVAS[k]; });
+  /* Ajustes de 05/11/2026 (valem para o data.js e para o conteúdo do banco):
+     · vídeos das campanhas de Virtus e Duda (só se ainda estiverem vazios);
+     · "O som do respeito" vira dois projetos, um por equipe (Kiara e Neo),
+       que apresentam em horários separados: Neo entra 7 min depois da Kiara
+       e todas as equipes seguintes andam 7 min, assim como o resto da manhã.
+     Feito uma vez só: depois de dividido, o "prj_som" deixa de existir.    */
+  var VIDEOS_NOV = { her_virtus: 'Ef1zESfZPCw', her_duda: 'lNaTXhvrJ2Y' };
+  function migrarNov2026(d) {
+    if (!d || !d.projects) return;
+    d.projects.forEach(function (p) {
+      (p.heroes || []).forEach(function (h) { if (VIDEOS_NOV[h.id] && !String(h.video || '').trim()) h.video = VIDEOS_NOV[h.id]; });
+    });
+    var i = -1;
+    d.projects.forEach(function (p, k) { if (p.id === 'prj_som' && (p.teams || []).length === 2) i = k; });
+    if (i < 0) return;
+    var som = d.projects[i], PASSO = 7;
+    function mm(t) { var m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : null; }
+    function hh(n) { return pad2(Math.floor(n / 60)) + ':' + pad2(n % 60); }
+    var s0 = mm(som.slot) || mm('09:58');
+    // as equipes que vinham depois andam 7 min
+    d.projects.forEach(function (p) { var t = mm(p.slot); if (p !== som && t != null && t > s0) p.slot = hh(t + PASSO); });
+    var DADOS = {
+      her_kiara: { suf: 'kiara', rot: 'Equipe da Kiara', slot: hh(s0),
+        tagline: 'Campanha de sensibilização contra o excesso de barulho na escola: palestras, dinâmicas, cartazes e bottons.',
+        solution: 'O grupo da Kiara realizará ações de sensibilização por meio de palestras, dinâmicas, campanhas, cartazes e bottons. As turmas serão incentivadas a manter o ambiente dentro dos níveis recomendados. A frente complementa o semáforo inteligente de ruído desenvolvido pela equipe do Neo.' },
+      her_neo: { suf: 'neo', rot: 'Equipe do Neo', slot: hh(s0 + PASSO),
+        tagline: 'Semáforo inteligente de ruído para monitorar o nível sonoro das salas e reconhecer as turmas com boas práticas.',
+        solution: 'O grupo do Neo desenvolverá um semáforo inteligente de ruído para monitorar o nível sonoro em algumas salas. As turmas poderão participar de um sistema de reconhecimento pelas boas práticas. A frente complementa a campanha de sensibilização da equipe da Kiara.' }
+    };
+    var novos = som.teams.map(function (t) {
+      var h = (som.heroes || []).filter(function (x) { return x.id === t.hero; })[0], cfg = DADOS[t.hero];
+      if (!h || !cfg) return null;
+      var n = JSON.parse(JSON.stringify(som));
+      n.id = 'prj_som_' + cfg.suf;
+      n.name = som.name + ' · ' + cfg.rot;
+      n.slot = cfg.slot;
+      n.members = (t.members || []).slice(); n.values = (t.values || []).slice();
+      n.teams = []; n.heroes = [JSON.parse(JSON.stringify(h))];
+      n.tagline = cfg.tagline; n.solution = cfg.solution;
+      return n;
+    }).filter(Boolean);
+    if (novos.length !== 2) return;
+    d.projects.splice.apply(d.projects, [i, 1].concat(novos));
+    // programação: bloco das apresentações com 17 equipes e o resto da manhã 7 min depois
+    var bloco = null;
+    (d.schedule || []).forEach(function (it) { if (!bloco && /apresenta[çc][ãa]o dos projetos/i.test(it.name || '')) bloco = it; });
+    if (bloco) {
+      var fimAntigo = mm(bloco.end);
+      bloco.name = String(bloco.name).replace(/16 equipes/i, '17 equipes');
+      if (fimAntigo != null) {
+        bloco.end = hh(fimAntigo + PASSO);
+        (d.schedule || []).forEach(function (it) {
+          if (it === bloco) return;
+          var a = mm(it.start), b = mm(it.end);
+          if (a == null || a < fimAntigo) return;
+          if (a < 12 * 60) { it.start = hh(a + PASSO); if (b != null && b <= 12 * 60) it.end = hh(b + PASSO); }
+          else if (a === 12 * 60) it.start = hh(a + PASSO);   // almoço começa 7 min depois e termina no mesmo horário
+        });
+      }
+    }
+  }
   function corrigirTextos(d) {
     if (!d || !d.projects) return d;
     CORRECOES.forEach(function (c) {
@@ -206,6 +267,7 @@
       (p.heroes || []).forEach(function (h) { if (IMAGENS_NOVAS[h.image]) h.image = IMAGENS_NOVAS[h.image]; });
     });
     if ((d.contentVersion || 1) < 11) d.contentVersion = 11;
+    migrarNov2026(d);
     return d;
   }
   function save() { safeSet(KEY, JSON.stringify(db)); render(); enviarConteudo(); }
