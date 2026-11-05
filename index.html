@@ -11,11 +11,10 @@
 <link rel="shortcut icon" href="favicon.ico?v=5">
 <link rel="apple-touch-icon" href="img/icon/apple-touch-icon.png?v=5">
 <link rel="manifest" href="site.webmanifest">
-<meta name="theme-color" content="#300068" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#120a20" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#300068">
 <script>
-  /* tema escolhido no botão de sol/lua (antes de desenhar, para não piscar) */
-  try { var t = localStorage.getItem('idl.tema'); if (t === 'claro' || t === 'escuro') document.documentElement.setAttribute('data-tema', t); } catch (e) {}
+  /* o site abre no modo claro; o escuro só vale se a pessoa escolheu no botão de sol/lua */
+  try { if (localStorage.getItem('idl.tema') === 'escuro') document.documentElement.setAttribute('data-tema', 'escuro'); } catch (e) {}
 </script>
 <meta name="description" content="Encerramento da Trilha 2026 · 14 de novembro, 9h às 13h, no Sebrae. Conheça os projetos dos trilheiros e vote no seu Herói.">
 <!-- prévia do link (WhatsApp, Instagram, LinkedIn…) -->

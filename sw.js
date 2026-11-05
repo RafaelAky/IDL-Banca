@@ -8,7 +8,7 @@
    conteúdo editado sempre vêm da internet.
    Ao publicar uma mudança grande, aumente VERSAO para limpar as cópias.
    ===================================================================== */
-var VERSAO = 'idl-banca-v7';
+var VERSAO = 'idl-banca-v8';
 var BASE = VERSAO + '-base';
 var IMAGENS = VERSAO + '-imagens';
 

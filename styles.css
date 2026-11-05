@@ -2761,110 +2761,13 @@ body.cursor-oculto, body.cursor-oculto * { cursor: none !important; }
 @media (prefers-reduced-motion: reduce) { .ti-sem, .ti-sem svg { animation: none; } }
 
 /* =========================================================================
-   MODO ESCURO — segue o sistema (prefers-color-scheme), a não ser que a pessoa
-   escolha no botão de sol/lua do topo (html[data-tema="claro" | "escuro"]).
+   MODO ESCURO — o site abre sempre no modo claro; o escuro só liga quando a
+   pessoa escolhe no botão de sol/lua do topo (html[data-tema="escuro"]).
    Vale para o site e o painel; telão, mosaico e telas de QR da mesa têm
    visual próprio e não mudam. Os tokens viram tons escuros; o roxo de TEXTO
    vira lilás claro e o roxo de FUNDO (--c-fundo-roxo) continua roxo.
    As ilustrações dos Heróis seguem sobre fundo claro, como pede o KV.
    ========================================================================= */
-@media (prefers-color-scheme: dark) {
-  html:not([data-tema="claro"]) { background: #120a20; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) {
-    color-scheme: dark;
-    --c-fundo:        #120a20;
-    --c-tint:         #1a1030;
-    --c-branco:       #1f1536;   /* superfícies (cartões, painéis) */
-    --c-roxo:         #ece3ff;   /* títulos */
-    --c-roxo-2:       #d6c4ff;
-    --c-fundo-roxo:   #4a1c94;
-    --c-fundo-roxo-2: #5a28a8;
-    --c-acao:         #a97ff3;
-    --c-acao-2:       #c2a3ff;
-    --c-lilas:        #8a68c4;
-    --c-lilas-claro:  #2d1f4b;
-    --c-laranja:      #ff8433;
-    --c-texto:        #ebe4f6;
-    --c-texto-2:      #b9adcc;
-    --c-linha:        rgba(214, 196, 255, .13);
-    --c-linha-forte:  rgba(214, 196, 255, .26);
-    --c-perigo:       #ff6f9e;
-    --c-ok:           #4fd39a;
-    --grad-quadro: linear-gradient(180deg, #241a3e 0%, #1c1332 58%, #170f2b 100%);
-    --sombra: 0 22px 48px -24px rgba(0, 0, 0, .7);
-    --anel: 0 0 0 3px rgba(169, 127, 243, .5);
-  }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.telao, .tl-slide, .sl-previa, .tela-idl, .mesa) {
-    --c-fundo: #f6f2fc; --c-tint: #eee6fa; --c-branco: #ffffff; --c-roxo: #2e006a; --c-roxo-2: #44108c;
-    --c-fundo-roxo: #2e006a; --c-fundo-roxo-2: #44108c; --c-acao: #7a3fc4; --c-acao-2: #6631ae; --c-lilas: #b98fe8;
-    --c-lilas-claro: #e8dbf7; --c-laranja: #f97218; --c-texto: #241338; --c-texto-2: #574a6b;
-    --c-linha: rgba(46, 0, 106, .12); --c-linha-forte: rgba(46, 0, 106, .24); --c-perigo: #b4235a; --c-ok: #1f7a55;
-    --grad-quadro: linear-gradient(180deg, #ffffff 0%, #f1e9fb 58%, #e5d6f7 100%);
-    --sombra: 0 22px 48px -24px rgba(46, 0, 106, .38); --anel: 0 0 0 3px rgba(122, 63, 196, .45);
-    color-scheme: light;
-  }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .topbar { background: rgba(18, 10, 32, .9); border-bottom-color: var(--c-linha); }
-  html:not([data-tema="claro"]) #logoSlot img, html:not([data-tema="claro"]) .gate-logos img { filter: brightness(0) invert(1); }
-  html:not([data-tema="claro"]) #logoSlot .lg-idl { border-left-color: rgba(255,255,255,.25); }
-  html:not([data-tema="claro"]) .fx-escuro .eyebrow, html:not([data-tema="claro"]) .fx-escuro .voltar, html:not([data-tema="claro"]) .dobra-meta svg, html:not([data-tema="claro"]) .banca-topo .eyebrow, html:not([data-tema="claro"]) .dobra .eyebrow { color: #d9c8f7; }
-  html:not([data-tema="claro"]) .fx-escuro .sementes-ar { color: rgba(217, 200, 247, .55); }
-  html:not([data-tema="claro"]) .rodape-idl { color: var(--c-texto-2); }
-  html:not([data-tema="claro"]) .rf-logo { background: #fbf7f2; padding: 10px 16px; border-radius: 14px; }
-  html:not([data-tema="claro"]) .rf-marca p, html:not([data-tema="claro"]) .rf-col a { color: var(--c-texto-2); }
-  html:not([data-tema="claro"]) .rf-col h2 { color: var(--c-texto); }
-  html:not([data-tema="claro"]) .rf-col a:hover { color: var(--c-roxo); }
-  html:not([data-tema="claro"]) ::-webkit-scrollbar-thumb { background-color: #5b3e8f; }
-  html:not([data-tema="claro"]) .rf-logo { width: max-content; max-width: 100%; justify-self: start; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.btn-primary, .pb-ic, .vp-play, .sanfona[open] .sf-ico, .ctlA-rv.heroi.on, .venc-banca .venc-tag) { background: #7b45d4; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .btn-primary:hover { background: #8a57e0; }
-  html:not([data-tema="claro"]) .rf-logo { display: inline-block; padding: 8px 14px; }
-  html:not([data-tema="claro"]) .rf-logo img { width: min(230px, 100%); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.iconbtn-danger:hover) { background: #3d1926; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.banner-ok) { background: #21342c; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.chave-vis.is-on) { background: #281343; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.painel-palco) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.painel-palco select) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.aval) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.banca-aviso) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.banca-aviso.dec) { background: #432813; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.bcard) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.bcard.feito) { background: #223429; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.crit) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.crit-b) { background: #251343; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.dec-placar) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.dcard) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.av-chamada) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.av-card) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.av-chip) { background: #292234; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.av-chip.on) { background: #20362a; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.av-linha select) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.banca-resumo) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.crit-guia li b) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.banca-aviso-flut) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.av-vis.on) { background: #281343; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.entrar-status) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.dc-pub li) { background: #432813; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.banca-fechada) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.ctl-lista) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.ap-item) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.ctlA-status) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.ctlA-card) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.ctlA-rv) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.pos-aviso) { background: #432813; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.chk-resumo.is-ok) { background: #1d3927; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.chk-resumo.is-aviso) { background: #433013; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.chk-resumo.is-erro) { background: #3e1818; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.chk-item.is-aviso) { background: #433213; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.chk-item.is-erro) { background: #431313; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.avp-ok) { background: #1e3828 !important; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.avp-atraso) { background: #432c13 !important; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.lei-opcao) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.lei-radio) { background: var(--c-branco); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) :is(.lei-opcao.on) { background: #281343; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .bp-pe { background: rgba(26, 17, 46, .96); border-top-color: var(--c-linha); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .ind-item:hover { background: rgba(255, 255, 255, .06); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .mt-proj { background: rgba(26, 17, 46, .94); }
-}
 /* escolhido no botão: escuro mesmo com o sistema claro */
 html[data-tema="escuro"] { background: #120a20; }
 html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) {
@@ -2975,15 +2878,6 @@ html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) .mt-proj { background
 html.tema-trocando, html.tema-trocando * { transition: background-color .3s ease, color .3s ease, border-color .3s ease !important; }
 
 /* topo (header) e painel no escuro: fundo sólido, sem a imagem passando por baixo */
-@media (prefers-color-scheme: dark) {
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .topbar { background: #170e2a; border-bottom-color: rgba(214, 196, 255, .14); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .adminbar { background: #170e2a; border-bottom-color: rgba(214, 196, 255, .14); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .desknav .navbtn { color: #b9adcc; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .desknav .navbtn:hover, html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .desknav .navbtn[aria-current="page"] { color: #fff; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .desknav .navbtn-adm { color: #c9b2f5; }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .bottomnav { background: #170e2a; border-top-color: rgba(214, 196, 255, .14); }
-  html:not([data-tema="claro"]) body:not(.is-telao):not(.is-mesa) .logo-slot:not(#logoSlot) { background: #efe7fb; }
-}
 html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) .topbar { background: #170e2a; border-bottom-color: rgba(214, 196, 255, .14); -webkit-backdrop-filter: none; backdrop-filter: none; }
 html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) .adminbar { background: #170e2a; border-bottom-color: rgba(214, 196, 255, .14); }
 html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) .desknav .navbtn { color: #b9adcc; }

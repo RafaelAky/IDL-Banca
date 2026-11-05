@@ -34,6 +34,9 @@ alter table public.estado_votacao add column if not exists rodada int not null d
 alter table public.estado_votacao add column if not exists votacao_visivel boolean not null default false;
 -- palco: a equipe (projeto) que está apresentando agora, marcada no painel
 alter table public.estado_votacao add column if not exists palco text;
+-- reinicio: sobe 1 quando a organização usa "Zerar tudo"; os aparelhos
+-- percebem e limpam o que guardam (projetos conhecidos, voto marcado)
+alter table public.estado_votacao add column if not exists reinicio int not null default 0;
 -- revelar_telao: a organização mandou o telão revelar o Herói vencedor
 alter table public.estado_votacao add column if not exists revelar_telao boolean not null default false;
 
@@ -54,6 +57,29 @@ create table if not exists public.avaliacoes (
   comentario    text not null default '' check (length(comentario) <= 4000),
   atualizado_em timestamptz not null default now(),
   primary key (jurado, projeto_id)
+);
+
+-- notas por critério (1 a 5): {"ideia":4,"problema":5,...}; "nota" guarda a média
+alter table public.avaliacoes add column if not exists notas jsonb not null default '{}'::jsonb;
+
+-- pausa: o telão mostra o mosaico de fotos (modo pausa), por cima de qualquer slide
+alter table public.estado_votacao add column if not exists pausa boolean not null default false;
+
+-- slide: o slide da apresentação que o telão mostra agora (vazio = tela da votação de sempre)
+alter table public.estado_votacao add column if not exists slide text;
+
+-- revelar_banca: o telão revela o Projeto destaque escolhido pela banca
+alter table public.estado_votacao add column if not exists revelar_banca boolean not null default false;
+
+-- avaliações da banca: começam fechadas; a organização abre quando quiser
+alter table public.estado_votacao add column if not exists avaliacoes_abertas boolean not null default false;
+
+-- decisão final da banca: cada jurado escolhe 1 projeto (pode trocar enquanto aberta)
+alter table public.estado_votacao add column if not exists decisao_aberta boolean not null default false;
+create table if not exists public.decisao_banca (
+  jurado     text primary key check (length(trim(jurado)) between 2 and 60),
+  projeto_id text not null,
+  em         timestamptz not null default now()
 );
 
 -- opções de voto (Heróis "her_..." ou projetos "prj_...")
@@ -108,9 +134,17 @@ alter table public.votos          enable row level security;
 alter table public.fotos          enable row level security;
 alter table public.conteudo       enable row level security;
 alter table public.avaliacoes     enable row level security;
+alter table public.decisao_banca  enable row level security;
 
 drop policy if exists leitura_publica on public.estado_votacao;
 create policy leitura_publica on public.estado_votacao for select to anon, authenticated using (true);
+-- tempo real: o telão e o controle recebem a troca de slide na hora (sem esperar a próxima consulta)
+do $$ begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'estado_votacao') then
+    execute 'alter publication supabase_realtime add table public.estado_votacao';
+  end if;
+end $$;
 drop policy if exists leitura_publica on public.projetos;
 create policy leitura_publica on public.projetos for select to anon, authenticated using (true);
 drop policy if exists leitura_publica on public.fotos;
@@ -120,7 +154,7 @@ create policy leitura_publica on public.conteudo for select to anon, authenticat
 -- votos e config_privada: nenhuma política = ninguém lê nem escreve direto
 
 revoke all on public.estado_votacao, public.config_privada, public.projetos, public.votos, public.fotos,
-  public.conteudo, public.avaliacoes from anon, authenticated;
+  public.conteudo, public.avaliacoes, public.decisao_banca from anon, authenticated;
 grant select on public.estado_votacao, public.projetos, public.fotos, public.fotos_lista, public.conteudo
   to anon, authenticated;
 
@@ -193,7 +227,10 @@ begin
   end if;
   -- para o público (sem a senha), só quem venceu: nenhum número de votos
   if not public._chave_ok(p_chave) then
-    return jsonb_build_object('liberado', true, 'so_vencedor', true, 'vencedores', coalesce((
+    -- junto vai o Projeto destaque da banca (só o id; sem votos nem médias)
+    return jsonb_build_object('liberado', true, 'so_vencedor', true,
+      'banca', coalesce((select jsonb_agg(jsonb_build_object('id', x->>'id')) from jsonb_array_elements(public._vencedor_banca_lista()) x), '[]'::jsonb),
+      'vencedores', coalesce((
       select jsonb_agg(jsonb_build_object('id', x.id, 'nome', x.nome) order by x.nome)
         from (select p.id, p.nome, count(v.hash) as votos from public.projetos p
                 join public.votos v on v.projeto_id = p.id group by p.id, p.nome) x
@@ -209,7 +246,7 @@ begin
             left join public.votos v on v.projeto_id = p.id
            group by p.id, p.nome, p.elegivel
           having p.elegivel or count(v.hash) > 0) x;
-  return jsonb_build_object('liberado', true, 'total', tot, 'projetos', lista);
+  return jsonb_build_object('liberado', true, 'total', tot, 'projetos', lista, 'banca', public._vencedor_banca_lista());
 end $$;
 
 -- ---- organização (todas pedem a senha do painel) ------------------------
@@ -251,7 +288,9 @@ set search_path = public, extensions as $$
 begin
   if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
   insert into public.projetos (id) select unnest(coalesce(p_ids, '{}')) on conflict (id) do nothing;
-  update public.projetos set elegivel = (id = any(coalesce(p_ids, '{}')));
+  -- o Supabase recusa UPDATE sem WHERE; por isso só mexe em quem muda
+  update public.projetos set elegivel = (id = any(coalesce(p_ids, '{}')))
+   where elegivel is distinct from (id = any(coalesce(p_ids, '{}')));
   return jsonb_build_object('ok', true);
 end $$;
 
@@ -293,6 +332,27 @@ begin
   return jsonb_build_object('ok', true, 'rodada', r, 'apagados', n);
 end $$;
 
+-- ZERAR TUDO (depois do ensaio): apaga votos, avaliações e a decisão da
+-- banca, fecha votação/decisão/revelação, tira a equipe do palco e avisa os
+-- aparelhos. NÃO mexe no conteúdo do site, nas fotos, nas senhas, na
+-- palavra-chave, nos candidatos nem na chave "mostrar a votação".
+create or replace function public.zerar_tudo(p_chave text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare nv int; na int; nd int; r int;
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  delete from public.votos where true;          get diagnostics nv = row_count;
+  delete from public.avaliacoes where true;     get diagnostics na = row_count;
+  delete from public.decisao_banca where true;  get diagnostics nd = row_count;
+  update public.estado_votacao set
+    votacao_aberta = false, resultado_publico = false, revelar_telao = false,
+    decisao_aberta = false, avaliacoes_abertas = false, revelar_banca = false, palco = null, slide = null, pausa = false,
+    rodada = rodada + 1, reinicio = reinicio + 1, atualizado_em = now()
+   where id = 1 returning rodada into r;
+  return jsonb_build_object('ok', true, 'rodada', r, 'votos', nv, 'avaliacoes', na, 'decisao', nd);
+end $$;
+
 -- a palavra-chave atual, só para a organização (o telão do painel a exibe)
 create or replace function public.ler_chave_evento(p_chave text)
 returns jsonb language plpgsql stable security definer
@@ -320,7 +380,8 @@ returns jsonb language plpgsql security definer
 set search_path = public, extensions as $$
 begin
   if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
-  update public.estado_votacao set revelar_telao = coalesce(p_revelar, false), atualizado_em = now() where id = 1;
+  update public.estado_votacao set revelar_telao = coalesce(p_revelar, false),
+    revelar_banca = case when coalesce(p_revelar, false) then false else revelar_banca end, atualizado_em = now() where id = 1;
   return jsonb_build_object('ok', true, 'revelar', coalesce(p_revelar, false));
 end $$;
 
@@ -334,35 +395,86 @@ set search_path = public, extensions as $$
 $$;
 revoke all on function public._banca_ok(text) from public, anon, authenticated;
 
+-- entrada única do site: a senha diz o papel (organização ou banca)
+create or replace function public.entrar(p_senha text)
+returns jsonb language sql stable security definer
+set search_path = public, extensions as $$
+  select case when public._chave_ok(p_senha) then jsonb_build_object('ok', true, 'papel', 'admin')
+              when public._banca_ok(p_senha) then jsonb_build_object('ok', true, 'papel', 'banca')
+              else jsonb_build_object('ok', false) end;
+$$;
+
+-- troca a senha da organização (pelo painel)
+create or replace function public.definir_senha_admin(p_chave text, p_nova text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if length(trim(coalesce(p_nova, ''))) < 6 then return jsonb_build_object('ok', false, 'erro', 'senha_curta'); end if;
+  if public._banca_ok(trim(p_nova)) then return jsonb_build_object('ok', false, 'erro', 'igual_banca'); end if;
+  update public.config_privada set chave_admin_hash = extensions.crypt(trim(p_nova), extensions.gen_salt('bf')) where id = 1;
+  return jsonb_build_object('ok', true);
+end $$;
+
+
 create or replace function public.entrar_banca(p_senha text)
 returns jsonb language sql stable security definer
 set search_path = public, extensions as $$
   select jsonb_build_object('ok', public._banca_ok(p_senha));
 $$;
 
-create or replace function public.salvar_avaliacao(p_senha text, p_jurado text, p_projeto text, p_nota numeric default null, p_comentario text default '')
+-- nome do jurado: espaços normalizados; se já existe com outra caixa
+-- (maiúsculas/minúsculas), usa o que já está gravado
+create or replace function public._jurado(p_nome text)
+returns text language sql stable security definer
+set search_path = public, extensions as $$
+  with n as (select left(regexp_replace(trim(coalesce(p_nome, '')), '\s+', ' ', 'g'), 60) as v)
+  select coalesce(
+    (select a.jurado from public.avaliacoes a, n where lower(a.jurado) = lower(n.v) limit 1),
+    (select d.jurado from public.decisao_banca d, n where lower(d.jurado) = lower(n.v) limit 1),
+    (select v from n));
+$$;
+revoke all on function public._jurado(text) from public, anon, authenticated;
+
+-- os 6 critérios da banca (iguais para todos os projetos)
+create or replace function public._criterios()
+returns text[] language sql immutable as $$
+  select array['ideia','problema','impacto','viabilidade','protagonismo','apresentacao'];
+$$;
+
+drop function if exists public.salvar_avaliacao(text, text, text, numeric, text);
+create or replace function public.salvar_avaliacao(p_senha text, p_jurado text, p_projeto text, p_notas jsonb default '{}'::jsonb, p_comentario text default '')
 returns jsonb language plpgsql security definer
 set search_path = public, extensions as $$
-declare j text := trim(coalesce(p_jurado, ''));
+declare j text := public._jurado(p_jurado); limpo jsonb := '{}'::jsonb; k text; v jsonb; media numeric;
 begin
   if not public._banca_ok(p_senha) then return jsonb_build_object('ok', false, 'erro', 'senha_banca_invalida'); end if;
+  if not (select avaliacoes_abertas from public.estado_votacao where id = 1) then return jsonb_build_object('ok', false, 'erro', 'avaliacoes_fechadas'); end if;
   if length(j) < 2 then return jsonb_build_object('ok', false, 'erro', 'jurado_invalido'); end if;
-  if p_nota is not null and (p_nota < 0 or p_nota > 10) then return jsonb_build_object('ok', false, 'erro', 'nota_invalida'); end if;
-  insert into public.avaliacoes (jurado, projeto_id, nota, comentario, atualizado_em)
-  values (left(j, 60), p_projeto, round(p_nota, 1), left(coalesce(p_comentario, ''), 4000), now())
+  if coalesce(trim(p_projeto), '') = '' then return jsonb_build_object('ok', false, 'erro', 'projeto_invalido'); end if;
+  for k, v in select * from jsonb_each(coalesce(p_notas, '{}'::jsonb)) loop
+    if k = any(public._criterios()) and jsonb_typeof(v) = 'number' then
+      if (v::text)::numeric not in (1, 2, 3, 4, 5) then return jsonb_build_object('ok', false, 'erro', 'nota_invalida'); end if;
+      limpo := limpo || jsonb_build_object(k, (v::text)::int);
+    end if;
+  end loop;
+  select round(avg((x.value::text)::numeric), 1) into media from jsonb_each(limpo) x;
+  insert into public.avaliacoes (jurado, projeto_id, nota, notas, comentario, atualizado_em)
+  values (j, p_projeto, media, limpo, left(coalesce(p_comentario, ''), 4000), now())
   on conflict (jurado, projeto_id) do update
-    set nota = excluded.nota, comentario = excluded.comentario, atualizado_em = now();
-  return jsonb_build_object('ok', true);
+    set nota = excluded.nota, notas = excluded.notas, comentario = excluded.comentario, atualizado_em = now();
+  return jsonb_build_object('ok', true, 'jurado', j, 'media', media);
 end $$;
 
 create or replace function public.minhas_avaliacoes(p_senha text, p_jurado text)
 returns jsonb language plpgsql stable security definer
 set search_path = public, extensions as $$
+declare j text := public._jurado(p_jurado);
 begin
   if not public._banca_ok(p_senha) then return jsonb_build_object('ok', false, 'erro', 'senha_banca_invalida'); end if;
-  return jsonb_build_object('ok', true, 'itens', coalesce((
-    select jsonb_agg(jsonb_build_object('projeto', projeto_id, 'nota', nota, 'comentario', comentario, 'em', atualizado_em))
-      from public.avaliacoes where jurado = trim(coalesce(p_jurado, ''))), '[]'::jsonb));
+  return jsonb_build_object('ok', true, 'jurado', j, 'itens', coalesce((
+    select jsonb_agg(jsonb_build_object('projeto', projeto_id, 'nota', nota, 'notas', notas, 'comentario', comentario, 'em', atualizado_em))
+      from public.avaliacoes where jurado = j), '[]'::jsonb));
 end $$;
 
 -- para a organização: todas as avaliações
@@ -372,9 +484,179 @@ set search_path = public, extensions as $$
 begin
   if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
   return jsonb_build_object('ok', true, 'itens', coalesce((
-    select jsonb_agg(jsonb_build_object('jurado', jurado, 'projeto', projeto_id, 'nota', nota, 'comentario', comentario, 'em', atualizado_em)
+    select jsonb_agg(jsonb_build_object('jurado', jurado, 'projeto', projeto_id, 'nota', nota, 'notas', notas, 'comentario', comentario, 'em', atualizado_em)
                      order by projeto_id, jurado)
-      from public.avaliacoes), '[]'::jsonb));
+      from public.avaliacoes), '[]'::jsonb),
+    'decisao_aberta', (select decisao_aberta from public.estado_votacao where id = 1),
+    'decisao', coalesce((select jsonb_agg(jsonb_build_object('jurado', jurado, 'projeto', projeto_id, 'em', em) order by em)
+      from public.decisao_banca), '[]'::jsonb));
+end $$;
+
+-- ---- decisão final da banca --------------------------------------------
+
+-- médias de todos os jurados por projeto (só para a decisão e o painel)
+create or replace function public._medias_banca()
+returns jsonb language sql stable security definer
+set search_path = public, extensions as $$
+  select coalesce(jsonb_agg(jsonb_build_object('projeto', projeto_id, 'jurados', n, 'media', media, 'criterios', crit)), '[]'::jsonb)
+  from (
+    select a.projeto_id, count(*) as n,
+           round(avg((select avg((y.value::text)::numeric) from jsonb_each(a.notas) y)), 2) as media,
+           (select jsonb_object_agg(c.k, c.m) from (
+              select x.key as k, round(avg((x.value::text)::numeric), 2) as m
+                from public.avaliacoes a2, jsonb_each(a2.notas) x
+               where a2.projeto_id = a.projeto_id group by x.key) c) as crit
+      from public.avaliacoes a
+     where a.notas <> '{}'::jsonb
+     group by a.projeto_id
+  ) t;
+$$;
+revoke all on function public._medias_banca() from public, anon, authenticated;
+
+-- controle da apresentação: troca o slide do telão. Os slides de revelação
+-- ligam a revelação certa; os outros desligam. p_palco: null = mantém a
+-- equipe no palco; '' = ninguém; id = essa equipe (slides das equipes).
+create or replace function public.definir_slide(p_chave text, p_slide text, p_palco text default null)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare sl text := nullif(trim(coalesce(p_slide, '')), '');
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.estado_votacao set
+    slide = sl,
+    pausa = false,
+    palco = case when p_palco is null then palco else nullif(trim(p_palco), '') end,
+    revelar_telao = coalesce(sl = 'revelaHeroi', false),
+    revelar_banca = coalesce(sl = 'revelaBanca', false),
+    atualizado_em = now()
+  where id = 1;
+  return jsonb_build_object('ok', true, 'slide', sl);
+end $$;
+
+-- modo pausa do telão (mosaico de fotos da Trilha)
+create or replace function public.definir_pausa(p_chave text, p_pausa boolean)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.estado_votacao set pausa = coalesce(p_pausa, false), atualizado_em = now() where id = 1;
+  return jsonb_build_object('ok', true, 'pausa', coalesce(p_pausa, false));
+end $$;
+
+-- telão: revelar (ou não) o Projeto destaque da banca
+create or replace function public.definir_revelacao_banca(p_chave text, p_revelar boolean)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.estado_votacao set revelar_banca = coalesce(p_revelar, false),
+    revelar_telao = case when coalesce(p_revelar, false) then false else revelar_telao end, atualizado_em = now() where id = 1;
+  return jsonb_build_object('ok', true, 'revelar', coalesce(p_revelar, false));
+end $$;
+
+-- o Projeto destaque: mais votado na decisão final; empate desempata pela
+-- média das notas (se ainda empatar, volta mais de um). Só a organização.
+-- lista do(s) vencedor(es) da banca (uso interno: vencedor_banca e resultado)
+create or replace function public._vencedor_banca_lista()
+returns jsonb language plpgsql stable security definer
+set search_path = public, extensions as $$
+declare r jsonb;
+begin
+  with v as (select projeto_id, count(*) n from public.decisao_banca group by projeto_id),
+       m as (select (x->>'projeto') projeto_id, (x->>'media')::numeric media from jsonb_array_elements(public._medias_banca()) x),
+       t as (select v.projeto_id, v.n, coalesce(m.media, 0) media from v left join m using (projeto_id)),
+       top as (select * from t where n = (select max(n) from t)),
+       topm as (select * from top where media = (select max(media) from top))
+  select coalesce((select jsonb_agg(jsonb_build_object('id', projeto_id, 'votos', n, 'media', media)) from topm), '[]'::jsonb) into r;
+  return r;
+end $$;
+revoke all on function public._vencedor_banca_lista() from public, anon, authenticated;
+
+create or replace function public.vencedor_banca(p_chave text)
+returns jsonb language plpgsql stable security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  return jsonb_build_object('ok', true, 'vencedores', public._vencedor_banca_lista(),
+    'votaram', (select count(*) from public.decisao_banca));
+end $$;
+
+create or replace function public.definir_avaliacoes(p_chave text, p_abertas boolean)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.estado_votacao set avaliacoes_abertas = coalesce(p_abertas, false), atualizado_em = now() where id = 1;
+  return jsonb_build_object('ok', true, 'abertas', coalesce(p_abertas, false));
+end $$;
+
+create or replace function public.definir_decisao(p_chave text, p_aberta boolean)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.estado_votacao set decisao_aberta = coalesce(p_aberta, false), atualizado_em = now() where id = 1;
+  return jsonb_build_object('ok', true, 'aberta', coalesce(p_aberta, false));
+end $$;
+
+-- apaga as avaliações e/ou os votos da decisão (depois de um ensaio)
+create or replace function public.zerar_banca(p_chave text, p_avaliacoes boolean default false)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare n1 int := 0; n2 int := 0;
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  delete from public.decisao_banca where true;
+  get diagnostics n2 = row_count;
+  if p_avaliacoes then
+    delete from public.avaliacoes where true;
+    get diagnostics n1 = row_count;
+  end if;
+  return jsonb_build_object('ok', true, 'avaliacoes', n1, 'decisao', n2);
+end $$;
+
+create or replace function public.votar_decisao(p_senha text, p_jurado text, p_projeto text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare j text := public._jurado(p_jurado);
+begin
+  if not public._banca_ok(p_senha) then return jsonb_build_object('ok', false, 'erro', 'senha_banca_invalida'); end if;
+  if not (select decisao_aberta from public.estado_votacao where id = 1) then return jsonb_build_object('ok', false, 'erro', 'decisao_fechada'); end if;
+  if length(j) < 2 then return jsonb_build_object('ok', false, 'erro', 'jurado_invalido'); end if;
+  if coalesce(trim(p_projeto), '') = '' then return jsonb_build_object('ok', false, 'erro', 'projeto_invalido'); end if;
+  insert into public.decisao_banca (jurado, projeto_id, em) values (j, p_projeto, now())
+  on conflict (jurado) do update set projeto_id = excluded.projeto_id, em = now();
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- o que o jurado vê na decisão final: as médias de todos e a apuração
+create or replace function public.decisao_banca_ver(p_senha text, p_jurado text)
+returns jsonb language plpgsql stable security definer
+set search_path = public, extensions as $$
+declare j text := public._jurado(p_jurado); aberta boolean;
+begin
+  if not public._banca_ok(p_senha) then return jsonb_build_object('ok', false, 'erro', 'senha_banca_invalida'); end if;
+  select decisao_aberta into aberta from public.estado_votacao where id = 1;
+  if not aberta then return jsonb_build_object('ok', true, 'aberta', false); end if;
+  return jsonb_build_object('ok', true, 'aberta', true,
+    'medias', public._medias_banca(),
+    'meu_voto', (select projeto_id from public.decisao_banca where jurado = j),
+    'votos', coalesce((select jsonb_object_agg(projeto_id, n) from (select projeto_id, count(*) n from public.decisao_banca group by projeto_id) v), '{}'::jsonb),
+    'votaram', (select count(*) from public.decisao_banca),
+    'jurados', (select count(*) from (select jurado from public.avaliacoes union select jurado from public.decisao_banca) u),
+    -- notas e comentários de cada jurado, SEM nome: "Você" para o próprio e
+    -- "Jurado 1, 2…" para os outros (o nome não sai do banco)
+    'avaliacoes', coalesce((
+      with outros as (select jurado, row_number() over (order by lower(jurado)) n
+                        from (select distinct jurado from public.avaliacoes where jurado <> j) x)
+      select jsonb_agg(jsonb_build_object(
+               'jurado', case when a.jurado = j then 'Você' else 'Jurado ' || o.n end,
+               'projeto', a.projeto_id, 'notas', a.notas, 'comentario', a.comentario) order by (a.jurado <> j), o.n)
+        from public.avaliacoes a left join outros o on o.jurado = a.jurado
+       where a.notas <> '{}'::jsonb), '[]'::jsonb),
+    -- votos do público (por opção de voto: Heróis), só como informação
+    'publico', coalesce((select jsonb_object_agg(projeto_id, n) from (select projeto_id, count(*) n from public.votos group by projeto_id) v), '{}'::jsonb),
+    'publico_total', (select count(*) from public.votos));
 end $$;
 
 create or replace function public.definir_senha_banca(p_chave text, p_nova text)
@@ -475,9 +757,9 @@ declare f text;
 begin
   foreach f in array array[
     'registrar_voto(text,text,text)', 'consultar_voto(text)', 'resultado(text)',
-    'entrar_admin(text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
-    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)', 'definir_palco(text,text)', 'definir_revelacao(text,boolean)', 'entrar_banca(text)',
-    'salvar_avaliacao(text,text,text,numeric,text)', 'minhas_avaliacoes(text,text)', 'avaliacoes_banca(text)', 'definir_senha_banca(text,text)', 'definir_visibilidade(text,boolean)', 'ler_chave_evento(text)',
+    'entrar_admin(text)', 'entrar(text)', 'definir_senha_admin(text,text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
+    'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)', 'zerar_tudo(text)', 'definir_palco(text,text)', 'definir_revelacao(text,boolean)', 'entrar_banca(text)',
+    'salvar_avaliacao(text,text,text,jsonb,text)', 'definir_decisao(text,boolean)', 'definir_avaliacoes(text,boolean)', 'definir_revelacao_banca(text,boolean)', 'vencedor_banca(text)', 'definir_slide(text,text,text)', 'definir_pausa(text,boolean)', 'zerar_banca(text,boolean)', 'votar_decisao(text,text,text)', 'decisao_banca_ver(text,text)', 'minhas_avaliacoes(text,text)', 'avaliacoes_banca(text)', 'definir_senha_banca(text,text)', 'definir_visibilidade(text,boolean)', 'ler_chave_evento(text)',
     'adicionar_foto(text,text,text,text,boolean,text)', 'remover_foto(text,uuid)',
     'ordenar_fotos(text,uuid[])', 'definir_capa_foto(text,uuid)', 'atualizar_fotos(text,jsonb)']
   loop
@@ -492,9 +774,14 @@ end $$;
 
 -- senha do painel da organização. Para trocar, mude o texto entre aspas
 -- e rode só este bloco de novo (e peça o código novo para o config.js).
+-- (o site manda a senha sem espaços e em minúsculas: "Trilhei 2026" = trilhei2026)
 insert into public.config_privada (id, chave_admin_hash)
-values (1, extensions.crypt('idl2026', extensions.gen_salt('bf')))
-on conflict (id) do update set chave_admin_hash = excluded.chave_admin_hash;
+values (1, extensions.crypt('trilhei2026', extensions.gen_salt('bf')))
+on conflict (id) do nothing;
+-- quem ainda estava com a senha antiga padrão (idl2026) passa para trilhei2026;
+-- uma senha trocada pelo painel é mantida
+update public.config_privada set chave_admin_hash = extensions.crypt('trilhei2026', extensions.gen_salt('bf'))
+ where id = 1 and chave_admin_hash = extensions.crypt('idl2026', chave_admin_hash);
 
 -- os 17 Heróis; os 5 candidatos de 9h15 já vêm marcados (o painel muda isso)
 insert into public.projetos (id, nome, elegivel) values
