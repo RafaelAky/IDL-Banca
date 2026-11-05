@@ -7390,7 +7390,11 @@
   /* ---------------------- acesso discreto ao painel ---------------------- */
   (function () {
     var taps = 0, timer = null;
-    $('#brandBtn').addEventListener('click', function () {
+    // a logo é um link para a página inicial: o botão do meio do mouse (ou Ctrl/Cmd + clique)
+    // abre o Início numa nova guia, do jeito normal do navegador
+    $('#brandBtn').addEventListener('click', function (e) {
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
       taps++;
       clearTimeout(timer);
       timer = setTimeout(function () { taps = 0; }, 1400);
