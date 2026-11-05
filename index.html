@@ -1,92 +1,324 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>IDL</title>
-<meta name="application-name" content="IDL">
-<meta name="apple-mobile-web-app-title" content="IDL">
-<link rel="icon" type="image/png" sizes="32x32" href="img/icon/favicon-32.png?v=5">
-<link rel="icon" type="image/png" sizes="16x16" href="img/icon/favicon-16.png?v=5">
-<link rel="icon" type="image/png" sizes="96x96" href="img/icon/favicon-96.png?v=5">
-<link rel="shortcut icon" href="favicon.ico?v=5">
-<link rel="apple-touch-icon" href="img/icon/apple-touch-icon.png?v=5">
-<link rel="manifest" href="site.webmanifest">
-<meta name="theme-color" content="#300068">
-<script>
-  /* o site abre no modo claro; o escuro só vale se a pessoa escolheu no botão de sol/lua */
-  try { if (localStorage.getItem('idl.tema') === 'escuro') document.documentElement.setAttribute('data-tema', 'escuro'); } catch (e) {}
-</script>
-<meta name="description" content="Encerramento da Trilha 2026 · 14 de novembro, 9h às 13h, no Sebrae. Conheça os projetos dos trilheiros e vote no seu Herói.">
-<!-- prévia do link (WhatsApp, Instagram, LinkedIn…) -->
-<meta property="og:type" content="website">
-<meta property="og:locale" content="pt_BR">
-<meta property="og:site_name" content="Instituto Dente de Leão">
-<meta property="og:title" content="IDL · Trilha 2026">
-<meta property="og:description" content="14 de novembro, 9h às 13h, no Sebrae. Conheça os projetos dos trilheiros e vote no seu Herói.">
-<meta property="og:url" content="https://idl-banca.vercel.app/">
-<meta property="og:image" content="https://idl-banca.vercel.app/img/og-image.jpg">
-<meta property="og:image:type" content="image/jpeg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Banca Final IDL Tech, 14 de novembro, com os Heróis candidatos">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://idl-banca.vercel.app/"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Central do AkiCast</title>
+<link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="theme-color" content="#5A12C4">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/central.css?v=20261106a">
+
+<!-- Configuração do Supabase: js/config.js -->
+<script src="js/config.js?v=20261106a"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <defs>
-    <g id="i-home" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 10.6 12 3.4l8.8 7.2"/><path d="M5.6 9.4V20h12.8V9.4"/><path d="M9.8 20v-5.4h4.4V20"/></g>
-    <g id="i-clock" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 6.8V12l3.5 2.1"/></g>
-    <g id="i-grid" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="3.2" width="7.4" height="7.4" rx="2.2"/><rect x="13.4" y="3.2" width="7.4" height="7.4" rx="2.2"/><rect x="3.2" y="13.4" width="7.4" height="7.4" rx="2.2"/><rect x="13.4" y="13.4" width="7.4" height="7.4" rx="2.2"/></g>
-    <g id="i-vote" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="m8.2 12.2 2.6 2.6 5-5.4"/></g>
-    <g id="i-cal" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="5" width="17.2" height="15.6" rx="3"/><path d="M3.4 9.6h17.2M8 3.4v3.2M16 3.4v3.2"/></g>
-    <g id="i-pin" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 10.4c0 5-7 11-7 11s-7-6-7-11a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10.2" r="2.5"/></g>
-    <g id="i-arrow-left" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 5.4 8.4 12l6.8 6.6"/></g>
-    <g id="i-chev" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9.4 5.4 6.6 6.6-6.6 6.6"/></g>
-    <g id="i-info" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 11.2v5M12 7.9v.1"/></g>
-    <g id="i-spark" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6 13.7 9 19 10.7 13.7 12.4 12 17.8 10.3 12.4 5 10.7 10.3 9Z"/><path d="M18.4 16.6l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7Z"/></g>
-    <g id="i-users" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.4" cy="8.4" r="3.4"/><path d="M3.4 19.4c0-3.1 2.7-5.4 6-5.4s6 2.3 6 5.4"/><path d="M16.2 5.6a3.2 3.2 0 0 1 0 6.1M17.6 14.6c2 .7 3.4 2.5 3.4 4.8"/></g>
-    <g id="i-plus" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></g>
-    <g id="i-pencil" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.4 19.6h3.4L18.9 8.5a2.4 2.4 0 0 0-3.4-3.4L4.4 16.2Z"/></g>
-    <g id="i-trash" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 6.6h14.8M9.4 6.6V4.8h5.2v1.8M6.6 6.6l.9 12.2h9l.9-12.2"/></g>
-    <g id="i-up" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6.4 13.6 5.6-5.6 5.6 5.6"/></g>
-    <g id="i-down" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6.4 10.4 5.6 5.6 5.6-5.6"/></g>
-    <g id="i-x" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.2 6.2l11.6 11.6M17.8 6.2 6.2 17.8"/></g>
-    <g id="i-lock" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.8" y="10.2" width="14.4" height="10.2" rx="2.8"/><path d="M8.2 10.2V7.6a3.8 3.8 0 0 1 7.6 0v2.6"/></g>
-    <g id="i-save" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6v10.8M8.2 11l3.8 3.6 3.8-3.6"/><path d="M4.6 16.4v2.2a1.8 1.8 0 0 0 1.8 1.8h11.2a1.8 1.8 0 0 0 1.8-1.8v-2.2"/></g>
-    <g id="i-eye" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12S6 5.8 12 5.8 21.4 12 21.4 12 18 18.2 12 18.2 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="2.9"/></g>
-    <g id="i-shuffle" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 6.6h3.2c1.6 0 3 .9 3.8 2.3l2.8 5c.8 1.4 2.2 2.3 3.8 2.3h3.2"/><path d="M3.6 17.4h3.2c1.6 0 3-.9 3.8-2.3l.9-1.6M16.4 8.6l.9-1.6c.8-1.4 2.2-2.4 3.8-2.4"/><path d="m17.8 3.4 2.8 3.2-2.8 3.2M17.8 14.2l2.8 3.2-2.8 3.2"/></g>
-    <g id="i-play" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.4 5.7 18.2 12l-9.8 6.3Z"/></g>
-    <g id="i-key" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="4"/><path d="M12 12h8.4M17.6 12v3M20.4 12v2.4"/></g>
-    <g id="i-search" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6.6"/><path d="m16 16 4.4 4.4"/></g>
-    <g id="i-seed" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.2V11.6"/><circle cx="12" cy="8.2" r="1.7"/><path d="M12 8.2 6.4 4.1M12 8.2l5.6-4.1M12 8.2 4.9 9.4M12 8.2l7.1 1.2M12 8.2 7.6 13.1M12 8.2l4.4 4.9"/></g>
-  </defs>
-</svg>
+<div class="stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <a class="brand-link" id="brandLink" href="./#painel" title="Voltar ao painel inicial (botão do meio abre numa aba nova)" aria-label="AkiCast: voltar ao painel inicial"><img class="logo" src="img/akicast-logo.png" alt="AkiCast" width="640" height="427"></a>
+      <div>
+        <div class="brand-title">Central do AkiCast</div>
+        <div class="brand-sub">Sextas, das 9h às 10h</div>
+      </div>
+      <div class="prog-switch no-brand" id="progSwitch">
+        <button class="prog-btn" id="progBtn" type="button" aria-haspopup="menu" aria-expanded="false" title="Trocar de programa"><span class="prog-dot" aria-hidden="true"></span><span id="progName">AkiCast</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="prog-menu" id="progMenu" role="menu" hidden>
+          <button role="menuitemradio" data-prog="akicast" type="button"><span class="sw" style="background:#5A12C4"></span><span>AkiCast<small>Podcast das sextas</small></span></button>
+          <button role="menuitemradio" data-prog="culture" type="button"><span class="sw" style="background:#FFA744"></span><span>AkiCulture<small>Edições de cultura</small></span></button>
+          <button role="menuitemradio" data-prog="teste" type="button"><span class="sw" style="background:linear-gradient(135deg,#18181B 0 50%,#D4D4D8 50%)"></span><span>AkiTeste<small>Ambiente de testes</small></span></button>
+          <button role="menuitemradio" data-prog="learning" type="button"><span class="sw" style="background:#1E6FD9"></span><span>AkiLearning<small>Conteúdos de aprendizado</small></span></button>
+        </div>
+      </div>
+    </div>
+    <div class="session" id="sessionBox"></div>
+    <nav class="tabs no-anim" role="tablist" aria-label="Seções"><span class="tab-ind" aria-hidden="true"></span>
+      <button role="tab" id="tab-home" aria-selected="true" aria-controls="panel-home"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5L12 4l8.5 6.5"/><path d="M5.5 9v10a1 1 0 0 0 1 1H10v-5.5h4V20h3.5a1 1 0 0 0 1-1V9"/></svg>Painel</button>
+      <button role="tab" id="tab-check" aria-selected="false" aria-controls="panel-check"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8.5 14.5l2 2 4-4"/></svg>Episódios</button>
+      <button role="tab" id="tab-pres" aria-selected="false" aria-controls="panel-pres"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/><path d="M10 8.2v3.6l3.2-1.8z" fill="currentColor"/></svg>Apresentações</button>
+      <button role="tab" id="tab-int" aria-selected="false" aria-controls="panel-int"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/><path d="M8.5 9.5h7M8.5 12h4"/></svg>Interação</button>
+      <button role="tab" id="tab-guide" aria-selected="false" aria-controls="panel-guide"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19"/><path d="M9 7.5h6M9 11h4"/></svg>Guia técnico</button>
+    </nav>
+  </header>
 
-<header class="topbar">
-  <div class="topbar-in">
-    <a class="brandmark" id="brandBtn" href="#/home" title="Página inicial" aria-label="Ir para a página inicial">
-      <span class="logo-slot" id="logoSlot"></span>
-      <span class="bs" id="brandSub">Trilha 2026</span>
-    </a>
-    <nav class="desknav" id="deskNav" aria-label="Navegação principal"></nav>
-    <button type="button" class="tema-btn" id="temaBtn" aria-label="Mudar para o modo escuro" title="Modo escuro">
-      <svg class="tema-lua" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 14.6A8.4 8.4 0 0 1 9.4 3.8a8.4 8.4 0 1 0 10.8 10.8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <svg class="tema-sol" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4 7 7M17 17l1.6 1.6M5.4 18.6 7 17M17 7l1.6-1.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    </button>
+  <!-- CHECKLIST -->
+  <section class="panel" id="panel-home" role="tabpanel" aria-labelledby="tab-home">
+    <div class="list-head"><h1>Painel do AkiCast</h1></div>
+    <div id="homeBody"><p class="status">Carregando…</p></div>
+  </section>
+
+  <section class="panel" id="panel-check" role="tabpanel" aria-labelledby="tab-check" hidden>
+    <div id="loading" class="status">Carregando episódios…</div>
+    <div id="modeNote"></div>
+    <div id="listView" hidden>
+      <div class="list-head">
+        <h1>Episódios</h1>
+        <div class="head-actions">
+          <button class="btn ghost" id="exportBtn" type="button">Exportar histórico</button>
+          <button class="btn ghost" id="editChk" type="button">Editar checklist</button>
+          <button class="btn primary" id="newEp">Novo episódio</button>
+        </div>
+      </div>
+      <div id="listBody"></div>
+    </div>
+    <div id="editView" hidden>
+      <button class="back" id="edBack" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar sem salvar</button>
+      <div class="list-head"><h1>Editar checklist</h1></div>
+      <p class="lead-p">As mudanças valem para todos os episódios, inclusive os antigos. Um item removido deixa de contar no progresso de todos eles.</p>
+      <div id="editBody"></div>
+      <div class="ep-foot"><button class="btn ghost" id="edCancel" type="button">Cancelar</button><button class="btn primary" id="edSave" type="button">Salvar checklist</button></div>
+    </div>
+    <div id="detailView" hidden>
+      <button class="back" id="backBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Voltar para episódios</button>
+      <div id="epBody"></div>
+    </div>
+  </section>
+
+  <!-- PRESENTATIONS -->
+  <section id="sendView" hidden aria-live="polite"></section>
+  <section id="listenView" hidden></section>
+  <section id="overlayView" hidden aria-hidden="true"></section>
+
+  <section class="panel" id="panel-pres" role="tabpanel" aria-labelledby="tab-pres" hidden>
+    <div class="list-head"><h1>Apresentações</h1></div>
+    <p class="lead-p">Suba a apresentação do episódio, em HTML ou PDF. O computador do OBS abre a tela de exibição, e o apresentador controla os slides pelo notebook dele, entrando aqui na central.</p>
+    <div id="presNote"></div>
+    <select id="presEp" class="ep" hidden aria-hidden="true" tabindex="-1"></select>
+    <div class="pp-pick" id="ppPick">
+      <div class="pp-head"><h2>Próximos AkiCasts</h2><span class="meta">Escolha o episódio para ver a apresentação e os links.</span></div>
+      <div class="pp-grid" id="ppUpcoming"></div>
+      <button class="pp-past-btn" id="ppPastBtn" type="button" aria-expanded="false"><span class="closed-chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span><span id="ppPastLbl">AkiCasts passados</span></button>
+      <div class="pp-grid pp-past" id="ppPast" hidden></div>
+    </div>
+    <div class="pp-sel" id="ppSel" hidden></div>
+    <div id="presBody"></div>
+  </section>
+
+  <!-- INTERACTION PROTOTYPE -->
+  <section class="panel" id="panel-int" role="tabpanel" aria-labelledby="tab-int" hidden>
+    <div class="list-head"><h1>Interação com o público</h1><span class="proto-tag">Protótipo</span></div>
+    <p class="lead-p">Perguntas e votos dos ouvintes durante a live, com moderação da produção. Esta versão está em construção, etapa por etapa.</p>
+    <div id="intBody"></div>
+  </section>
+
+  <!-- GUIDE -->
+  <section class="panel guide" id="panel-guide" role="tabpanel" aria-labelledby="tab-guide" hidden>
+    <h2>O que aprendemos na montagem</h2>
+    <p class="lead">O setup que funcionou nas últimas transmissões e os ajustes combinados para as próximas.</p>
+
+    <h3>Setup que funcionou</h3>
+    <div class="setup">
+      <div class="card"><h4>Áudio</h4><p>2 microfones de lapela, carregados antes da gravação.</p><p>Conexão com o computador por cabo direto no dispositivo de controle da lapela.</p></div>
+      <div class="card"><h4>Câmera</h4><p>Carregada e ligada por cabo direto no computador.</p><p>Deixar a câmera aberta durante a transmissão para evitar superaquecimento. Na última vez ela desligou por isso; desta vez não esquentou e tudo funcionou.</p></div>
+      <div class="card"><h4>Tripés</h4><p>3 tripés: 1 para a câmera e 2 para as luzes. Funcionaram perfeitamente.</p><p><span class="pill o">Atenção</span> São emprestados: garanta a disponibilidade antes de cada episódio.</p></div>
+      <div class="card"><h4>Iluminação e armazenamento</h4><p>2 lâmpadas, guardadas na caixa azul junto com cabos e extensões.</p></div>
+    </div>
+
+    <h3>Capacidade dos microfones</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Pessoas</th><th scope="col">Situação</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill g">1 a 2</span></td><td>Totalmente funcional.</td></tr>
+          <tr><td><span class="pill o">3</span></td><td>Possível, mas é preciso analisar o perfil de voz de cada um e definir o posicionamento dos microfones.</td></tr>
+          <tr><td><span class="pill v">4 ou mais</span></td><td>Pode dar problema se os perfis de voz forem muito diferentes. Considerar mais microfones.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="gRoles"></div>
+    <div id="gCrit"></div>
+    <div id="gAdj"></div>
+
+  </section>
+
+  <footer><img class="group-logo" src="img/akiyama-group.png" alt="Akiyama group" width="640" height="147"><span>Central do AkiCast, Mídias Akiyama · <small id="versaoCentral">HTML 06/11-a · código antigo (js/central.js não foi atualizado)</small></span></footer>
+</div>
+<div class="overlay disp" id="dispOv" hidden>
+  <div id="dispStage" class="disp-stage"></div>
+  <div class="disp-tela" id="dispTela"></div>
+  <div class="disp-cover" id="dispCover" aria-hidden="true">
+    <div class="cover-in">
+      <img class="cover-logo cover-big" alt="">
+      <div class="cover-cta" id="coverCta" hidden>
+        <div class="cover-qr" id="coverQr"></div>
+        <div class="cover-txt"><b>Venha participar!</b><span>Aponte a câmera para o QR Code e mande a sua pergunta para o AkiCast pela plataforma.</span></div>
+      </div>
+    </div>
   </div>
-</header>
+  <div class="disp-wait" id="dispWait"><div class="wait-in"><img src="img/akicast-logo.png" alt="AkiCast" class="wait-logo"><p id="dispWaitMsg">Carregando apresentação…</p><img src="img/akiyama-group.png" alt="Akiyama group" class="wait-group"></div></div>
+  <div class="disp-ui">
+    <span class="disp-hint">Tela de exibição. Use tela cheia do navegador (F11) e capture esta janela no OBS.</span>
+    <button class="btn ghost-light" id="dispFull" type="button">Tela cheia</button>
+    <button class="btn ghost-light" id="dispExit" type="button">Sair</button>
+  </div>
+</div>
+<div class="overlay ctrl-ov sala-ov" id="salaOv" hidden>
+  <div class="stripe ctrl-stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div class="sala-top">
+    <img class="ctrl-logo" id="salaLogo" alt="AkiCast">
+    <div class="sala-title"><span class="hc-label">Sala de controle</span><span class="ctrl-ep" id="salaEp"></span></div>
+    <div class="ctrl-clock sala-clock"><div><span class="k">Agora</span><span class="v" id="salaNow">--:--</span></div><div><span class="k">Fim às 10h</span><span class="v" id="salaLeft">–</span></div></div>
+    <button class="btn ghost" id="salaExit" type="button">Sair da sala</button>
+  </div>
+  <div class="sala-layout">
+    <aside class="sala-side">
+      <div class="sala-card sala-slide">
+        <div class="sala-h"><h3>Slide no ar</h3><span class="meta" id="salaCount"></span></div>
+        <div class="thumb" id="salaCur"></div>
+        <p class="meta sala-hint">Quem passa os slides é o apresentador.</p>
+        <button class="btn sala-cover-btn" id="salaCover" type="button">Mostrar tela do AkiCast</button>
+        <span class="meta sala-hint">Atalho: tecla B</span>
+        <div class="leve-row"><button class="btn ghost sm" data-leve-btn type="button" aria-pressed="false">Modo leve</button><button class="btn ghost sm" data-recarregar-btn type="button">Recarregar telas</button><button class="btn ghost sm" data-reserva-btn type="button" aria-pressed="false" hidden>Usar o PDF de reserva</button></div>
+        <span class="reserva-tag" data-reserva-tag hidden>PDF de reserva no ar</span>
+        <div class="vid-box" id="salaVideo" hidden></div>
+        <div class="tela-box" id="salaTela" hidden></div>
+        <div class="campos-box" id="salaAcoes" hidden></div>
+        <div class="campos-box" id="salaCampos" hidden></div>
+        <button class="btn ghost sm campos-limpar" data-campos-limpar type="button" hidden>Limpar campos</button>
+        <span class="meta sala-hint">Se a apresentação ficar lenta ou travar: o modo leve tira as animações; recarregar destrava no mesmo slide; o PDF de reserva substitui o HTML em todas as telas.</span>
+      </div>
+      <div class="sala-card">
+        <div class="sala-h"><h3>Conexões</h3></div>
+        <div class="sala-status" id="salaStatus"></div>
+      </div>
+    </aside>
+    <section class="sala-main" id="salaQs"></section>
+    <section class="sala-screen"><div id="salaTela" class="sala-screen-in"></div><div id="salaMiniList"></div><div id="salaFrase"></div><div id="salaNome"></div><div id="salaQr"></div></section>
+  </div>
+</div>
+<div class="overlay ctrl-ov" id="ctrlOv" hidden>
+  <div class="stripe ctrl-stripe" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div class="ctrl-top">
+    <img class="ctrl-logo" id="ctrlLogo" alt="AkiCast">
+    <div>
+      <div class="ctrl-ep" id="ctrlEp"></div>
+      <div class="ctrl-status" id="ctrlStatus"></div>
+    </div>
+    <div class="ctrl-clock">
+      <div><span class="k">Tempo de fala</span><span class="v" id="ctrlTimer">00:00</span></div>
+      <div><span class="k">Fim às 10h</span><span class="v" id="ctrlLeft">–</span></div>
+    </div>
+    <div class="ctrl-links">
+      <a class="btn ghost" id="ctrlSlido" target="_blank" rel="noopener" hidden>Abrir Slido</a>
+    </div>
+    <button class="btn ghost" id="ctrlExit" type="button">Sair do controle</button>
+  </div>
+  <div class="ctrl-tabs" id="ctrlTabs" role="tablist" aria-label="Controle do apresentador" hidden>
+    <button role="tab" id="ctTabPres" aria-selected="true" aria-controls="ctPanelPres" type="button"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/></svg>Apresentação</button>
+    <button role="tab" id="ctTabInt" aria-selected="false" aria-controls="ctPanelInt" type="button"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z"/><path d="M8.5 9.5h7M8.5 12h4"/></svg>Interações<span class="ct-badge" id="ctBadge" hidden>0</span></button>
+  </div>
+  <div class="ctrl-grid" id="ctPanelPres" role="tabpanel" aria-labelledby="ctTabPres">
+    <div>
+      <div class="ctrl-lbl">No ar agora <span id="ctrlCount"></span></div>
+      <div class="thumb big" id="ctrlCur"></div>
+      <div class="ctrl-btns">
+        <button class="btn ghost big" id="ctrlFirst" type="button">Início</button>
+        <button class="btn ghost big" id="ctrlPrev" type="button">Anterior</button>
+        <button class="btn primary big grow" id="ctrlNextBtn" type="button">Próximo</button>
+      </div>
+      <div class="vid-box" id="ctrlVideo" hidden></div>
+      <div class="tela-box" id="ctrlTela" hidden></div>
+      <div class="campos-box" id="ctrlAcoes" hidden></div>
+      <div class="campos-box" id="ctrlCampos" hidden></div>
+      <div class="leve-row ctrl-leve"><button class="btn ghost sm" data-recarregar-btn type="button">Recarregar telas</button><button class="btn ghost sm" data-reserva-btn type="button" aria-pressed="false" hidden>Usar o PDF de reserva</button><span class="meta">Use se os slides travarem: recarrega no mesmo slide. Se continuar travando, troque para o PDF de reserva.</span></div>
+    </div>
+    <div>
+      <div class="ctrl-lbl">Próximo</div>
+      <div class="thumb" id="ctrlNext"></div>
+      <div class="ctrl-end" id="ctrlEnd" hidden>Este é o último slide.</div>
+      <div class="ctrl-cover-note" id="ctrlCoverNote" hidden>A produção colocou a tela do AkiCast no lugar dos slides. Você pode continuar passando os slides; eles voltam a aparecer quando a produção liberar.</div>
+      <div class="ctrl-keys swipe-hint"><b>No celular ou tablet:</b> deslize o dedo sobre o slide. Para a esquerda avança, para a direita volta.</div>
+      <div class="ctrl-keys">Setas do teclado, espaço e passador de slides também funcionam.</div>
+      <div class="ctrl-keys" id="ctrlWake"></div>
+      <div class="ct-login-hint" id="ctLoginHint" hidden><b>Perguntas do público</b><span>Entre com seu login de apresentador para ver as perguntas e montar a sua fila.</span><button class="btn primary sm" id="ctLoginBtn" type="button">Entrar</button></div>
+    </div>
+  </div>
+  <div class="ct-panel-int" id="ctPanelInt" role="tabpanel" aria-labelledby="ctTabInt" hidden>
+    <div class="ctrl-qs ctrl-qs-wide" id="ctrlQs" hidden></div>
+  </div>
+  <div class="ct-mini" id="ctMini" hidden>
+    <button class="ct-mini-view" id="ctMiniView" type="button" aria-label="Voltar para a apresentação"><div class="thumb" id="ctrlMini"></div></button>
+    <div class="ct-mini-bar">
+      <button class="icon-btn" id="ctMiniPrev" type="button" aria-label="Slide anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <span id="ctMiniCount"></span>
+      <button class="btn primary sm ct-mini-next" id="ctMiniNext" type="button">Próximo<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+</div>
+<div class="sent-ov" id="loginOv" hidden role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <form class="sent-card login-card" id="loginForm" novalidate>
+    <img class="login-logo" src="img/akicast-logo.png" alt="">
+    <h2 id="loginTitle">Entrar na equipe</h2>
+    <p>Produção e apresentadores. Ouvintes não precisam de login.</p>
+    <label class="field"><span>Usuário</span><input id="loginUser" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Ex.: apresentar01"></label>
+    <label class="field"><span>Senha</span><input id="loginPass" type="password" autocomplete="current-password"></label>
+    <p class="login-err" id="loginErr" role="alert"></p>
+    <button class="btn primary" id="loginGo" type="submit">Entrar</button>
+    <button class="linkbtn" id="loginCancel" type="button">Cancelar</button>
+  </form>
+</div>
+<div class="sent-ov" id="qrOv" hidden role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+  <div class="sent-card qr-card">
+    <h2 id="qrTitle">Aponte a câmera para abrir o controle</h2>
+    <p id="qrEp"></p>
+    <div class="qr-box" id="qrBox"></div>
+    <p class="qr-url" id="qrUrl"></p>
+    <div class="qr-acts" id="qrActs" hidden>
+      <button class="btn primary" id="qrPng" type="button"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></svg>Baixar imagem (PNG)</button>
+      <button class="btn ghost" id="qrCopyImg" type="button"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Copiar imagem</button>
+      <button class="btn ghost" id="qrShare" type="button" hidden><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>Compartilhar</button>
+    </div>
+    <p class="meta qr-hint">A imagem vem com a logo do AkiCast, o título e o episódio, pronta para mandar no WhatsApp, Teams ou colocar num slide.</p>
+    <button class="btn ghost" id="qrClose" type="button">Fechar</button>
+  </div>
+</div>
+<div class="sent-ov" id="pptOv" hidden role="dialog" aria-modal="true" aria-labelledby="pptTitle">
+  <div class="sent-card ppt-card">
+    <div class="ppt-ic" aria-hidden="true">PDF</div>
+    <h2 id="pptTitle">Envie em PDF, por favor</h2>
+    <p id="pptName"></p>
+    <p>A central aceita <b>PDF</b> e <b>HTML</b>. Exportar em PDF leva poucos segundos:</p>
+    <div class="ppt-tabs" role="tablist">
+      <button role="tab" data-ppt-tab="pp" aria-selected="true" type="button">PowerPoint</button>
+      <button role="tab" data-ppt-tab="gs" aria-selected="false" type="button">Google Slides</button>
+      <button role="tab" data-ppt-tab="cv" aria-selected="false" type="button">Canva</button>
+    </div>
+    <ol class="ppt-steps" data-ppt-panel="pp"><li>Abra a apresentação no PowerPoint.</li><li>Clique em <b>Arquivo &gt; Exportar &gt; Criar PDF/XPS</b> (no Mac: <b>Arquivo &gt; Exportar</b> e escolha PDF).</li><li>Salve e envie o arquivo .pdf aqui.</li></ol>
+    <ol class="ppt-steps" data-ppt-panel="gs" hidden><li>Abra a apresentação no Google Slides.</li><li>Clique em <b>Arquivo &gt; Fazer download &gt; Documento PDF</b>.</li><li>Envie o arquivo .pdf aqui.</li></ol>
+    <ol class="ppt-steps" data-ppt-panel="cv" hidden><li>Abra o design no Canva.</li><li>Clique em <b>Compartilhar &gt; Baixar</b> e escolha <b>PDF padrão</b>.</li><li>Envie o arquivo .pdf aqui.</li></ol>
+    <p class="meta">No PDF, cada página vira um slide. Animações, transições e vídeos não vão junto: se houver vídeo, avise a produção.</p>
+    <button class="btn primary" id="pptClose" type="button">Entendi</button>
+  </div>
+</div>
+<div class="sent-ov" id="sentOv" hidden role="dialog" aria-modal="true" aria-labelledby="sentTitle">
+  <div class="sent-card">
+    <div class="sent-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h2 id="sentTitle">Recebemos sua apresentação</h2>
+    <p><span class="fname" id="sentName"></span></p>
+    <p id="sentWhen"></p>
+    <div id="sentCheck"></div>
+    <button class="btn primary" id="sentClose" type="button">Ver meu arquivo</button>
+  </div>
+</div>
+<div class="auth-gate" id="authGate" hidden>
+  <div class="auth-card">
+    <div class="auth-logo"><img class="logo" src="img/akicast-logo.png" alt=""></div>
+    <h1>Central do AkiCast</h1>
+    <p class="meta">Para criar e editar episódios, checklist, apresentações e o guia, entre com o login da produção.</p>
+    <button class="btn primary" id="gateLogin" type="button">Entrar</button>
+    <p class="meta auth-sub">Recebeu um link para participar, enviar uma apresentação ou passar os slides? Use exatamente o link que você recebeu.</p>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<main id="app" class="shell" tabindex="-1"></main>
-
-<nav class="bottomnav" id="bottomNav" aria-label="Navegação principal"></nav>
-<div id="overlay"></div>
-
-<script src="config.js"></script>
-<script src="data.js"></script>
-<script src="app.js"></script>
-
-</body></html>
+<script src="js/assets.js?v=20261106a"></script>
+<script src="js/central.js?v=20261106a"></script>
+</body>
+</html>
