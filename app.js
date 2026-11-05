@@ -397,7 +397,14 @@
     if (!parts.length) return { name: 'home', param: null };
     return { name: parts[0], param: parts[1] || null };
   }
-  function go(path) { location.hash = '#/' + String(path).replace(/^\/+/, ''); }
+  // navInterna: a troca de tela veio de um clique no site (vai para o topo);
+  // sem ela, foi o voltar/avançar do navegador (volta para onde estava)
+  var navInterna = false;
+  function go(path) { navInterna = true; location.hash = '#/' + String(path).replace(/^\/+/, ''); }
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest && e.target.closest('a[href^="#/"]');
+    if (a && !a.target) navInterna = true;
+  }, true);
 
   /* Voltar para onde estava: cada lista guarda a posição da rolagem. Quem
      abre um projeto ou um Herói e volta cai exatamente onde parou; nas
@@ -459,10 +466,12 @@
     var deDetalhe = !!DETALHES[rotaAnterior];
     route.name = r.name; route.param = r.param;
     rotaAnterior = r.name;
+    if (r.name === 'admin') { var abaNova = abaDaRota(r.param); if (abaNova !== admin.tab) { admin.tab = abaNova; admin.fotosDe = null; } }
     if (r.name === 'trilha2026' || r.name === 'admin') syncFotos();
     render();
-    var chave = location.hash || '#/';
+    var chave = location.hash || '#/', interna = navInterna; navInterna = false;
     if (deDetalhe && LISTAS[r.name] && posicoes[chave] > 0) restaurarPosicao(chave);
+    else if (!interna && posicoes[chave] > 0) restaurarPosicao(chave);   // voltar/avançar do navegador
     else irPara(0);
     var app = $('#app'); if (app) app.focus({ preventScroll: true });
   });
@@ -2699,6 +2708,7 @@
   }
 
   /* ========================= PAINEL ADMINISTRATIVO ======================== */
+  function abaDaRota(p) { return ADMIN_TABS.some(function (t) { return t[0] === p; }) ? p : 'geral'; }
   var admin = { tab: (f5Volta && f5Volta.tab) || 'geral', editor: null, confirm: null, copy: null, fotosDe: (f5Volta && f5Volta.fotosDe) || null };
 
   var ADMIN_TABS = [
@@ -6330,6 +6340,7 @@
     if (r === 'projeto') { var p = byId(route.param); nome = p ? p.name : 'Projeto'; }
     if (r === 'heroi') { var x = heroById(route.param); nome = x ? String(x.hero.name).split(/\s+[—–-]\s+/)[0] : 'Herói'; }
     if (r === 'banca' && route.param) { var pb = byId(route.param); nome = pb ? pb.name + ' · Banca' : 'Banca'; }
+    if (r === 'admin') { var aba = ADMIN_TABS.filter(function (t) { return t[0] === admin.tab; })[0]; nome = aba ? aba[1] + ' · Painel' : 'Painel'; }
     if (r === 'mesa') nome = route.param === 'decisao' ? 'QR · Decisão final' : route.param === 'entrar' ? 'QR · Entrar' : 'QR · Banca';
     return nome ? nome + ' - IDL' : 'IDL';
   }
@@ -6750,9 +6761,15 @@
     if (el.hasAttribute('data-filter')) {
       filt.block = el.getAttribute('data-filter'); render(); return;
     }
-    if (el.hasAttribute('data-nav')) { go(el.getAttribute('data-nav')); return; }
+    if (el.hasAttribute('data-nav')) { var dn = el.getAttribute('data-nav'); go(dn === 'admin' && admin.tab !== 'geral' ? 'admin/' + admin.tab : dn); return; }
     if (el.hasAttribute('data-go')) { go(el.getAttribute('data-go')); return; }
-    if (el.hasAttribute('data-atab')) { admin.tab = el.getAttribute('data-atab'); admin.fotosDe = null; render(); return; }
+    if (el.hasAttribute('data-atab')) {
+      // cada aba do painel tem endereço próprio (#/admin/leilao…): entra no histórico do navegador
+      var abaIr = el.getAttribute('data-atab');
+      if (route.name === 'admin') { if (abaIr === admin.tab && !admin.fotosDe) return; admin.fotosDe = null; go('admin/' + abaIr); }
+      else { admin.tab = abaIr; admin.fotosDe = null; render(); }
+      return;
+    }
     if (el.hasAttribute('data-pick')) { flow.picked = el.getAttribute('data-pick'); flow.error = ''; renderOverlay(); return; }
 
     if (el.hasAttribute('data-clearimg')) {
@@ -7450,6 +7467,7 @@
   /* --------------------------------- init -------------------------------- */
   load();
   var r0 = parseHash(); route.name = r0.name; route.param = r0.param;
+  if (route.name === 'admin' && route.param) admin.tab = abaDaRota(route.param);
   render();
   // voltou de um F5: devolve a rolagem de onde estava
   if (f5Volta && f5Volta.y > 0) { posicoes[location.hash || '#/'] = f5Volta.y; restaurarPosicao(location.hash || '#/', true); }
