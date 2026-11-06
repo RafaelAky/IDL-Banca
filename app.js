@@ -190,8 +190,12 @@
     'img/heroi-14.webp': 'img/heroi-14-v2.webp?v=3',    // Karol
     'img/heroi-16.webp': 'img/heroi-16-v2.webp?v=3',    // Lydia
     'img/heroi-17b.webp': 'img/heroi-17b-v2.webp?v=3',  // Neo
-    'img/heroi-06.webp': 'img/heroi-06-v2.webp?v=3'     // Duda: a bota da direita agora vai até o chão
+    'img/heroi-06.webp': 'img/heroi-06-v3.webp?v=1',    // Duda: ilustração nova (06/11/2026)
+    'img/heroi-06-v2.webp?v=3': 'img/heroi-06-v3.webp?v=1',
+    'img/heroi-08.webp': 'img/heroi-08-v3.webp?v=1',    // Mrs Marks: ilustração nova (06/11/2026)
+    'img/heroi-09.webp': 'img/heroi-09-v3.webp?v=1'     // Téo: ilustração nova (06/11/2026)
   };
+  IMAGENS_NOVAS['img/heroi-06-v2.webp'] = IMAGENS_NOVAS['img/heroi-06.webp'];
   // conteúdo salvo antes com o endereço sem o "?v=3"
   Object.keys(IMAGENS_NOVAS).forEach(function (k) { IMAGENS_NOVAS[IMAGENS_NOVAS[k].split('?')[0]] = IMAGENS_NOVAS[k]; });
   /* Ajustes de 05/11/2026 (valem para o data.js e para o conteúdo do banco):
@@ -1639,7 +1643,15 @@
 
   // ilustrações cujo arquivo já termina cortado nos pés (conferido nos arquivos)
   var PE_CORTADO = { 'img/heroi-05.webp': 1 };
-  function clsPe(src) { return PE_CORTADO[src] ? ' class="pe-cortado"' : ''; }
+  /* Heróis que não estão no meio da própria imagem (braço erguido, capa ou
+     objeto de um lado só): a imagem anda um pouco para o lado, para o corpo
+     ficar no centro da flor que gira atrás. Valor = quanto o corpo está
+     fora do centro, em fração da largura da imagem (medido no tronco e nas pernas). */
+  var CENTRO_HEROI = { 'heroi-05': .062, 'heroi-16-v2': .142, 'heroi-10': -.075 };
+  function clsPe(src) {
+    var m = /(heroi-[\w-]+?)\.webp/.exec(String(src || '')), dx = m ? CENTRO_HEROI[m[1]] : 0;
+    return (PE_CORTADO[src] ? ' class="pe-cortado"' : '') + (dx ? ' style="translate:' + (-dx * 100).toFixed(1) + '% 0"' : '');
+  }
   /* passar de Herói: setas nas pontas, deslizar o dedo no celular e as setas do teclado */
   var heroiEntrada = '';
   function passarHeroi(passo) {
