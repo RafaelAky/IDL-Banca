@@ -193,7 +193,8 @@
     'img/heroi-06.webp': 'img/heroi-06-v3.webp?v=1',    // Duda: ilustração nova (06/11/2026)
     'img/heroi-06-v2.webp?v=3': 'img/heroi-06-v3.webp?v=1',
     'img/heroi-08.webp': 'img/heroi-08-v3.webp?v=1',    // Mrs Marks: ilustração nova (06/11/2026)
-    'img/heroi-09.webp': 'img/heroi-09-v3.webp?v=1'     // Téo: ilustração nova (06/11/2026)
+    'img/heroi-09.webp': 'img/heroi-09-v3.webp?v=1',    // Téo: ilustração nova (06/11/2026)
+    'img/heroi-12.webp': 'img/heroi-12-v3.webp?v=1'     // Sofia: ilustração nova (06/11/2026)
   };
   IMAGENS_NOVAS['img/heroi-06-v2.webp'] = IMAGENS_NOVAS['img/heroi-06.webp'];
   // conteúdo salvo antes com o endereço sem o "?v=3"
