@@ -2900,3 +2900,16 @@ html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) .logo-slot:not(#logoS
   .desknav[data-n="7"] .lbl, .desknav[data-n="8"] .lbl, .desknav[data-n="9"] .lbl { display: none; }
   .desknav[data-n="7"] .lbl-short, .desknav[data-n="8"] .lbl-short, .desknav[data-n="9"] .lbl-short { display: inline; }
 }
+
+/* painel no computador: as abas quebram em duas linhas em vez de esconder as últimas */
+@media (min-width: 760px) {
+  .tabs { flex-wrap: wrap; overflow: visible; column-gap: 0; }
+  .tabs button { padding: 0 .75rem; }
+}
+
+/* botão Compartilhar nas páginas de projeto e de Herói */
+.compartilhar { position: relative; display: inline-block; margin-top: var(--e-4); }
+.compartilhar .btn { display: inline-flex; align-items: center; gap: .45rem; }
+.comp-menu { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; min-width: 180px; display: grid; padding: 6px; border-radius: 14px; background: var(--c-branco); border: 1px solid var(--c-linha); box-shadow: var(--sombra); }
+.comp-menu a, .comp-menu button { display: block; padding: 10px 12px; border-radius: 10px; font-size: var(--t-peq); font-weight: 600; color: var(--c-roxo); text-decoration: none; text-align: left; }
+.comp-menu a:hover, .comp-menu button:hover { background: var(--c-lilas-claro); }
