@@ -205,6 +205,45 @@
        que apresentam em horários separados: Neo entra 7 min depois da Kiara
        e todas as equipes seguintes andam 7 min, assim como o resto da manhã.
      Feito uma vez só: depois de dividido, o "prj_som" deixa de existir.    */
+  /* Cronograma oficial de 10/11/2026 (PDF "Programação Convidados"): versão
+     simples para os visitantes. As equipes apresentam em dois blocos; cada
+     projeto mostra só o bloco (o horário de referência fica guardado só para
+     manter a ordem). Feito uma vez só (d.cronograma).                     */
+  var CRONO_VERSAO = '2026-11-10b';
+  var BLOCOS = [{ rot: '1º bloco', ini: '08:20', fim: '09:40', hora: '8h20' }, { rot: '2º bloco', ini: '10:10', fim: '11:30', hora: '10h10' }];
+  function migrarCronograma(d) {
+    if (!d || d.cronograma === CRONO_VERSAO) return;
+    var itens = [
+      // [início, fim (para o "acontecendo agora"), nome, como o horário aparece (igual ao PDF)]
+      ['07:30', '08:00', 'Chegada e credenciamento', 'Até as 8h'],
+      ['08:00', '08:20', 'Abertura', '8h'],
+      ['08:20', '09:40', 'Apresentação dos projetos: primeiro bloco', '8h20'],
+      ['09:40', '10:10', 'Intervalo para o café', '9h40'],
+      ['10:10', '11:30', 'Apresentação dos projetos: segundo bloco', '10h10'],
+      ['11:30', '12:30', 'Vídeos dos Heróis, votação, homenagens e premiações', '11h30 às 12h30'],
+      ['12:30', '12:45', 'Encerramento', '12h30'],
+      ['12:45', '13:45', 'Almoço para os trilheiros', 'Em seguida']
+    ];
+    d.schedule = itens.map(function (r, i) { return { id: 'sch_' + pad2(i + 1), start: r[0], end: r[1], name: r[2], desc: '', quando: r[3], place: '', demo: false }; });
+    d.event = d.event || {};
+    d.event.timeLabel = '8h às 12h30';
+    d.event.recepcao = 'Chegada e credenciamento até as 8h';
+    d.event.votacaoAbre = '11h30';
+    // equipes: na ordem atual, 9 no 1º bloco e o restante no 2º
+    var ord = (d.projects || []).slice().sort(function (a, b) { return (toMin(a.slot) || 9999) - (toMin(b.slot) || 9999); });
+    var n1 = Math.ceil(ord.length / 2);
+    ord.forEach(function (p, i) {
+      var b = i < n1 ? BLOCOS[0] : BLOCOS[1], k = i < n1 ? i : i - n1, tot = i < n1 ? n1 : ord.length - n1;
+      var passo = Math.floor((toMin(b.fim) - toMin(b.ini)) / Math.max(1, tot));
+      var m = toMin(b.ini) + k * passo;
+      p.block = b.rot; p.slot = pad2(Math.floor(m / 60)) + ':' + pad2(m % 60);
+    });
+    d.cronograma = CRONO_VERSAO;
+  }
+  // como mostrar quando a equipe apresenta: só o bloco (curto) ou o bloco e o início dele
+  function blocoDe(p) { return BLOCOS.filter(function (b) { return b.rot === (p && p.block); })[0] || null; }
+  function horaRot(p) { var b = blocoDe(p); return b ? b.rot : (p && p.slot) || ''; }
+  function quandoEquipe(p) { var b = blocoDe(p); return b ? b.rot + ' · a partir das ' + b.hora : (p && p.slot ? 'Apresenta às ' + p.slot : ''); }
   var VIDEOS_NOV = { her_virtus: 'Ef1zESfZPCw', her_duda: 'lNaTXhvrJ2Y' };
   function migrarNov2026(d) {
     if (!d || !d.projects) return;
@@ -273,6 +312,7 @@
     });
     if ((d.contentVersion || 1) < 11) d.contentVersion = 11;
     migrarNov2026(d);
+    migrarCronograma(d);
     return d;
   }
   function save() { safeSet(KEY, JSON.stringify(db)); render(); enviarConteudo(); }
@@ -435,6 +475,7 @@
     return h + 'h' + (r ? pad2(r) : '');
   }
   function faixaHorario(it) {
+    if (it.quando) return it.quando;   // rótulo do cronograma oficial ("Até as 8h", "Em seguida"…)
     return (!it.end || it.end === it.start) ? it.start : it.start + ' – ' + it.end;
   }
   // cada equipe tem 6 minutos de apresentação + 1 de troca
@@ -968,7 +1009,7 @@
       // ainda não é o dia: nada de “acontecendo agora”, só a programação
       var items0 = ordered();
       var previa = items0.slice(0, 4).map(function (it) {
-        return '<li><span class="num">' + esc(it.start) + '</span><span>' + esc(it.name) + '</span></li>';
+        return '<li><span class="num">' + esc(it.quando || it.start) + '</span><span>' + esc(it.name) + '</span></li>';
       }).join('');
       nowHtml = '<article class="nowcard is-soon" id="nowCard">' +
         '<p class="now-k"><span>' + esc(contagemTexto()) + '</span><span>' + esc(db.event.timeLabel || '') + '</span></p>' +
@@ -992,7 +1033,7 @@
         '<span id="nowCountdown">termina em ' + humanMin(minsLeft(live.end)) + '</span></p>' +
         '<h2 class="ttl">' + esc(live.name) + '</h2>' +
         (live.desc ? '<p class="desc">' + esc(live.desc) + '</p>' : '') +
-        '<p class="facts num">' + esc(live.start) + ' – ' + esc(live.end) + (live.place ? ' · ' + esc(live.place) : '') + '</p>' +
+        '<p class="facts num">' + esc(faixaHorario(live)) + (live.place ? ' · ' + esc(live.place) : '') + '</p>' +
         '<div class="nowprog"><i id="nowProg" style="width:' + pct.toFixed(1) + '%"></i></div>' +
         '<button class="btn btn-primary" data-nav="programacao">Ver programação completa ' + ico('i-chev') + '</button>' +
         '</article>';
@@ -1001,7 +1042,7 @@
         '<p class="now-k"><span>Daqui a pouco</span><span id="nowCountdown">em ' + humanMin(minsLeft(nxt.start)) + '</span></p>' +
         '<h2 class="ttl">' + esc(nxt.name) + '</h2>' +
         (nxt.desc ? '<p class="desc">' + esc(nxt.desc) + '</p>' : '') +
-        '<p class="facts num">' + esc(nxt.start) + ' – ' + esc(nxt.end) + (nxt.place ? ' · ' + esc(nxt.place) : '') + '</p>' +
+        '<p class="facts num">' + esc(faixaHorario(nxt)) + (nxt.place ? ' · ' + esc(nxt.place) : '') + '</p>' +
         '<button class="btn btn-outline" data-nav="programacao">Ver programação completa ' + ico('i-chev') + '</button>' +
         '</article>';
     } else {
@@ -1245,7 +1286,7 @@
         var m = minsLeft(it.start);
         if (m != null && m <= 90) cd = '<span class="tl-quando">em ' + humanMin(m) + '</span>';
       }
-      var extras = [durationOf(it), it.place].filter(Boolean).map(esc).join(' · ');
+      var extras = [it.quando ? '' : durationOf(it), it.place].filter(Boolean).map(esc).join(' · ');
       return '<article class="tlitem ' + st + '"><span class="node" aria-hidden="true"></span>' +
         '<div class="tcard">' +
         '<div class="tl-cab"><span class="th num">' + esc(faixaHorario(it)) + '</span>' + statusChip(st) + cd + '</div>' +
@@ -1257,7 +1298,7 @@
           if (!ps.length) return '';
           return '<div class="tlprojs">' + ps.map(function (p) {
             var noPalco = remote.palco === p.id;
-            return '<button class="tlproj' + (noPalco ? ' is-palco' : '') + '" data-go="projeto/' + esc(p.id) + '"><b class="num">' + esc(p.slot) + '</b>' + esc(p.name) +
+            return '<button class="tlproj' + (noPalco ? ' is-palco' : '') + '" data-go="projeto/' + esc(p.id) + '"><b class="num">' + (ps.indexOf(p) + 1) + '</b>' + esc(p.name) +
               (noPalco ? '<span class="pc-ao-vivo"><i></i>No palco</span>' : '') + '</button>';
           }).join('') + '</div>';
         })() +
@@ -1358,20 +1399,13 @@
         body = tools + '<div class="empty"><h2 class="h3">Nada encontrado</h2><p>Tente outro termo ou volte para todos os projetos.</p>' +
           '<button class="btn btn-sm btn-outline" style="margin-top:14px" data-filter="todos">Ver todos</button></div>';
       } else {
-        var destaqueId = null;
-        if (isEventDay()) {
-          var mnow = nowMinutes();
-          for (var fi = 0; fi < list.length; fi++) {
-            var sm = toMin(list[fi].slot);
-            if (sm != null && sm + MIN_POR_EQUIPE > mnow) { destaqueId = list[fi].id; break; }
-          }
-        }
+        // destaque: a equipe que está no palco agora (marcada pela organização)
+        var destaqueId = remote.on && remote.palco ? remote.palco : null;
         var indice = '<ol class="indice">' + list.map(function (p) {
-          var aoVivoAgora = isEventDay() && toMin(p.slot) != null &&
-            nowMinutes() >= toMin(p.slot) && nowMinutes() < toMin(p.slot) + MIN_POR_EQUIPE;
+          var aoVivoAgora = !!(remote.on && remote.palco === p.id);
           var eqs = (p.teams || []).length;
           return '<li><button class="ind-item' + (p.id === destaqueId ? ' is-foco' : '') + '" data-go="projeto/' + esc(p.id) + '">' +
-            '<span class="ind-hora num">' + (aoVivoAgora ? '<span class="chip-live"><span class="livedot"></span>Agora</span>' : esc(p.slot || '')) + '</span>' +
+            '<span class="ind-hora num">' + (aoVivoAgora ? '<span class="chip-live"><span class="livedot"></span>Agora</span>' : esc(horaRot(p))) + '</span>' +
             '<span class="ind-txt">' +
               '<span class="ind-nome">' + esc(p.name) + '</span>' +
               '<span class="ind-sub">' + esc([p.group ? 'grupo ' + p.group : '', p.category || ''].filter(Boolean).join(' · ')) + '</span>' +
@@ -1521,7 +1555,7 @@
       ? '<button class="btn btn-primary btn-block btn-lg" data-nav="votacao">Votar neste momento</button>' : '';
 
     var ficha = '<dl class="ficha">' +
-      (p.slot ? '<div><dt>Apresenta às</dt><dd class="num">' + esc(p.slot) + '</dd></div>' : '') +
+      (quandoEquipe(p) ? '<div><dt>Apresentação</dt><dd class="num">' + esc(blocoDe(p) ? blocoDe(p).rot + ', a partir das ' + blocoDe(p).hora : p.slot) + '</dd></div>' : '') +
       (p.block ? '<div><dt>Bloco</dt><dd>' + esc(p.block) + '</dd></div>' : '') +
       (p.group ? '<div><dt>Grupo</dt><dd>' + esc(p.group) + '</dd></div>' : '') +
       (equipes.length > 1 ? '<div><dt>Equipes</dt><dd>' + equipes.length + '</dd></div>' : '') +
@@ -1536,7 +1570,7 @@
       '<button data-go="projeto/' + esc(next.id) + '"><span class="k">Próximo →</span><span class="v">' + esc(next.name) + '</span></button>' +
       '</nav>' : '';
 
-    var meta = [p.slot ? 'Apresenta às ' + p.slot : '', p.block, p.category].filter(Boolean).map(esc).join(' · ');
+    var meta = [quandoEquipe(p), blocoDe(p) ? '' : p.block, p.category].filter(Boolean).map(esc).join(' · ');
     var hs = (p.heroes || []).filter(function (h) { return h.image; });
     // setas nas pontas (e deslizar o dedo / teclado), como nos Heróis
     var setasP = db.projects.length > 1 ?
@@ -2338,7 +2372,7 @@
     return eligibleProjects().map(function (p) {
       var im = projectImage(p);
       return { id: p.id, tipo: 'projeto', name: p.name, image: im.src, contain: im.contain,
-        video: '', campanha: '', sub: p.tagline || (p.slot ? 'Apresenta às ' + p.slot : ''), go: 'projeto/' + p.id };
+        video: '', campanha: '', sub: p.tagline || quandoEquipe(p), go: 'projeto/' + p.id };
     });
   }
   function opcaoPorId(id) {
@@ -2550,7 +2584,7 @@
       '<h2 class="titulo">Conheça os projetos antes de escolher</h2></div>' +
       '<ol class="indice">' + list.map(function (p) {
         return '<li><button class="ind-item" data-go="projeto/' + esc(p.id) + '">' +
-          '<span class="ind-hora num">' + esc(p.slot || '') + '</span>' +
+          '<span class="ind-hora num">' + esc(horaRot(p)) + '</span>' +
           '<span class="ind-txt"><span class="ind-nome">' + esc(p.name) + '</span>' +
           '<span class="ind-sub">' + esc(p.group ? 'grupo ' + p.group : (p.category || '')) + '</span></span>' +
           '<span class="ind-herois">' + (p.heroes || []).map(function (h) { return quadroHeroi(h, 'quadro-mini', ' aria-hidden="true"'); }).join('') + '</span>' +
@@ -3195,7 +3229,7 @@
         '<div class="logo-slot" style="width:46px;height:46px;border-radius:10px;border-style:solid">' +
         (projectImage(p).src ? '<img src="' + esc(projectImage(p).src) + '" alt="" style="object-fit:contain">' : '<span>capa</span>') + '</div>' +
         '<div class="grow"><div class="h3" style="font-size:14.5px">' + esc(p.name) + '</div>' +
-        '<div class="tiny">' + (p.slot ? p.slot + ' · ' : '') + ((p.teams || []).length > 1 ? p.teams.length + ' equipes · ' : '') + (p.members || []).length + ' trilheiro(s) · ' + (p.heroes || []).length + ' Herói(s)' + (p.eligible === false ? ' · fora da votação' : '') + (p.demo ? ' · exemplo' : '') + '</div></div>' +
+        '<div class="tiny">' + (horaRot(p) ? horaRot(p) + ' · ' : '') + ((p.teams || []).length > 1 ? p.teams.length + ' equipes · ' : '') + (p.members || []).length + ' trilheiro(s) · ' + (p.heroes || []).length + ' Herói(s)' + (p.eligible === false ? ' · fora da votação' : '') + (p.demo ? ' · exemplo' : '') + '</div></div>' +
         '<button class="btn btn-sm btn-outline btn-fotos" data-act="fotosDe" data-p="' + esc(p.id) + '">' + ico('i-eye') + ' Fotos (' + fotosDoProjeto(p.id).length + ')</button>' +
         '<button class="iconbtn" data-move="prj:' + esc(p.id) + ':-1" aria-label="Mover para cima"' + (i === 0 ? ' disabled' : '') + '>' + ico('i-up') + '</button>' +
         '<button class="iconbtn" data-move="prj:' + esc(p.id) + ':1" aria-label="Mover para baixo"' + (i === db.projects.length - 1 ? ' disabled' : '') + '>' + ico('i-down') + '</button>' +
@@ -3590,6 +3624,7 @@
       return '<div class="row" style="gap:10px">' +
         '<div class="grow">' + fieldText('start', 'Início', o.start, '', 'time') + '</div>' +
         '<div class="grow">' + fieldText('end', 'Fim', o.end, '', 'time') + '</div></div>' +
+        fieldText('quando', 'Como o horário aparece no site (opcional)', o.quando, 'Ex.: 8h20 · Até as 8h · Em seguida. Em branco, o site mostra início – fim.') +
         fieldText('name', 'Nome da atividade', o.name) +
         fieldArea('desc', 'Descrição breve', o.desc) +
         fieldText('place', 'Local, sala ou palco', o.place, 'Opcional.');
@@ -3599,7 +3634,7 @@
       return fieldText('name', 'Nome do projeto', o.name) +
         fieldArea('tagline', 'Frase curta que explica o projeto', o.tagline) +
         '<div class="row" style="gap:10px">' +
-        '<div class="grow">' + fieldText('slot', 'Horário da apresentação', o.slot, '', 'time') + '</div>' +
+        '<div class="grow">' + fieldText('slot', 'Horário de referência (define a ordem das equipes)', o.slot, 'O site mostra só o bloco. Este horário serve para ordenar as equipes dentro do bloco.', 'time') + '</div>' +
         '<div class="grow">' + fieldText('block', 'Bloco', o.block, 'Manhã ou Tarde.') + '</div></div>' +
         fieldText('category', 'Categoria', o.category, 'Opcional.') +
         fieldText('group', 'Grupo', o.group, 'Ex.: ABASC, Educa, INH, Senhorinha.') +
@@ -3906,7 +3941,7 @@
     if (!remote.on) return '';
     var p = palcoAtual(), ant = palcoVizinho(-1), prox = palcoVizinho(1);
     var opcoes = '<option value="">Ninguém no palco</option>' + projetosEmOrdem().map(function (x) {
-      return '<option value="' + esc(x.id) + '"' + (p && p.id === x.id ? ' selected' : '') + '>' + esc((x.slot ? x.slot + ' · ' : '') + x.name) + '</option>';
+      return '<option value="' + esc(x.id) + '"' + (p && p.id === x.id ? ' selected' : '') + '>' + esc((horaRot(x) ? horaRot(x) + ' · ' : '') + x.name) + '</option>';
     }).join('');
     return '<section class="painel-palco">' +
       '<div class="pp-cab"><span class="eyebrow">No palco agora</span>' +
@@ -4090,7 +4125,7 @@
       return '<button class="bcard' + (noar ? ' noar' : '') + (ok ? ' feito' : '') + '" data-go="banca/' + esc(x.id) + '">' +
         (noar ? '<span class="bc-noar"><i></i>NO AR</span>' : '') +
         bancaFig(x, 'bc-fig') +
-        '<span class="bc-txt"><span class="tiny num">' + esc([x.slot, x.group ? 'Grupo ' + x.group : ''].filter(Boolean).join(' · ')) + '</span>' +
+        '<span class="bc-txt"><span class="tiny num">' + esc([horaRot(x), x.group ? 'Grupo ' + x.group : ''].filter(Boolean).join(' · ')) + '</span>' +
         '<span class="bc-nome">' + esc(x.name) + '</span>' +
         '<span class="tiny">' + esc(nomesHerois(x)) + '</span>' + st + '</span>' +
         '<span class="bc-go">' + ico('i-chev') + '</span></button>';
@@ -4141,7 +4176,7 @@
       '<section class="banca-topo"><div class="cont bp-cab">' +
         '<button class="voltar" data-act="bancaVoltar">' + ico('i-arrow-left') + 'Todos os projetos</button>' +
         '<div class="bp-tit">' + bancaFig(p, 'bp-fig') +
-          '<div><span class="eyebrow">' + esc([p.slot, p.group ? 'Grupo ' + p.group : ''].filter(Boolean).join(' · ')) + '</span>' +
+          '<div><span class="eyebrow">' + esc([horaRot(p), p.group ? 'Grupo ' + p.group : ''].filter(Boolean).join(' · ')) + '</span>' +
           (noar ? '<span class="bc-noar"><i></i>NO AR</span>' : '') +
           '<h1 class="titulo-pag">' + esc(p.name) + '</h1>' +
           '<p class="small">' + esc(nomesHerois(p)) + '</p></div></div>' +
@@ -4664,7 +4699,7 @@
       case 'programacao':
         h = '<div class="sl-col"><span class="sl-eyebrow">IDL · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
           '<ol class="sl-prog">' + ordered().filter(function (x) { return x.start && x.start !== x.end; }).map(function (x) {
-            return '<li><b class="num">' + esc(x.start) + '</b><span>' + esc(x.name) + '</span></li>'; }).join('') + '</ol></div>';
+            return '<li><b class="num">' + esc(x.quando || x.start) + '</b><span>' + esc(x.name) + '</span></li>'; }).join('') + '</ol></div>';
         break;
       case 'numeros':
         var nEq = db.projects.reduce(function (a, p) { return a + Math.max(1, (p.teams || []).length); }, 0);
@@ -4703,7 +4738,7 @@
           '<div class="sl-eq-txt"><span class="sl-noar"><i></i>No palco · equipe ' + s.n + ' de ' + s.de + '</span>' +
             '<h1 class="sl-eq-nome">' + esc(p.name) + '</h1>' +
             (p.tagline ? '<p class="sl-eq-lead">' + esc(p.tagline) + '</p>' : '') +
-            '<p class="sl-eq-meta">' + esc([p.group ? 'Grupo ' + p.group : '', p.category, p.slot ? p.slot : ''].filter(Boolean).join(' · ')) + '</p>' +
+            '<p class="sl-eq-meta">' + esc([p.group ? 'Grupo ' + p.group : '', p.category, horaRot(p)].filter(Boolean).join(' · ')) + '</p>' +
             (membros.length ? '<p class="sl-eq-membros">' + esc(membros.join(' · ')) + '</p>' : '') +
           '</div>' +
           '<div class="sl-eq-figs n' + hs.length + '">' + hs.map(function (h2) { return '<figure><img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt=""><figcaption>' + esc(String(h2.name).split(/\s+[—–-]\s+/)[0]) + '</figcaption></figure>'; }).join('') + '</div>' +
@@ -5479,7 +5514,7 @@
     var pos = p ? lista.indexOf(p) + 1 : 0;
     var figs = p ? (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return '<img src="' + esc(mini(h.image)) + '" alt="">'; }).join('') : '';
     var opcoes = '<option value="">Escolher equipe…</option>' + lista.map(function (x) {
-      return '<option value="' + esc(x.id) + '"' + (p && p.id === x.id ? ' selected' : '') + '>' + esc((x.slot ? x.slot + ' · ' : '') + x.name) + '</option>';
+      return '<option value="' + esc(x.id) + '"' + (p && p.id === x.id ? ' selected' : '') + '>' + esc((horaRot(x) ? horaRot(x) + ' · ' : '') + x.name) + '</option>';
     }).join('');
 
     // números
@@ -5496,9 +5531,9 @@
         (p ? '<span class="av-pos num">' + pos + ' de ' + lista.length + '</span>' : '') + '</div>' +
       (p ? '<div class="av-palco-atual">' + (figs ? '<span class="av-figs">' + figs + '</span>' : '') +
             '<div><span class="pc-ao-vivo"><i></i>No palco</span><b class="av-nome">' + esc(p.name) + '</b>' +
-            '<span class="tiny">' + esc([p.slot, p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ')) + '</span></div></div>'
+            '<span class="tiny">' + esc([horaRot(p), p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ')) + '</span></div></div>'
          : '<p class="av-vazio">Ninguém apresentando agora.</p>') +
-      '<div class="av-seguir">' + (prox ? 'A seguir: <b>' + esc(prox.name) + '</b>' + (prox.slot ? ' · ' + esc(prox.slot) : '') : (p ? '<b>Última equipe.</b>' : '')) + '</div>' +
+      '<div class="av-seguir">' + (prox ? 'A seguir: <b>' + esc(prox.name) + '</b>' + (horaRot(prox) ? ' · ' + esc(horaRot(prox)) : '') : (p ? '<b>Última equipe.</b>' : '')) + '</div>' +
       '<div class="av-botoes">' +
         (p ? '<button class="btn btn-outline av-ant" data-act="palcoAnt"' + (ant ? '' : ' disabled') + ' aria-label="Equipe anterior">' + ico('i-arrow-left') + '</button>' : '') +
         '<button class="btn btn-primary btn-lg av-prox" data-act="palcoProx"' + (p && !prox ? ' disabled' : '') + '>' +
@@ -6639,7 +6674,7 @@
 
   function saveEditor(form) {
     var e = admin.editor, kind = e.kind, fd = new FormData(form), o = {};
-    ['start', 'end', 'name', 'desc', 'place', 'tagline', 'category', 'slot', 'block', 'group', 'meaning', 'integration',
+    ['start', 'end', 'quando', 'name', 'desc', 'place', 'tagline', 'category', 'slot', 'block', 'group', 'meaning', 'integration',
       'problem', 'why', 'solution', 'how', 'impact', 'video', 'inspiration', 'story', 'projectId'].forEach(function (k) {
         if (fd.has(k)) o[k] = String(fd.get(k) || '').trim();
       });
