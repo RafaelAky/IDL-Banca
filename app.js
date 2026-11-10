@@ -4637,6 +4637,13 @@
      (PDF "Programação Convidados", 10/11/2026). Os slides "secao" abrem cada
      parte do dia e agrupam o roteiro no controle.                         */
   var DECK_V = 2;
+  /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
+     ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
+     img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
+     'yt:<código do YouTube>' para um vídeo. A equipe passa com o passador.  */
+  var APRES_EQUIPES = {
+    // 'prj_maos': ['01.webp', '02.webp', 'yt:XXXXXXXXXXX', '03.webp'],
+  };
   var DECK_PADRAO = [
     { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
     { id: 'sec_abertura',   tipo: 'secao',        on: true, titulo: 'Abertura', texto: '', hora: '8h' },
@@ -4695,7 +4702,16 @@
       if (!it.on) return;
       if (it.tipo === 'equipes') {
         var ps = it.bloco ? doBloco(it.bloco) : todas;
-        ps.forEach(function (p) { out.push({ key: 'equipe:' + p.id, tipo: 'equipe', pid: p.id, rotulo: p.name, grupo: grupo, n: todas.indexOf(p) + 1, de: todas.length }); });
+        ps.forEach(function (p) {
+          var pags = APRES_EQUIPES[p.id] || [];
+          out.push({ key: 'equipe:' + p.id, tipo: 'equipe', pid: p.id, rotulo: (pags.length ? 'Chamada · ' : '') + p.name, grupo: grupo, n: todas.indexOf(p) + 1, de: todas.length, temApres: pags.length > 0 });
+          pags.forEach(function (arq, k) {
+            var yt = /^yt:/.test(arq) ? arq.slice(3) : '';
+            out.push(yt
+              ? { key: 'apres:' + p.id + ':' + (k + 1), tipo: 'video', pid: p.id, item: { titulo: p.name, video: yt }, rotulo: '↳ ' + p.name + ' · vídeo', grupo: grupo }
+              : { key: 'apres:' + p.id + ':' + (k + 1), tipo: 'apresPag', pid: p.id, src: 'img/apres/' + p.id + '/' + arq, pag: k + 1, de: pags.length, rotulo: '↳ ' + p.name + ' · ' + (k + 1) + '/' + pags.length, grupo: grupo });
+          });
+        });
       } else if (it.tipo === 'candidatos') {
         candidatos().filter(function (c) { return c.video; }).forEach(function (c) {
           out.push({ key: 'video:' + c.id, tipo: 'videoHeroi', hid: c.id, rotulo: 'Vídeo · ' + String(c.name).split(/\s+[—–-]\s+/)[0], grupo: grupo });
@@ -4774,13 +4790,16 @@
           h = '<div class="sl-video"><iframe src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1&playsinline=1" title="' + esc(tit) + '" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>';
         }
         break;
+      case 'apresPag':
+        h = '<div class="sl-pag"><img src="' + esc(s.src) + '" alt="' + esc((byId(s.pid) || {}).name || '') + ' · página ' + s.pag + '"></div>';
+        break;
       case 'equipe':
         var p = byId(s.pid);
         if (!p) { h = '<div class="sl-centro"><h1 class="sl-mega">Equipe</h1></div>'; break; }
         var hs = (p.heroes || []).filter(function (h2) { return h2.image; }).slice(0, 2);
         var membros = (p.teams && p.teams.length > 1) ? p.teams.reduce(function (a, t) { return a.concat(t.members || []); }, []) : (p.members || []);
         h = '<div class="sl-equipe">' +
-          '<div class="sl-eq-txt"><span class="sl-noar"><i></i>No palco · equipe ' + s.n + ' de ' + s.de + '</span>' +
+          '<div class="sl-eq-txt"><span class="sl-noar' + (s.temApres ? ' sl-chamada' : '') + '"><i></i>' + (s.temApres ? 'Chamada ao palco' : 'No palco') + ' · equipe ' + s.n + ' de ' + s.de + '</span>' +
             '<h1 class="sl-eq-nome">' + esc(p.name) + '</h1>' +
             (p.tagline ? '<p class="sl-eq-lead">' + esc(p.tagline) + '</p>' : '') +
             '<p class="sl-eq-meta">' + esc([p.group ? 'Grupo ' + p.group : '', p.category, horaRot(p)].filter(Boolean).join(' · ')) + '</p>' +
@@ -4820,8 +4839,9 @@
       var k = Math.floor(Date.now() / 6000) % figs.length;
       Array.prototype.forEach.call(figs, function (f, j) { f.classList.toggle('on', j === k); });
     }, 1000);
-    return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + slideFundoIdl() + slideHtml(s, false) +
-      (s.tipo !== 'video' && s.tipo !== 'videoHeroi' && s.tipo !== 'fotos' ? slideRodape() : '') + '</div>';
+    var limpo = /^(video|videoHeroi|fotos|apresPag)$/.test(s.tipo);   // apresentação da equipe ocupa a tela inteira
+    return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + (s.tipo === 'apresPag' ? '' : slideFundoIdl()) + slideHtml(s, false) +
+      (limpo ? '' : slideRodape()) + '</div>';
   }
 
   // telão e mosaico: o cursor some depois de 3 s parado
@@ -5079,9 +5099,9 @@
   function irSlide(key) {
     if (!remote.on || !localState.adminKey) { toast('Entre como organização para controlar a apresentação.'); return; }
     var l = deckSlides(), i = deckIndice(key), s = l[i];
-    var ultEq = -1; l.forEach(function (x, j) { if (x.tipo === 'equipe') ultEq = j; });
+    var ultEq = -1; l.forEach(function (x, j) { if (x.pid) ultEq = j; });
     var palco = null;
-    if (s && s.tipo === 'equipe') palco = s.pid;
+    if (s && s.pid) palco = s.pid;   // chamada, páginas e vídeo da equipe: ela está no palco
     else if (ultEq >= 0 && i > ultEq) palco = '';
     var antes = { slide: remote.slide, palco: remote.palco, rev: remote.revelar, revB: remote.revelarBanca };
     remote.slide = key || null; remote.pausa = false;
@@ -5119,6 +5139,7 @@
       if (!s) return;
       var srcs = [];
       if (s.tipo === 'equipe') { var p = byId(s.pid); if (p) (p.heroes || []).forEach(function (h) { if (h.image) srcs.push(h.image); }); }
+      if (s.tipo === 'apresPag') srcs.push(s.src);
       srcs.forEach(function (u) { var im = new Image(); im.decoding = 'async'; im.src = u; });
     });
   }
@@ -5137,13 +5158,22 @@
     var k = e.key;
     if (k === 'F5') { e.preventDefault(); return; }
     if (k === 'b' || k === 'B' || k === '.' || k === 'w' || k === 'W') { e.preventDefault(); telaoPreta(); return; }
-    if (!localState.admin) return;
+    if (!localState.admin) {
+      // telão sem login: as setas não mudam nada (senão qualquer pessoa com o link mudaria o telão).
+      // Avisa uma vez como liberar, sem atrapalhar a tela.
+      if (/^(ArrowRight|ArrowDown|PageDown|ArrowLeft|ArrowUp|PageUp| |Enter|p|P)$/.test(k) && !telaoAvisoLogin) {
+        telaoAvisoLogin = true;
+        toast('Para passar os slides por aqui, entre como organização neste computador: 4 toques na logo do site ou /#/entrar, senha da organização.');
+      }
+      return;
+    }
     if (k === 'p' || k === 'P') { e.preventDefault(); definirPausaTelao(!remote.pausa); return; }
     var nav = /^(ArrowRight|ArrowDown|PageDown| |Enter|ArrowLeft|ArrowUp|PageUp|Backspace)$/.test(k);
     if (nav && remote.pausa) { e.preventDefault(); definirPausaTelao(false); return; }   // sai da pausa e volta ao slide
     if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); telaoPreta(false); passoSlide(1); }
     else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); telaoPreta(false); passoSlide(-1); }
   });
+  var telaoAvisoLogin = false;
   function telaoPreta(forcar) {
     var el = $('#tlPreta'), ligar = forcar == null ? !el : forcar;
     if (ligar && !el) { el = document.createElement('div'); el.id = 'tlPreta'; el.className = 'tl-preta'; document.body.appendChild(el); }
