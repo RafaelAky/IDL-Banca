@@ -2913,3 +2913,91 @@ html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) .logo-slot:not(#logoS
 .comp-menu { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; min-width: 180px; display: grid; padding: 6px; border-radius: 14px; background: var(--c-branco); border: 1px solid var(--c-linha); box-shadow: var(--sombra); }
 .comp-menu a, .comp-menu button { display: block; padding: 10px 12px; border-radius: 10px; font-size: var(--t-peq); font-weight: 600; color: var(--c-roxo); text-decoration: none; text-align: left; }
 .comp-menu a:hover, .comp-menu button:hover { background: var(--c-lilas-claro); }
+
+/* =========================================================================
+   APRESENTAÇÃO · visual do Instituto Dente de Leão (10/11/2026)
+   Fundo creme, títulos em Montserrat (a fonte do logo), dourado e laranja
+   do dente-de-leão, flores girando devagar e sementes de leve. Vale para
+   os slides do telão e as prévias do controle; o modo pausa, a tela da
+   votação e as revelações têm visual próprio.                          */
+.tl-slide:not(.pausa) {
+  --sl-tinta: #3a3029; --sl-tinta-2: #6b6058; --sl-ouro: #e9a020; --sl-laranja: #d9741a; --sl-linha: rgba(120, 90, 40, .16);
+  color: var(--sl-tinta);
+  background: radial-gradient(90% 80% at 50% 42%, #ffffff 0%, #fffcf5 42%, #fbefd8 100%);
+  font-family: "Montserrat IDL", "Montserrat", var(--fonte);
+}
+.tl-slide:not(.pausa) .tl-fundo-s { color: rgba(185, 138, 62, .26); }
+.sl-flores { position: absolute !important; inset: 0; z-index: 0 !important; pointer-events: none; overflow: hidden; }
+.sl-flor { position: absolute; display: block; }
+.sl-flor-a { width: 72vh; right: -18vh; top: -22vh; opacity: .17; animation: tiGira 120s linear infinite; }
+.sl-flor-b { width: 54vh; left: -16vh; bottom: -20vh; opacity: .13; animation: tiGira 150s linear infinite reverse; }
+.sl-video .sl-flores, .sl-fotos ~ .sl-flores { display: none; }
+
+/* textos */
+.tl-slide:not(.pausa) .sl-eyebrow { color: var(--sl-laranja); font-weight: 300; letter-spacing: .42em; }
+.tl-slide:not(.pausa) :is(.sl-mega, .sl-tit, .sl-eq-nome) { color: var(--sl-tinta); font-weight: 800; letter-spacing: -.02em; }
+.tl-slide:not(.pausa) :is(.sl-lead, .sl-eq-lead) { color: var(--sl-tinta-2); font-weight: 300; }
+.tl-slide:not(.pausa) .sl-frase { color: var(--sl-tinta); font-weight: 300; }
+.tl-slide:not(.pausa) :is(.sl-data, .sl-eq-meta) { color: var(--sl-laranja); font-weight: 800; }
+.tl-slide:not(.pausa) .sl-eq-membros { color: var(--sl-tinta-2); font-weight: 300; }
+.tl-slide:not(.pausa) .sl-marca img { filter: none; }
+.tl-slide:not(.pausa) .sl-marca i { background: var(--sl-linha); }
+
+/* abertura de cada parte do dia */
+.sl-secao-in { gap: 3vh; }
+.sl-hora { display: inline-block; padding: 1.2vh 2.4vw; border-radius: 99px; background: var(--sl-tinta); color: #fff; font-weight: 800; font-size: clamp(16px, 2vw, 40px); letter-spacing: .06em; }
+.sl-traco { display: flex; align-items: center; gap: 1.6vw; }
+.sl-traco i { display: block; width: 12vw; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, #f2c94c); }
+.sl-traco i:last-child { background: linear-gradient(90deg, #f2c94c, transparent); }
+.sl-traco-flor { width: 5vh; height: 5vh; display: block; }
+.sl-secao .sl-mega { max-width: 18ch; }
+
+/* Instituto */
+.tl-slide:not(.pausa) .sl-logo-caixa { background: none; box-shadow: none; padding: 0; }
+.tl-slide:not(.pausa) .sl-logo-caixa .sl-logo-inst { width: min(56vw, 900px); }
+
+/* programação */
+.tl-slide:not(.pausa) .sl-prog li { color: var(--sl-tinta); border-bottom-color: var(--sl-linha); font-weight: 300; }
+.tl-slide:not(.pausa) .sl-prog b { color: var(--sl-laranja); font-weight: 800; min-width: 6.4em; }
+
+/* números */
+.tl-slide:not(.pausa) .sl-nums b { color: var(--sl-ouro); text-shadow: none; }
+.tl-slide:not(.pausa) .sl-nums span { color: var(--sl-tinta-2); font-weight: 800; }
+
+/* como funciona */
+.tl-slide:not(.pausa) .sl-caixa { background: #fff; border: 2px solid #f1e3c6; box-shadow: 0 2vh 5vh rgba(120, 80, 20, .1); }
+.tl-slide:not(.pausa) .sl-cx-banca { background: #fff8ee; border-color: #f3cf99; }
+.tl-slide:not(.pausa) .sl-tag { background: var(--sl-tinta); color: #fff; }
+.tl-slide:not(.pausa) .sl-cx-banca .sl-tag { background: var(--sl-laranja); }
+.tl-slide:not(.pausa) .sl-caixa h3 { color: var(--sl-tinta); font-weight: 800; }
+.tl-slide:not(.pausa) :is(.sl-caixa ol, .sl-caixa ul, .sl-caixa p) { color: var(--sl-tinta-2); font-weight: 300; }
+
+/* equipe no palco */
+.tl-slide:not(.pausa) .sl-eq-figs::before { background: radial-gradient(closest-side, rgba(242, 201, 76, .38), rgba(242, 201, 76, 0)); }
+.tl-slide:not(.pausa) .sl-eq-figs img { filter: drop-shadow(0 2vh 3vh rgba(90, 60, 20, .22)); }
+.tl-slide:not(.pausa) .sl-eq-figs figcaption { color: var(--sl-tinta); }
+.tl-slide:not(.pausa) .sl-desfile img { filter: drop-shadow(0 1vh 2vh rgba(90, 60, 20, .2)); }
+
+/* fotos e vídeo */
+.tl-slide:not(.pausa) .sl-fotos-tit { background: rgba(255, 252, 245, .92); color: var(--sl-tinta); }
+
+/* rodapé: logo do Instituto e a marca do evento */
+.tl-slide:not(.pausa) .sl-rodape { opacity: .9; display: inline-flex; align-items: center; gap: 1.4vw; }
+.sl-rodape-inst { height: clamp(18px, 3.4vh, 46px); width: auto; display: block; }
+.sl-rodape > i { width: 1px; height: 3vh; background: var(--sl-linha, rgba(0,0,0,.15)); }
+/* textos corridos em Poppins (mais legível no projetor); títulos ficam em Montserrat */
+.tl-slide:not(.pausa) :is(.sl-lead, .sl-eq-lead, .sl-eq-membros, .sl-prog li, .sl-caixa ol, .sl-caixa ul, .sl-caixa p, .sl-frase) { font-family: var(--fonte); font-weight: 400; color: #4f463f; }
+.tl-slide:not(.pausa) .sl-frase { font-weight: 500; color: var(--sl-tinta); }
+.tl-slide:not(.pausa) .sl-eyebrow { font-family: var(--fonte); font-weight: 600; letter-spacing: .3em; color: #c0681a; }
+.tl-slide:not(.pausa) .sl-rodape { left: 3vw !important; right: auto !important; bottom: 2.6vh; }
+.sl-rodape-inst { height: clamp(22px, 4.6vh, 64px); }
+.tl-slide:not(.pausa) .sl-rodape .sl-marca img { height: clamp(16px, 2.8vh, 40px); }
+.sl-comofunciona .sl-col, .sl-programacao .sl-col { padding-bottom: 9vh; }
+.sl-equipe { padding-bottom: 10vh; }
+/* logo do Instituto no rodapé: duplicado por cima de si mesmo para o dourado ficar firme no creme */
+.sl-rodape-inst { position: relative; display: block; height: clamp(22px, 4.6vh, 64px); }
+.sl-rodape-inst img { display: block; height: 100%; width: auto; }
+.sl-rodape-inst img + img { position: absolute; left: 0; top: 0; }
+.sl-flor-b { opacity: .08; }
+.tl-slide:not(.pausa) .sl-caixa { padding: 3vh 2.6vw; gap: 1.2vh; }
+.tl-slide:not(.pausa) .sl-dois { margin-top: 1vh; }

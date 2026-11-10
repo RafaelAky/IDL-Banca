@@ -4633,43 +4633,74 @@
      Apresentação do painel). Blocos automáticos: "equipes" vira 1 slide por
      equipe (e marca a equipe No palco), "candidatos" vira 1 vídeo por Herói
      candidato. Votação e revelações usam as telas vivas que já existem.  */
+  /* Roteiro padrão da apresentação, na ordem do cronograma oficial
+     (PDF "Programação Convidados", 10/11/2026). Os slides "secao" abrem cada
+     parte do dia e agrupam o roteiro no controle.                         */
+  var DECK_V = 2;
   var DECK_PADRAO = [
-    { id: 'abertura',       tipo: 'abertura',     on: true, titulo: 'Banca Final IDL Tech', texto: 'Encerramento da Trilha 2026' },
+    { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
+    { id: 'sec_abertura',   tipo: 'secao',        on: true, titulo: 'Abertura', texto: '', hora: '8h' },
+    { id: 'abertura',       tipo: 'abertura',     on: true, titulo: 'Banca Final IDL Tech', texto: 'Trilhei: de sementes para raízes' },
     { id: 'instituto',      tipo: 'instituto',    on: true, titulo: 'Instituto Dente de Leão', texto: 'Fortalecendo pessoas, semeando consciência e transformando realidades.' },
     { id: 'programacao',    tipo: 'programacao',  on: true, titulo: 'Programação do dia' },
     { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
     { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
     { id: 'comofunciona',   tipo: 'comofunciona', on: true, titulo: 'Como funciona a Banca Final' },
+    { id: 'sec_bloco1',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Primeiro bloco', hora: '8h20' },
+    { id: 'equipes1',       tipo: 'equipes',      on: true, titulo: 'Primeiro bloco', bloco: '1º bloco' },
+    { id: 'cafe',           tipo: 'secao',        on: true, titulo: 'Intervalo para o café', texto: 'Voltamos às 10h10 com o segundo bloco.', hora: '9h40' },
+    { id: 'sec_bloco2',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Segundo bloco', hora: '10h10' },
+    { id: 'equipes2',       tipo: 'equipes',      on: true, titulo: 'Segundo bloco', bloco: '2º bloco' },
+    { id: 'sec_premios',    tipo: 'secao',        on: true, titulo: 'Vídeos dos Heróis, votação, homenagens e premiações', texto: '', hora: '11h30 às 12h30' },
     { id: 'candidatos',     tipo: 'candidatos',   on: true, titulo: 'Vídeos dos candidatos a Herói' },
     { id: 'votacao',        tipo: 'votacao',      on: true, titulo: 'Votação do público' },
-    { id: 'equipes',        tipo: 'equipes',      on: true, titulo: 'Apresentação das equipes' },
-    { id: 'intervalo',      tipo: 'texto',        on: true, titulo: 'A banca está deliberando', texto: 'Em instantes: a devolutiva da banca e as revelações.' },
+    { id: 'intervalo',      tipo: 'texto',        on: true, titulo: 'A banca está deliberando', texto: 'Em instantes: as homenagens e as premiações.' },
+    { id: 'homenagens',     tipo: 'texto',        on: true, titulo: 'Homenagens', texto: 'Obrigado a quem caminhou com a Trilha 2026.' },
     { id: 'revelaBanca',    tipo: 'revelaBanca',  on: true, titulo: 'Revelação · Projeto destaque' },
     { id: 'revelaHeroi',    tipo: 'revelaHeroi',  on: true, titulo: 'Revelação · Herói da Trilha' },
+    { id: 'sec_fim',        tipo: 'secao',        on: true, titulo: 'Encerramento', texto: '', hora: '12h30' },
     { id: 'fotos',          tipo: 'fotos',        on: true, titulo: 'Fotos da Trilha 2026' },
-    { id: 'agradecimentos', tipo: 'texto',        on: true, titulo: 'Obrigado!', texto: 'A Trilha 2026 foi feita por cada trilheiro, cada família e cada parceiro que acreditou. Até a próxima!' }
+    { id: 'agradecimentos', tipo: 'texto',        on: true, titulo: 'Obrigado!', texto: 'A Trilha 2026 foi feita por cada trilheiro, cada família e cada parceiro que acreditou. Até a próxima!' },
+    { id: 'almoco',         tipo: 'secao',        on: true, titulo: 'Almoço para os trilheiros', texto: 'Obrigado por trilhar com a gente!', hora: 'Em seguida' }
   ];
   function deckConfig() {
-    var salvo = (db.apresentacao && db.apresentacao.slides) || [];
-    var ids = salvo.map(function (x) { return x.id; });
-    var lista = salvo.map(function (x) { return JSON.parse(JSON.stringify(x)); });
-    // slides novos do padrão que ainda não estão no roteiro salvo entram no fim
-    DECK_PADRAO.forEach(function (d) { if (ids.indexOf(d.id) < 0) lista.push(JSON.parse(JSON.stringify(d))); });
-    return lista;
+    var ap = db.apresentacao || {}, salvo = ap.slides || [];
+    if (ap.v === DECK_V) {
+      var ids = salvo.map(function (x) { return x.id; });
+      var lista = salvo.map(function (x) { return JSON.parse(JSON.stringify(x)); });
+      // slides novos do padrão que ainda não estão no roteiro salvo entram no fim
+      DECK_PADRAO.forEach(function (d) { if (ids.indexOf(d.id) < 0) lista.push(JSON.parse(JSON.stringify(d))); });
+      return lista;
+    }
+    // roteiro salvo antes do cronograma novo: vale a ordem nova, mantendo
+    // o que a organização já tinha editado (textos, link do vídeo, ligado/desligado)
+    var porId = {}; salvo.forEach(function (x) { porId[x.id] = x; });
+    return DECK_PADRAO.map(function (d) {
+      var n = JSON.parse(JSON.stringify(d)), o = porId[d.id];
+      if (o) ['titulo', 'texto', 'video', 'on'].forEach(function (k) { if (o[k] !== undefined && o[k] !== '') n[k] = o[k]; });
+      return n;
+    });
   }
-  // roteiro expandido: um item por slide de verdade, na ordem
+  // roteiro expandido: um item por slide de verdade, na ordem; cada um leva a parte do dia (grupo)
   function deckSlides() {
-    var out = [];
+    var out = [], grupo = '', todas = projetosEmOrdem();
+    function doBloco(rot) {
+      var com = todas.filter(function (p) { return p.block === rot; });
+      if (com.length || todas.some(function (p) { return /bloco/.test(p.block || ''); })) return com;
+      var meio = Math.ceil(todas.length / 2);   // sem blocos marcados: metade em cada
+      return rot === '1º bloco' ? todas.slice(0, meio) : todas.slice(meio);
+    }
     deckConfig().forEach(function (it) {
+      if (it.tipo === 'secao' && it.on) grupo = [it.hora, it.titulo].filter(Boolean).join(' · ');
       if (!it.on) return;
       if (it.tipo === 'equipes') {
-        var ps = projetosEmOrdem();
-        ps.forEach(function (p, i) { out.push({ key: 'equipe:' + p.id, tipo: 'equipe', pid: p.id, rotulo: p.name, grupo: it.titulo, n: i + 1, de: ps.length }); });
+        var ps = it.bloco ? doBloco(it.bloco) : todas;
+        ps.forEach(function (p) { out.push({ key: 'equipe:' + p.id, tipo: 'equipe', pid: p.id, rotulo: p.name, grupo: grupo, n: todas.indexOf(p) + 1, de: todas.length }); });
       } else if (it.tipo === 'candidatos') {
         candidatos().filter(function (c) { return c.video; }).forEach(function (c) {
-          out.push({ key: 'video:' + c.id, tipo: 'videoHeroi', hid: c.id, rotulo: 'Vídeo · ' + String(c.name).split(/\s+[—–-]\s+/)[0], grupo: it.titulo });
+          out.push({ key: 'video:' + c.id, tipo: 'videoHeroi', hid: c.id, rotulo: 'Vídeo · ' + String(c.name).split(/\s+[—–-]\s+/)[0], grupo: grupo });
         });
-      } else out.push({ key: it.id, tipo: it.tipo, item: it, rotulo: it.titulo });
+      } else out.push({ key: it.id, tipo: it.tipo, item: it, rotulo: it.tipo === 'secao' ? [it.titulo, it.texto].filter(Boolean).join(' · ') : it.titulo, grupo: grupo });
     });
     return out;
   }
@@ -4678,6 +4709,13 @@
   // ---------- conteúdo de cada slide (telão e prévia do controlador) ----------
   function slideMarca() { return '<span class="sl-marca"><img src="img/kv/trilhei.webp" alt=""><i></i><img src="img/kv/idltech.webp" alt=""></span>'; }
   function ytId(v) { var m = String(v || '').match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(String(v || '').trim()) ? String(v).trim() : ''); }
+  // visual da apresentação: o do Instituto (fundo creme, flores douradas girando devagar, sementes de leve)
+  function slideFundoIdl() {
+    return telaoFundo() + '<div class="sl-flores" aria-hidden="true">' + idlFlorSvg('sl-flor sl-flor-a') + idlFlorSvg('sl-flor sl-flor-b') + '</div>';
+  }
+  function slideRodape() {
+    return '<span class="sl-rodape"><span class="sl-rodape-inst"><img src="img/logo-idl-telao.webp" alt="Instituto Dente de Leão"><img src="img/logo-idl-telao.webp" alt="" aria-hidden="true"></span><i></i>' + slideMarca() + '</span>';
+  }
   function slideHtml(s, previa) {
     var it = s.item || {}, h = '';
     switch (s.tipo) {
@@ -4692,23 +4730,30 @@
         h = '<div class="sl-centro"><span class="sl-logo-caixa"><img class="sl-logo-inst" src="img/logo-instituto.webp" alt="Instituto Dente de Leão"></span>' +
           '<p class="sl-frase">' + esc(it.texto || '') + '</p></div>';
         break;
+      case 'secao':
+        h = '<div class="sl-centro sl-secao-in">' +
+          (it.hora ? '<span class="sl-hora">' + esc(it.hora) + '</span>' : '') +
+          '<h1 class="sl-mega' + (String(it.titulo || '').length > 34 ? ' sl-mega-m' : '') + '">' + esc(it.titulo) + '</h1>' +
+          '<span class="sl-traco" aria-hidden="true"><i></i>' + idlFlorSvg('sl-traco-flor') + '<i></i></span>' +
+          (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
+        break;
       case 'texto':
-        h = '<div class="sl-centro"><span class="sl-eyebrow">IDL · Trilha 2026</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
+        h = '<div class="sl-centro"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
           (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
         break;
       case 'programacao':
-        h = '<div class="sl-col"><span class="sl-eyebrow">IDL · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+        h = '<div class="sl-col"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
           '<ol class="sl-prog">' + ordered().filter(function (x) { return x.start && x.start !== x.end; }).map(function (x) {
             return '<li><b class="num">' + esc(x.quando || x.start) + '</b><span>' + esc(x.name) + '</span></li>'; }).join('') + '</ol></div>';
         break;
       case 'numeros':
         var nEq = db.projects.reduce(function (a, p) { return a + Math.max(1, (p.teams || []).length); }, 0);
-        h = '<div class="sl-centro"><span class="sl-eyebrow">IDL · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+        h = '<div class="sl-centro"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
           '<div class="sl-nums">' + [[nTrilheiros(), 'trilheiros'], [db.projects.length, 'projetos'], [nEq, 'equipes'], [allHeroes().length, 'Heróis']].map(function (n, i) {
             return '<div style="--i:' + i + '"><b class="num">' + n[0] + '</b><span>' + n[1] + '</span></div>'; }).join('') + '</div></div>';
         break;
       case 'comofunciona':
-        h = '<div class="sl-col"><span class="sl-eyebrow">IDL · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+        h = '<div class="sl-col"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
           '<div class="sl-dois">' +
             '<section class="sl-caixa sl-cx-pub"><span class="sl-tag">Prêmio do público</span><h3>Herói da Trilha</h3>' +
               '<ol><li>Aponte a câmera para o QR Code no telão</li><li>Informe o seu CPF</li><li>Escolha o seu Herói e confirme. Um voto por pessoa</li></ol></section>' +
@@ -4775,8 +4820,8 @@
       var k = Math.floor(Date.now() / 6000) % figs.length;
       Array.prototype.forEach.call(figs, function (f, j) { f.classList.toggle('on', j === k); });
     }, 1000);
-    return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + telaoFundo() + slideHtml(s, false) +
-      (s.tipo !== 'video' && s.tipo !== 'videoHeroi' && s.tipo !== 'fotos' ? '<span class="sl-rodape">' + slideMarca() + '</span>' : '') + '</div>';
+    return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + slideFundoIdl() + slideHtml(s, false) +
+      (s.tipo !== 'video' && s.tipo !== 'videoHeroi' && s.tipo !== 'fotos' ? slideRodape() : '') + '</div>';
   }
 
   // telão e mosaico: o cursor some depois de 3 s parado
@@ -5212,17 +5257,19 @@
   function adminApresentacao() {
     var cfg = deckConfig();
     var linhas = cfg.map(function (it, i) {
-      var auto = it.tipo === 'equipes' ? 'Automático: 1 slide por equipe, na ordem da programação (marca a equipe No palco)'
+      var auto = it.tipo === 'secao' ? 'Abertura de uma parte do dia (agrupa o roteiro no controle)'
+        : it.tipo === 'equipes' ? 'Automático: 1 slide por equipe do ' + (it.bloco || 'evento') + ', na ordem da programação (marca a equipe No palco)'
         : it.tipo === 'candidatos' ? 'Automático: 1 vídeo por Herói candidato com vídeo' : it.tipo === 'votacao' ? 'Tela viva: QR da votação'
         : it.tipo === 'revelaHeroi' || it.tipo === 'revelaBanca' ? (SOM_REVELACAO ? 'Tela viva: revelação com animação e som' : 'Tela viva: revelação com animação (som desligado por enquanto)') : it.tipo === 'programacao' ? 'Automático: puxa a Programação'
         : it.tipo === 'numeros' ? 'Automático: números da Trilha' : it.tipo === 'fotos' ? 'Automático: fotos da aba Fotos' : '';
-      var temTexto = /^(abertura|instituto|texto)$/.test(it.tipo);
+      var temTexto = /^(abertura|instituto|texto|secao)$/.test(it.tipo);
       return '<li class="ap-item' + (it.on ? '' : ' off') + '" data-i="' + i + '">' +
         '<div class="ap-cab"><label class="ap-on"><input type="checkbox" data-ap="on"' + (it.on ? ' checked' : '') + '> <span class="num">' + (i + 1) + '</span></label>' +
           '<input class="ap-tit" data-ap="titulo" value="' + esc(it.titulo || '') + '" aria-label="Título do slide">' +
           '<span class="ap-mov"><button type="button" class="iconbtn" data-act="apMover" data-d="-1" aria-label="Subir">' + ico('i-up') + '</button><button type="button" class="iconbtn" data-act="apMover" data-d="1" aria-label="Descer">' + ico('i-down') + '</button></span></div>' +
         (auto ? '<p class="tiny ap-auto">' + esc(auto) + '</p>' : '') +
         (temTexto ? '<textarea data-ap="texto" rows="2" aria-label="Texto do slide">' + esc(it.texto || '') + '</textarea>' : '') +
+        (it.tipo === 'secao' ? '<input data-ap="hora" value="' + esc(it.hora || '') + '" placeholder="Horário (ex.: 8h20)" aria-label="Horário da parte">' : '') +
         (it.tipo === 'video' ? '<input data-ap="video" value="' + esc(it.video || '') + '" placeholder="Link do YouTube do vídeo" aria-label="Link do vídeo">' : '') +
         '</li>';
     }).join('');
@@ -7090,7 +7137,7 @@
       var cfgM = apLerForm(), li = el.closest('.ap-item'), iM = +li.getAttribute('data-i'), dM = +el.getAttribute('data-d'), jM = iM + dM;
       if (jM < 0 || jM >= cfgM.length) return;
       var tM = cfgM[iM]; cfgM[iM] = cfgM[jM]; cfgM[jM] = tM;
-      db.apresentacao = { slides: cfgM }; render();
+      db.apresentacao = { v: DECK_V, slides: cfgM }; render();
     }
     else if (act === 'apPadrao') {
       admin.confirm = { title: 'Voltar ao roteiro padrão?', body: 'A ordem, os slides ligados e os textos voltam ao padrão. Os textos que vocês editaram se perdem.', yes: 'Sim, voltar', danger: true,
@@ -7425,7 +7472,7 @@
 
     if (f.matches && f.matches('form.bp-form')) return;
     if (f.id === 'entrarForm') { entrarSubmit(); return; }
-    if (f.id === 'apForm') { db.apresentacao = { slides: apLerForm() }; save(); toast('Apresentação salva. O telão e o controle já usam o roteiro novo.'); return; }
+    if (f.id === 'apForm') { db.apresentacao = { v: DECK_V, slides: apLerForm() }; save(); toast('Apresentação salva. O telão e o controle já usam o roteiro novo.'); return; }
     if (f.id === 'senhaAdminForm') {
       var novaA = normSenha($('#novaSenhaAdmin').value);
       if (novaA.length < 6) { toast('Use pelo menos 6 caracteres.'); return; }
