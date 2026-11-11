@@ -1297,7 +1297,7 @@
           var ps = projectsInSlot(it);
           if (!ps.length) return '';
           return '<div class="tlprojs">' + ps.map(function (p) {
-            var noPalco = remote.palco === p.id;
+            var noPalco = palcoNoSite(p.id);
             return '<button class="tlproj' + (noPalco ? ' is-palco' : '') + '" data-go="projeto/' + esc(p.id) + '"><b class="num">' + (ps.indexOf(p) + 1) + '</b>' + esc(p.name) +
               (noPalco ? '<span class="pc-ao-vivo"><i></i>No palco</span>' : '') + '</button>';
           }).join('') + '</div>';
@@ -1400,9 +1400,9 @@
           '<button class="btn btn-sm btn-outline" style="margin-top:14px" data-filter="todos">Ver todos</button></div>';
       } else {
         // destaque: a equipe que está no palco agora (marcada pela organização)
-        var destaqueId = remote.on && remote.palco ? remote.palco : null;
+        var destaqueId = palcoNoSite() ? remote.palco : null;
         var indice = '<ol class="indice">' + list.map(function (p) {
-          var aoVivoAgora = !!(remote.on && remote.palco === p.id);
+          var aoVivoAgora = palcoNoSite(p.id);
           var eqs = (p.teams || []).length;
           return '<li><button class="ind-item' + (p.id === destaqueId ? ' is-foco' : '') + '" data-go="projeto/' + esc(p.id) + '">' +
             '<span class="ind-hora num">' + (aoVivoAgora ? '<span class="chip-live"><span class="livedot"></span>Agora</span>' : esc(horaRot(p))) + '</span>' +
@@ -1590,7 +1590,7 @@
         '<div class="cont det-topo-in">' +
           '<div class="det-txt">' +
             '<button class="voltar" data-go="projetos">' + ico('i-arrow-left') + 'Projetos</button>' +
-            (remote.palco === p.id ? '<span class="pc-ao-vivo"><i></i>No palco agora</span>' : '') +
+            (palcoNoSite(p.id) ? '<span class="pc-ao-vivo"><i></i>No palco agora</span>' : '') +
             (meta ? '<p class="det-meta">' + meta + '</p>' : '') +
             '<h1 class="titulo-pag">' + esc(p.name) + '</h1>' +
             (p.tagline ? '<p class="lead">' + esc(p.tagline) + '</p>' : '') +
@@ -2850,7 +2850,7 @@
   // aba Leilão: desligada depois do leilão (o código continua aqui; para religar, troque para true)
   var LEILAO_ATIVO = false;
   var ADMIN_TABS = [
-    ['check', 'Checklist'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []).concat([['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
+    ['check', 'Checklist'], ['camisas', 'Camisas'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []).concat([['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
     ['programacao', 'Programação'], ['projetos', 'Projetos'],
     ['herois', 'Heróis'], ['banca', 'Banca'], ['retro', 'Trilha 2026'], ['dados', 'Dados']
   ]);
@@ -2880,6 +2880,7 @@
   function adminTab() {
     admin.tab = abaDaRota(admin.tab);   // aba que não existe mais (ex.: Leilão desligado) cai na Visão geral
     if (admin.tab === 'check') return adminChecklist();
+    if (admin.tab === 'camisas') return adminCamisas();
     if (admin.tab === 'aovivo') return adminAoVivo();
     if (admin.tab === 'apres') return adminApresentacao();
     if (admin.tab === 'leilao' && LEILAO_ATIVO) return adminLeilao();
@@ -3781,7 +3782,7 @@
     if (!cs.length) cs = opcoesDeVoto().slice(0, 6);
     // a palavra vem do endereço (#/telao/PALAVRA) ou, se este aparelho estiver
     // com o painel aberto, do próprio banco
-    var palavra = route.param ? decodeURIComponent(route.param).trim() : (remote.exigeChave ? telao.palavra : '');
+    var palavra = route.param && !telaoCodigo() ? decodeURIComponent(route.param).trim() : (remote.exigeChave ? telao.palavra : '');
     // logo abaixo de "Aponte a câmera": a palavra-chave anunciada no palco
     var selo = palavra ? '<div class="tl-palavra tl-palavra-topo"><span>Palavra-chave</span><b>' + esc(palavra) + '</b></div>' : '';
     var host = siteBase().replace(/^https?:\/\//, '') || 'o site do evento';
@@ -3918,7 +3919,10 @@
   }
   function nomesHerois(p) { return (p.heroes || []).map(function (h) { return String(h.name).split(/\s+[—–-]\s+/)[0]; }).join(' e '); }
 
+  // "No palco agora" para o público só vale no dia do evento (no ensaio, com o relógio de ensaio ligado)
+  function palcoNoSite(pid) { return !!(remote.on && remote.palco && isEventDay() && (pid == null || remote.palco === pid)); }
   function cartaoPalco() {
+    if (!palcoNoSite()) return '';
     var p = palcoAtual();
     if (!p) return '';
     var prox = palcoVizinho(1);
@@ -5082,10 +5086,10 @@
     pz.rod = setInterval(passo, 500);
   }
   function definirPausaTelao(v) {
-    if (!remote.on || !localState.adminKey) { toast('Entre como organização para usar o modo pausa.'); return; }
+    if (!remote.on || !chaveComando()) { toast('Entre como organização para usar o modo pausa.'); return; }
     var antes = remote.pausa;
     remote.pausa = !!v; render();
-    sbRpc('definir_pausa', { p_chave: localState.adminKey, p_pausa: !!v }).then(function (r) {
+    sbRpc('definir_pausa', { p_chave: chaveComando(), p_pausa: !!v }).then(function (r) {
       if (!r || !r.ok) throw new Error((r && r.erro) || 'falhou');
       toast(v ? 'Modo pausa ligado: fotos passando no telão.' : 'Modo pausa desligado.');
     }).catch(function (e) {
@@ -5097,7 +5101,7 @@
   // ---------- navegação ----------
   var apres = { pend: null, voando: false, fila: null, corte: 0 };
   function irSlide(key) {
-    if (!remote.on || !localState.adminKey) { toast('Entre como organização para controlar a apresentação.'); return; }
+    if (!remote.on || !chaveComando()) { toast('Entre como organização para controlar a apresentação.'); return; }
     var l = deckSlides(), i = deckIndice(key), s = l[i];
     var ultEq = -1; l.forEach(function (x, j) { if (x.pid) ultEq = j; });
     var palco = null;
@@ -5118,7 +5122,7 @@
   function enviarSlide(m) {
     if (apres.voando) { if (apres.fila && apres.fila.palco !== null && m.palco === null) m.palco = apres.fila.palco; apres.fila = m; return; }
     apres.voando = true;
-    sbRpc('definir_slide', { p_chave: localState.adminKey, p_slide: m.key, p_palco: m.palco }).then(function (r) {
+    sbRpc('definir_slide', { p_chave: chaveComando(), p_slide: m.key, p_palco: m.palco }).then(function (r) {
       if (!r || !r.ok) throw new Error((r && r.erro) || 'falhou');
     }).catch(function (e) {
       if (!apres.fila) {
@@ -5158,7 +5162,7 @@
     var k = e.key;
     if (k === 'F5') { e.preventDefault(); return; }
     if (k === 'b' || k === 'B' || k === '.' || k === 'w' || k === 'W') { e.preventDefault(); telaoPreta(); return; }
-    if (!localState.admin) {
+    if (!localState.admin && !telaoCodigo()) {
       // telão sem login: as setas não mudam nada (senão qualquer pessoa com o link mudaria o telão).
       // Avisa uma vez como liberar, sem atrapalhar a tela.
       if (/^(ArrowRight|ArrowDown|PageDown|ArrowLeft|ArrowUp|PageUp| |Enter|p|P)$/.test(k) && !telaoAvisoLogin) {
@@ -5174,6 +5178,11 @@
     else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); telaoPreta(false); passoSlide(-1); }
   });
   var telaoAvisoLogin = false;
+  /* link secreto do telão (/#/telao/acesso-...): nele, qualquer pessoa com o
+     teclado ou o passador troca os slides e liga a pausa, sem login. Sem o
+     código, o telão só assiste. O código é conferido no banco.          */
+  function telaoCodigo() { return route.name === 'telao' && /^acesso-[\w-]{16,}$/.test(route.param || '') ? route.param : ''; }
+  function chaveComando() { return localState.adminKey || telaoCodigo(); }
   function telaoPreta(forcar) {
     var el = $('#tlPreta'), ligar = forcar == null ? !el : forcar;
     if (ligar && !el) { el = document.createElement('div'); el.id = 'tlPreta'; el.className = 'tl-preta'; document.body.appendChild(el); }
@@ -5407,6 +5416,107 @@
     return cfg;
   }
 
+
+
+  /* =========================== CAMISAS DO EVENTO ===========================
+     Aba "Camisas" do painel: lista dos trilheiros com o tamanho e o "recebeu",
+     para conferir antes da programação começar. Fica no banco: várias pessoas
+     marcam ao mesmo tempo e todos veem (atualiza sozinho a cada 5 s).        */
+  var cam = { itens: null, erro: '', carregando: false, filtro: 'faltam', busca: '', editando: null, timer: null, em: 0 };
+  var CAM_TAMS = ['PP', 'P', 'M', 'G', 'GG', 'XG'];
+  function camNorm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+  function camCarregar(silencioso) {
+    if (!remote.on || !localState.adminKey || cam.carregando) return;
+    cam.carregando = true; if (!silencioso) render();
+    sbRpc('camisas_listar', { p_chave: localState.adminKey }).then(function (r) {
+      cam.carregando = false;
+      if (!r || !r.ok) { cam.erro = r && r.erro === 'chave_invalida' ? 'A senha deste aparelho não confere. Saia e entre de novo.' : 'Não consegui buscar a lista.'; render(); return; }
+      var antes = JSON.stringify(cam.itens), novo = r.itens || [];
+      cam.itens = novo; cam.erro = ''; cam.em = Date.now();
+      var ativo = document.activeElement, digitando = ativo && /^(INPUT|SELECT)$/.test(ativo.tagName) && ativo.closest && ativo.closest('.cam');
+      if ((!silencioso || antes !== JSON.stringify(novo)) && route.name === 'admin' && admin.tab === 'camisas' && !digitando) render();
+    }).catch(function (e) {
+      cam.carregando = false;
+      cam.erro = String(e && e.message) === 'http 404' ? 'O banco ainda não tem a lista de camisas: rode o supabase.sql mais recente no Supabase.' : 'Sem conexão com o servidor.';
+      render();
+    });
+  }
+  setInterval(function () { if (route.name === 'admin' && admin.tab === 'camisas' && localState.admin && document.visibilityState !== 'hidden') camCarregar(true); }, 5000);
+  function camRepetidos() {
+    // nomes iguais (sem acento) e primeiros nomes repetidos sem sobrenome que diferencie
+    var cont = {}, rep = {};
+    (cam.itens || []).forEach(function (x) { var k = camNorm(x.nome); cont[k] = (cont[k] || 0) + 1; });
+    (cam.itens || []).forEach(function (x) { if (cont[camNorm(x.nome)] > 1) rep[x.id] = true; });
+    return rep;
+  }
+  function adminCamisas() {
+    if (!remote.on) return '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">A lista de camisas funciona na versão publicada, com o banco ligado.</p></div>';
+    if (!cam.itens && !cam.carregando && !cam.erro) setTimeout(function () { camCarregar(); }, 0);
+    if (cam.erro && !cam.itens) return '<div class="stack"><h2 class="h2">Camisas</h2><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">' + esc(cam.erro) + '</p></div>' +
+      '<button class="btn btn-outline" data-act="camAtualizar">Tentar de novo</button></div>';
+    if (!cam.itens) return '<div class="stack"><h2 class="h2">Camisas</h2><p class="small">Buscando a lista…</p></div>';
+    var L = cam.itens, tot = L.length, ok = L.filter(function (x) { return x.entregue; }).length, rep = camRepetidos();
+    var porTam = {}; L.forEach(function (x) { var t = x.tamanho || '—'; porTam[t] = porTam[t] || { t: 0, ok: 0 }; porTam[t].t++; if (x.entregue) porTam[t].ok++; });
+    var ordemT = CAM_TAMS.concat(['—']).filter(function (t) { return porTam[t]; });
+    var b = camNorm(cam.busca);
+    var vis = L.filter(function (x) {
+      if (cam.filtro === 'faltam' && x.entregue) return false;
+      if (cam.filtro === 'entregues' && !x.entregue) return false;
+      return !b || camNorm(x.nome).indexOf(b) >= 0;
+    }).slice().sort(function (a, c) { return camNorm(a.nome).localeCompare(camNorm(c.nome)); });
+    var nRep = Object.keys(rep).length;
+    function linha(x) {
+      if (cam.editando === x.id) {
+        return '<li class="cam-item editando"><form class="cam-form" data-id="' + esc(x.id) + '">' +
+          '<input name="nome" value="' + esc(x.nome) + '" aria-label="Nome" required maxlength="80">' +
+          '<select name="tamanho" aria-label="Tamanho"><option value="">—</option>' + CAM_TAMS.map(function (t) { return '<option' + (x.tamanho === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>' +
+          '<button class="btn btn-primary btn-sm" type="submit">Salvar</button>' +
+          '<button class="btn btn-ghost btn-sm" type="button" data-act="camCancelar">Cancelar</button>' +
+          '<button class="iconbtn iconbtn-danger" type="button" data-act="camApagar" data-id="' + esc(x.id) + '" aria-label="Tirar da lista">' + ico('i-trash') + '</button></form></li>';
+      }
+      return '<li class="cam-item' + (x.entregue ? ' ok' : '') + '">' +
+        '<button type="button" class="cam-check" data-act="camMarcar" data-id="' + esc(x.id) + '" aria-pressed="' + !!x.entregue + '" aria-label="' + (x.entregue ? 'Desmarcar ' : 'Marcar entregue: ') + esc(x.nome) + '"><span aria-hidden="true">✓</span></button>' +
+        '<div class="cam-txt"><b>' + esc(x.nome) + (rep[x.id] ? ' <span class="cam-rep" title="Há outra pessoa com este mesmo nome na lista">nome repetido</span>' : '') + '</b>' +
+          '<span class="tiny">' + (x.entregue ? 'Entregue' + (x.em ? ' às ' + new Date(x.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + (x.por ? ' · ' + esc(x.por) : '') : 'Ainda não recebeu') + '</span></div>' +
+        '<span class="cam-tam' + (x.tamanho ? '' : ' vazio') + '">' + esc(x.tamanho || '?') + '</span>' +
+        '<button type="button" class="iconbtn" data-act="camEditar" data-id="' + esc(x.id) + '" aria-label="Corrigir nome ou tamanho">' + ico('i-pencil') + '</button></li>';
+    }
+    var filtros = [['faltam', 'Faltam', tot - ok], ['entregues', 'Entregues', ok], ['todos', 'Todos', tot]];
+    return '<div class="stack-lg cam">' +
+      '<section class="stack"><div class="row-between"><h2 class="h2">Camisas</h2><button class="btn btn-outline btn-sm" data-act="camAtualizar">Atualizar</button></div>' +
+      '<p class="small">Confira antes da programação começar: toque no ✓ quando o trilheiro receber a camisa. Várias pessoas podem marcar ao mesmo tempo; a lista atualiza sozinha.</p></section>' +
+      '<section class="painelinho cam-resumo"><div class="cam-total"><b class="num">' + ok + '<small> de ' + tot + '</small></b><span>camisas entregues</span>' +
+        '<div class="cam-barra"><i style="width:' + (tot ? (ok / tot * 100).toFixed(1) : 0) + '%"></i></div></div>' +
+        '<div class="cam-tams">' + ordemT.map(function (t) { var v = porTam[t]; return '<div class="' + (v.ok === v.t ? 'feito' : '') + '"><b>' + esc(t) + '</b><span class="num">' + v.ok + '/' + v.t + '</span></div>'; }).join('') + '</div></section>' +
+      (nRep ? '<div class="banner cam-aviso"><span class="bi">' + ico('i-info') + '</span><p class="grow"><b>' + nRep + ' pessoas com nome repetido</b> na lista (marcadas abaixo). Confirme o sobrenome para não entregar a camisa errada; depois é só corrigir no lápis.</p></div>' : '') +
+      '<div class="cam-ferr"><input type="search" class="cam-busca" data-act="camBusca" placeholder="Buscar pelo nome" value="' + esc(cam.busca) + '" aria-label="Buscar trilheiro">' +
+        '<div class="segmento cam-filtro">' + filtros.map(function (f) { return '<button type="button" data-act="camFiltro" data-f="' + f[0] + '" aria-pressed="' + (cam.filtro === f[0]) + '">' + f[1] + ' <span class="num">' + f[2] + '</span></button>'; }).join('') + '</div></div>' +
+      (vis.length ? '<ul class="cam-lista">' + vis.map(linha).join('') + '</ul>'
+        : '<p class="small cam-vazio">' + (cam.filtro === 'faltam' && !b ? 'Todo mundo já recebeu a camisa. 🎉' : 'Ninguém encontrado.') + '</p>') +
+      '<section class="painelinho stack"><span class="eyebrow">Faltou alguém na lista?</span>' +
+        '<form class="cam-form" data-id=""><input name="nome" placeholder="Nome e sobrenome" aria-label="Nome" required maxlength="80">' +
+        '<select name="tamanho" aria-label="Tamanho"><option value="">Tamanho</option>' + CAM_TAMS.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select>' +
+        '<button class="btn btn-primary btn-sm" type="submit">' + ico('i-plus') + ' Adicionar</button></form></section>' +
+      '</div>';
+  }
+  function camMarcar(id) {
+    var x = (cam.itens || []).filter(function (i) { return i.id === id; })[0]; if (!x) return;
+    var antes = { e: x.entregue, em: x.em, por: x.por };
+    x.entregue = !x.entregue; x.em = x.entregue ? new Date().toISOString() : null; x.por = x.entregue ? firstName(localState.name) || '' : null;
+    render();
+    sbRpc('camisa_marcar', { p_chave: localState.adminKey, p_id: id, p_entregue: x.entregue, p_por: firstName(localState.name) || '' }).then(function (r) {
+      if (!r || !r.ok) throw new Error('falhou');
+    }).catch(function () { x.entregue = antes.e; x.em = antes.em; x.por = antes.por; render(); toast('Não consegui salvar. Confira a internet e tente de novo.'); });
+  }
+  function camSalvar(f) {
+    var id = f.getAttribute('data-id') || '', nome = String(f.nome.value || '').trim(), tam = f.tamanho.value || '';
+    if (!nome) { toast('Informe o nome.'); return; }
+    sbRpc('camisa_salvar', { p_chave: localState.adminKey, p_id: id, p_nome: nome, p_tamanho: tam }).then(function (r) {
+      if (!r || !r.ok) throw new Error('falhou');
+      toast(id ? 'Corrigido.' : nome + ' entrou na lista.'); cam.editando = null; camCarregar(true);
+      if (!id) { f.reset(); }
+    }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Não consegui salvar agora.'); });
+  }
 
   /* ======================= CHECKLIST PRÉ-EVENTO =======================
      Confere tudo de uma vez (banco, internet, tempo real, votação, banca,
@@ -7236,6 +7346,17 @@
       else toast(lk);
     }
     else if (act === 'chkRodar') chkRodar();
+    else if (act === 'camMarcar') camMarcar(el.getAttribute('data-id'));
+    else if (act === 'camAtualizar') { cam.erro = ''; camCarregar(); }
+    else if (act === 'camFiltro') { cam.filtro = el.getAttribute('data-f'); render(); }
+    else if (act === 'camEditar') { cam.editando = el.getAttribute('data-id'); render(); var fe = document.querySelector('.cam-item.editando input'); if (fe) fe.focus(); }
+    else if (act === 'camCancelar') { cam.editando = null; render(); }
+    else if (act === 'camApagar') {
+      var idA = el.getAttribute('data-id'), xa = (cam.itens || []).filter(function (i) { return i.id === idA; })[0];
+      admin.confirm = { title: 'Tirar ' + (xa ? xa.nome : 'este nome') + ' da lista?', danger: true, yes: 'Sim, tirar', body: 'A pessoa sai da lista de camisas.',
+        run: function () { sbRpc('camisa_apagar', { p_chave: localState.adminKey, p_id: idA }).then(function () { cam.editando = null; toast('Tirado da lista.'); camCarregar(true); }).catch(function () { toast('Não consegui agora.'); }); } };
+      renderOverlay();
+    }
     else if (act === 'compartilhar') compartilhar(el);
     else if (act === 'compCopiar') {
       var lkc = el.getAttribute('data-url'), mc = el.closest('.comp-menu');
@@ -7479,6 +7600,11 @@
 
   var searchTimer = null;
   document.addEventListener('input', function (ev) {
+    if (ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act') === 'camBusca') {
+      cam.busca = ev.target.value; render();
+      var cb = document.querySelector('.cam-busca'); if (cb) { cb.focus(); var n = cb.value.length; try { cb.setSelectionRange(n, n); } catch (x) {} }
+      return;
+    }
     if (ev.target.id === 'projSearch') {
       var v = ev.target.value;
       clearTimeout(searchTimer);
@@ -7502,6 +7628,7 @@
 
     if (f.matches && f.matches('form.bp-form')) return;
     if (f.id === 'entrarForm') { entrarSubmit(); return; }
+    if (f.classList && f.classList.contains('cam-form')) { camSalvar(f); return; }
     if (f.id === 'apForm') { db.apresentacao = { v: DECK_V, slides: apLerForm() }; save(); toast('Apresentação salva. O telão e o controle já usam o roteiro novo.'); return; }
     if (f.id === 'senhaAdminForm') {
       var novaA = normSenha($('#novaSenhaAdmin').value);

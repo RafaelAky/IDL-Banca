@@ -3041,3 +3041,44 @@ html[data-tema="escuro"] .inst-voltar:hover { background: rgba(255, 132, 51, .2)
   .desknav[data-n="7"] .navbtn, .desknav[data-n="8"] .navbtn, .desknav[data-n="9"] .navbtn { padding: 0 .5rem; }
   .desknav[data-n="7"] .navbtn[aria-current="page"]::after, .desknav[data-n="8"] .navbtn[aria-current="page"]::after, .desknav[data-n="9"] .navbtn[aria-current="page"]::after { left: .5rem; right: .5rem; }
 }
+/* ---------- painel · aba Camisas ---------- */
+.cam-resumo { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 28px; }
+.cam-total { display: grid; gap: 4px; min-width: 200px; flex: 1; }
+.cam-total b { font-size: 2.2rem; line-height: 1; color: var(--c-roxo); }
+.cam-total b small { font-size: 1rem; color: var(--c-texto-2); font-weight: 600; }
+.cam-total > span { font-size: var(--t-peq); color: var(--c-texto-2); }
+.cam-barra { height: 8px; border-radius: 8px; background: var(--c-lilas-claro); overflow: hidden; margin-top: 4px; }
+.cam-barra i { display: block; height: 100%; background: #34a35f; border-radius: 8px; transition: width .4s; }
+.cam-tams { display: flex; flex-wrap: wrap; gap: 8px; }
+.cam-tams div { display: grid; justify-items: center; min-width: 58px; padding: 8px 10px; border-radius: 12px; background: var(--c-fundo); border: 1px solid var(--c-linha); }
+.cam-tams div b { color: var(--c-roxo); font-size: 1rem; }
+.cam-tams div span { font-size: 12.5px; color: var(--c-texto-2); }
+.cam-tams div.feito { background: #ecfaf1; border-color: #9fd8b3; }
+.cam-aviso { background: #fff6e8; }
+.cam-ferr { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cam-busca { flex: 1; min-width: 200px; height: 44px; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--c-linha-forte); background: var(--c-branco); color: var(--c-texto); }
+.cam-filtro { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--c-tint); }
+.cam-filtro button { min-height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--c-texto-2); }
+.cam-filtro button[aria-pressed="true"] { background: var(--c-branco); color: var(--c-roxo); box-shadow: 0 2px 8px rgba(46,0,106,.12); }
+.cam-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cam-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; border-radius: 14px; background: var(--c-branco); border: 1px solid var(--c-linha); }
+.cam-item.ok { background: #f1fbf5; border-color: #bfe6cd; }
+.cam-check { flex: none; width: 46px; height: 46px; border-radius: 12px; border: 2px solid var(--c-linha-forte); display: grid; place-items: center; background: var(--c-branco); color: transparent; font-size: 22px; font-weight: 800; }
+.cam-check:hover { border-color: #34a35f; }
+.cam-check[aria-pressed="true"] { background: #34a35f; border-color: #34a35f; color: #fff; }
+.cam-txt { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.cam-txt b { color: var(--c-roxo); font-size: 1rem; }
+.cam-txt .tiny { color: var(--c-texto-2); }
+.cam-item.ok .cam-txt .tiny { color: #1d7a43; }
+.cam-rep { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: #fff1e0; color: #a35a00; font-size: 11px; font-weight: 700; vertical-align: middle; }
+.cam-tam { flex: none; min-width: 42px; height: 34px; padding: 0 8px; border-radius: 10px; display: grid; place-items: center; background: var(--c-fundo-roxo); color: #fff; font-weight: 800; font-size: 14px; }
+.cam-tam.vazio { background: #fdeeee; color: #b02a26; }
+.cam-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; }
+.cam-form input { flex: 1; min-width: 160px; height: 42px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--c-linha-forte); background: var(--c-branco); color: var(--c-texto); }
+.cam-form select { height: 42px; padding: 0 10px; border-radius: 10px; border: 1.5px solid var(--c-linha-forte); background: var(--c-branco); color: var(--c-texto); }
+.cam-vazio { text-align: center; padding: 24px 0; }
+html[data-tema="escuro"] .cam-item.ok { background: #1e3828; border-color: #2f6b45; }
+html[data-tema="escuro"] .cam-tams div.feito { background: #1d3927; border-color: #2f6b45; }
+html[data-tema="escuro"] .cam-aviso { background: #3a2a14; }
+html[data-tema="escuro"] .cam-rep { background: #4a3112; color: #ffc27a; }
+html[data-tema="escuro"] .cam-item.ok .cam-txt .tiny { color: #6fd39a; }

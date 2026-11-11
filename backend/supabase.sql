@@ -172,6 +172,17 @@ set search_path = public, extensions as $$
 $$;
 revoke all on function public._chave_ok(text) from public, anon, authenticated;
 
+-- telão: aceita a senha da organização OU o código do link secreto do telão
+-- (/#/telao/acesso-...). Com o código, só dá para trocar slide e ligar a pausa.
+-- Aqui fica só o "hash" do código; o código em si não está no repositório.
+create or replace function public._telao_ok(p_chave text)
+returns boolean language sql stable security definer
+set search_path = public, extensions as $$
+  select public._chave_ok(p_chave)
+      or encode(extensions.digest(coalesce(p_chave, ''), 'sha256'), 'hex') = '583c5b6690b48477ccc8d9b3ec456e5e6440649a76889cc1693f9003abb751ab';
+$$;
+revoke all on function public._telao_ok(text) from public, anon, authenticated;
+
 -- normaliza a palavra-chave do palco: maiúsculas, sem espaços
 create or replace function public._norm(p text)
 returns text language sql immutable as $$
@@ -521,7 +532,7 @@ returns jsonb language plpgsql security definer
 set search_path = public, extensions as $$
 declare sl text := nullif(trim(coalesce(p_slide, '')), '');
 begin
-  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if not public._telao_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
   update public.estado_votacao set
     slide = sl,
     pausa = false,
@@ -538,7 +549,7 @@ create or replace function public.definir_pausa(p_chave text, p_pausa boolean)
 returns jsonb language plpgsql security definer
 set search_path = public, extensions as $$
 begin
-  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if not public._telao_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
   update public.estado_votacao set pausa = coalesce(p_pausa, false), atualizado_em = now() where id = 1;
   return jsonb_build_object('ok', true, 'pausa', coalesce(p_pausa, false));
 end $$;
@@ -843,3 +854,148 @@ update public.estado_votacao e set exige_chave = (c.chave_evento is not null)
 
 -- avisa a API do Supabase que há tabelas e funções novas
 notify pgrst, 'reload schema';
+
+-- ===================== CAMISAS DO EVENTO (painel · aba Camisas) =====================
+-- Lista dos trilheiros com o tamanho da camisa e o "recebeu". Só a organização
+-- lê e marca (pela senha); várias pessoas podem marcar ao mesmo tempo.
+create table if not exists public.camisas (
+  id           text primary key,
+  nome         text not null check (length(trim(nome)) between 1 and 80),
+  tamanho      text not null default '' check (tamanho in ('', 'PP', 'P', 'M', 'G', 'GG', 'XG')),
+  ordem        int  not null default 0,
+  entregue     boolean not null default false,
+  entregue_em  timestamptz,
+  entregue_por text
+);
+alter table public.camisas enable row level security;
+revoke all on public.camisas from anon, authenticated;
+
+insert into public.camisas (id, nome, tamanho, ordem) values
+  ('cam_01', 'Erick Bueno', 'M', 1),
+  ('cam_02', 'Júlia', 'M', 2),
+  ('cam_03', 'Eloisa', 'M', 3),
+  ('cam_04', 'Isabelly Mendes', 'M', 4),
+  ('cam_05', 'Matheus', 'M', 5),
+  ('cam_06', 'Isabele Ferreira', 'M', 6),
+  ('cam_07', 'Rebeca', 'P', 7),
+  ('cam_08', 'Eloah', 'M', 8),
+  ('cam_09', 'Lara', 'P', 9),
+  ('cam_10', 'Giovana', 'P', 10),
+  ('cam_11', 'Adryan', 'M', 11),
+  ('cam_12', 'Alice Machado', 'P', 12),
+  ('cam_13', 'Vitória Araújo', 'M', 13),
+  ('cam_14', 'Luna', 'P', 14),
+  ('cam_15', 'Maria Fernanda', 'M', 15),
+  ('cam_16', 'Mauricio', 'P', 16),
+  ('cam_17', 'Gustavo', 'M', 17),
+  ('cam_18', 'Victoria Eduarda', 'P', 18),
+  ('cam_19', 'Daniel', 'M', 19),
+  ('cam_20', 'Rafael', 'M', 20),
+  ('cam_21', 'Andrew', 'P', 21),
+  ('cam_22', 'Victor Cordeiro', 'P', 22),
+  ('cam_23', 'Melissa', 'M', 23),
+  ('cam_24', 'Thaís', 'P', 24),
+  ('cam_25', 'David', 'M', 25),
+  ('cam_26', 'Maria Eduarda', 'M', 26),
+  ('cam_27', 'Marina', 'M', 27),
+  ('cam_28', 'João Lucas', 'M', 28),
+  ('cam_29', 'Victor Gouveia', 'G', 29),
+  ('cam_30', 'Henrique', 'P', 30),
+  ('cam_31', 'Stefanie', 'M', 31),
+  ('cam_32', 'Millena', 'M', 32),
+  ('cam_33', 'Kayla', 'M', 33),
+  ('cam_34', 'Lukas', 'G', 34),
+  ('cam_35', 'Igor', 'G', 35),
+  ('cam_36', 'Maria Alice', 'M', 36),
+  ('cam_37', 'Maria Clara Cavalcante', 'M', 37),
+  ('cam_38', 'Renata', 'P', 38),
+  ('cam_39', 'Maria Clara Cabral', 'M', 39),
+  ('cam_40', 'Kauã', 'M', 40),
+  ('cam_41', 'Isac', 'M', 41),
+  ('cam_42', 'Fhelippe', 'M', 42),
+  ('cam_43', 'Lorena', 'M', 43),
+  ('cam_44', 'Pérola', 'P', 44),
+  ('cam_45', 'Sofia', 'P', 45),
+  ('cam_46', 'Maria Ester', 'P', 46),
+  ('cam_47', 'Gustavo', 'P', 47),
+  ('cam_48', 'Felipe', 'G', 48),
+  ('cam_49', 'Gabriel', 'P', 49),
+  ('cam_50', 'Pietro', 'M', 50),
+  ('cam_51', 'Kaue', 'P', 51),
+  ('cam_52', 'Juliana', 'P', 52),
+  ('cam_53', 'Gleyciane', 'M', 53),
+  ('cam_54', 'Thaynara', 'M', 54),
+  ('cam_55', 'Emily', 'P', 55),
+  ('cam_56', 'Livia', 'P', 56),
+  ('cam_57', 'Lanna', 'P', 57),
+  ('cam_58', 'Melany', '', 58),
+  ('cam_59', 'Nycolas', 'P', 59),
+  ('cam_60', 'Aghata', 'M', 60),
+  ('cam_61', 'Manuely', 'P', 61),
+  ('cam_62', 'Vitor Iargas', 'P', 62),
+  ('cam_63', 'Erick Ferreira', 'M', 63),
+  ('cam_64', 'Marina', 'G', 64),
+  ('cam_65', 'Gabriela', 'M', 65),
+  ('cam_66', 'Paola', 'M', 66),
+  ('cam_67', 'Julia', 'M', 67),
+  ('cam_68', 'Yasmin', 'M', 68),
+  ('cam_69', 'Anderson', 'M', 69),
+  ('cam_70', 'Evelyn', 'PP', 70),
+  ('cam_71', 'Vitor Augusto', 'M', 71),
+  ('cam_72', 'Marcelo', 'GG', 72),
+  ('cam_73', 'Gabriel', 'M', 73)
+on conflict (id) do nothing;
+
+create or replace function public.camisas_listar(p_chave text)
+returns jsonb language plpgsql stable security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  return jsonb_build_object('ok', true, 'itens', coalesce((
+    select jsonb_agg(jsonb_build_object('id', id, 'nome', nome, 'tamanho', tamanho, 'entregue', entregue,
+                                        'em', entregue_em, 'por', entregue_por) order by ordem, nome)
+      from public.camisas), '[]'::jsonb));
+end $$;
+
+create or replace function public.camisa_marcar(p_chave text, p_id text, p_entregue boolean, p_por text default '')
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.camisas set entregue = coalesce(p_entregue, false),
+    entregue_em = case when coalesce(p_entregue, false) then now() else null end,
+    entregue_por = case when coalesce(p_entregue, false) then left(nullif(trim(coalesce(p_por, '')), ''), 60) else null end
+  where id = p_id;
+  return jsonb_build_object('ok', found);
+end $$;
+
+-- acrescenta (p_id vazio) ou corrige nome/tamanho de um trilheiro
+create or replace function public.camisa_salvar(p_chave text, p_id text, p_nome text, p_tamanho text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare novo text;
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if coalesce(trim(p_nome), '') = '' then return jsonb_build_object('ok', false, 'erro', 'nome_vazio'); end if;
+  if upper(coalesce(trim(p_tamanho), '')) not in ('', 'PP', 'P', 'M', 'G', 'GG', 'XG') then return jsonb_build_object('ok', false, 'erro', 'tamanho_invalido'); end if;
+  if coalesce(p_id, '') = '' then
+    novo := 'cam_' || substr(md5(random()::text || clock_timestamp()::text), 1, 10);
+    insert into public.camisas (id, nome, tamanho, ordem)
+    values (novo, trim(p_nome), upper(coalesce(trim(p_tamanho), '')), coalesce((select max(ordem) from public.camisas), 0) + 1);
+    return jsonb_build_object('ok', true, 'id', novo);
+  end if;
+  update public.camisas set nome = trim(p_nome), tamanho = upper(coalesce(trim(p_tamanho), '')) where id = p_id;
+  return jsonb_build_object('ok', found, 'id', p_id);
+end $$;
+
+create or replace function public.camisa_apagar(p_chave text, p_id text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  delete from public.camisas where id = p_id;
+  return jsonb_build_object('ok', found);
+end $$;
+
+grant execute on function public.camisas_listar(text), public.camisa_marcar(text, text, boolean, text),
+  public.camisa_salvar(text, text, text, text), public.camisa_apagar(text, text) to anon, authenticated;
