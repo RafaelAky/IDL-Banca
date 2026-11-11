@@ -4644,9 +4644,13 @@
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
-     'yt:<código do YouTube>' para um vídeo. A equipe passa com o passador.  */
+     'yt:<código do YouTube>' para um vídeo, ou 'canva:<link de incorporar>'
+     para rodar a apresentação do próprio Canva (com as animações). A equipe
+     passa com o passador.                                                 */
   var APRES_EQUIPES = {
     // 'prj_maos': ['01.webp', '02.webp', 'yt:XXXXXXXXXXX', '03.webp'],
+    // "Mente Criativa" (Canva de João Lucas)
+    'prj_ia': ['canva:https://www.canva.com/design/DAHYi7cvkY4/pwutL9Am71JIIexbv2E_9w/view?embed']
   };
   var DECK_PADRAO = [
     { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
@@ -4711,6 +4715,10 @@
           out.push({ key: 'equipe:' + p.id, tipo: 'equipe', pid: p.id, rotulo: (pags.length ? 'Chamada · ' : '') + p.name, grupo: grupo, n: todas.indexOf(p) + 1, de: todas.length, temApres: pags.length > 0 });
           pags.forEach(function (arq, k) {
             var yt = /^yt:/.test(arq) ? arq.slice(3) : '';
+            if (/^canva:/.test(arq)) {
+              out.push({ key: 'apres:' + p.id + ':' + (k + 1), tipo: 'apresCanva', pid: p.id, url: arq.slice(6), rotulo: '↳ ' + p.name + ' · Canva', grupo: grupo });
+              return;
+            }
             out.push(yt
               ? { key: 'apres:' + p.id + ':' + (k + 1), tipo: 'video', pid: p.id, item: { titulo: p.name, video: yt }, rotulo: '↳ ' + p.name + ' · vídeo', grupo: grupo }
               : { key: 'apres:' + p.id + ':' + (k + 1), tipo: 'apresPag', pid: p.id, src: 'img/apres/' + p.id + '/' + arq, pag: k + 1, de: pags.length, rotulo: '↳ ' + p.name + ' · ' + (k + 1) + '/' + pags.length, grupo: grupo });
@@ -4794,6 +4802,12 @@
           h = '<div class="sl-video"><iframe src="https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1&playsinline=1" title="' + esc(tit) + '" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></div>';
         }
         break;
+      case 'apresCanva':
+        // a apresentação roda no próprio Canva, com as animações; o passador passa as páginas dentro dela
+        h = previa
+          ? '<div class="sl-centro"><span class="sl-eyebrow">Apresentação da equipe · Canva</span><h1 class="sl-mega sl-mega-m">' + esc((byId(s.pid) || {}).name || '') + '</h1><p class="sl-lead">Com animações. Para sair, use Próximo aqui no controle.</p></div>'
+          : '<div class="sl-canva"><iframe src="' + esc(s.url) + '" title="Apresentação da equipe" allow="fullscreen; autoplay" allowfullscreen onload="try{this.focus()}catch(e){}"></iframe></div>';
+        break;
       case 'apresPag':
         h = '<div class="sl-pag"><img src="' + esc(s.src) + '" alt="' + esc((byId(s.pid) || {}).name || '') + ' · página ' + s.pag + '"></div>';
         break;
@@ -4843,8 +4857,8 @@
       var k = Math.floor(Date.now() / 6000) % figs.length;
       Array.prototype.forEach.call(figs, function (f, j) { f.classList.toggle('on', j === k); });
     }, 1000);
-    var limpo = /^(video|videoHeroi|fotos|apresPag)$/.test(s.tipo);   // apresentação da equipe ocupa a tela inteira
-    return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + (s.tipo === 'apresPag' ? '' : slideFundoIdl()) + slideHtml(s, false) +
+    var limpo = /^(video|videoHeroi|fotos|apresPag|apresCanva)$/.test(s.tipo);   // apresentação da equipe ocupa a tela inteira
+    return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + (/^apres/.test(s.tipo) ? '' : slideFundoIdl()) + slideHtml(s, false) +
       (limpo ? '' : slideRodape()) + '</div>';
   }
 
@@ -5245,6 +5259,7 @@
             '<button class="btn btn-outline btn-lg" data-act="slideAnt"' + (i <= 0 ? ' disabled' : '') + '>' + ico('i-arrow-left') + ' Anterior</button>' +
             '<button class="btn btn-primary btn-lg" data-act="slideProx"' + (i >= l.length - 1 ? ' disabled' : '') + '>' + (i < 0 ? 'Começar' : 'Próximo') + ' ' + ico('i-chev') + '</button>' +
           '</div>' +
+          (atual && atual.tipo === 'apresCanva' ? '<p class="ctlA-aviso-canva"><b>Apresentação no Canva:</b> o passador passa as páginas dentro do Canva. Quando a equipe terminar, toque em <b>Próximo</b> aqui para seguir.</p>' : '') +
           '<p class="tiny ctlA-dica">No computador do telão: → ou passador avança · ← volta · P liga a pausa · B escurece. <a href="#/telao" target="_blank" rel="noopener">Abrir o telão</a></p>' +
           ('wakeLock' in navigator ? '<p class="tiny ctlA-dica">A tela deste aparelho fica sempre acesa enquanto o controle estiver aberto.</p>'
             : '<p class="tiny ctlA-dica">Este navegador não deixa o site manter a tela acesa: desligue o bloqueio automático nas configurações do tablet (Tela → Bloqueio automático → Nunca).</p>') +

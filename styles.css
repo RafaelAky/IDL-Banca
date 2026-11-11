@@ -3082,3 +3082,9 @@ html[data-tema="escuro"] .cam-tams div.feito { background: #1d3927; border-color
 html[data-tema="escuro"] .cam-aviso { background: #3a2a14; }
 html[data-tema="escuro"] .cam-rep { background: #4a3112; color: #ffc27a; }
 html[data-tema="escuro"] .cam-item.ok .cam-txt .tiny { color: #6fd39a; }
+/* apresentação da equipe rodando no Canva (incorporada) */
+.tl-slide.sl-apresCanva { background: #000 !important; }
+.sl-canva { position: absolute !important; inset: 0; }
+.sl-canva iframe { width: 100%; height: 100%; border: 0; display: block; }
+.ctlA-aviso-canva { margin: 0; padding: 10px 14px; border-radius: 12px; background: #fff4e6; border: 1px solid #f3cf99; color: #7a3d06; font-size: 14px; }
+html[data-tema="escuro"] .ctlA-aviso-canva { background: #3a2a14; border-color: #6b4a1f; color: #ffd2a6; }
