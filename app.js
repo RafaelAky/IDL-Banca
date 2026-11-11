@@ -7346,7 +7346,15 @@
       else toast(lk);
     }
     else if (act === 'chkRodar') chkRodar();
-    else if (act === 'camMarcar') camMarcar(el.getAttribute('data-id'));
+    else if (act === 'camMarcar') {
+      // sempre pede confirmação: evita marcar sem querer (toque acidental, celular no bolso)
+      var idM = el.getAttribute('data-id'), xm = (cam.itens || []).filter(function (i) { return i.id === idM; })[0];
+      if (!xm) return;
+      admin.confirm = xm.entregue
+        ? { title: 'Desfazer a entrega de ' + xm.nome + '?', danger: true, yes: 'Sim, desfazer', body: 'A camisa volta para a lista de quem ainda não recebeu.', run: function () { camMarcar(idM); } }
+        : { title: 'Entregar a camisa ' + (xm.tamanho || '(sem tamanho)') + ' para ' + xm.nome + '?', yes: 'Confirmar entrega', body: 'Confira o nome e o tamanho antes de confirmar.', run: function () { camMarcar(idM); } };
+      renderOverlay();
+    }
     else if (act === 'camAtualizar') { cam.erro = ''; camCarregar(); }
     else if (act === 'camFiltro') { cam.filtro = el.getAttribute('data-f'); render(); }
     else if (act === 'camEditar') { cam.editando = el.getAttribute('data-id'); render(); var fe = document.querySelector('.cam-item.editando input'); if (fe) fe.focus(); }
