@@ -4650,7 +4650,21 @@
   var APRES_EQUIPES = {
     // 'prj_maos': ['01.webp', '02.webp', 'yt:XXXXXXXXXXX', '03.webp'],
     // "Mente Criativa" (Canva de João Lucas)
-    'prj_ia': ['canva:https://www.canva.com/design/DAHYi7cvkY4/pwutL9Am71JIIexbv2E_9w/view?embed']
+    'prj_ia': ['canva:https://www.canva.com/design/DAHYi7cvkY4/pwutL9Am71JIIexbv2E_9w/view?embed'],
+    // Projeto ponte (Heroína Clara)
+    'prj_ponte': ['canva:https://www.canva.com/design/DAHX1zyL9O8/rltl1XBc0Z56gHh3jx6Rkg/view?embed'],
+    // Espaço acolher (Heroína Karol, inspirada na professora Cris)
+    'prj_acolher': ['canva:https://www.canva.com/design/DAHao7f79yw/prVRvkW90df-3bLm5RvG0g/view?embed'],
+    // Protagonismo estudantil (Heroína Faísca; no Canva: "Fazer Acontecer", inspirações Giba, Ilan e Giuliana Mafra)
+    'prj_protagonismo': ['canva:https://www.canva.com/design/DAHao_gVJUY/l6t0n5QRjDTtZXy9gziB9g/view?embed'],
+    // Corrente do bem (Heroína Sofia)
+    'prj_corrente': ['canva:https://www.canva.com/design/DAHao_ZYO7c/umVDmL6AMdUpS83l1iT3Ng/view?embed'],
+    // O som do respeito · Equipe do Neo
+    'prj_som_neo': ['canva:https://www.canva.com/design/DAHao2eNFKc/Mt2DjMJUfXh-2qbtdZmlog/view?embed'],
+    // O som do respeito · Equipe da Kiara (no Canva: "Conscientização circular")
+    'prj_som_kiara': ['canva:https://www.canva.com/design/DAHao9byLw8/mNyewEkaoPsgX7cCBWMulw/view?embed'],
+    // Ouvir para transformar (Heroína Samantha; no Canva: "Além de Palavras")
+    'prj_ouvir': ['canva:https://www.canva.com/design/DAHaoyKvqp0/yiw7Z4Oqm-tCyiKjd3Obvg/view?embed']
   };
   var DECK_PADRAO = [
     { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
