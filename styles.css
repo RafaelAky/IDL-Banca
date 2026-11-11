@@ -3001,3 +3001,43 @@ html[data-tema="escuro"] body:not(.is-telao):not(.is-mesa) .logo-slot:not(#logoS
 .sl-flor-b { opacity: .08; }
 .tl-slide:not(.pausa) .sl-caixa { padding: 3vh 2.6vw; gap: 1.2vh; }
 .tl-slide:not(.pausa) .sl-dois { margin-top: 1vh; }
+/* apresentação própria da equipe: a página ocupa a tela inteira, sem moldura */
+.tl-slide.sl-apresPag { background: #0d0a14 !important; }
+.sl-pag { position: absolute !important; inset: 0; display: grid; place-items: center; }
+.sl-pag img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.sl-noar.sl-chamada { background: var(--c-laranja); }
+/* apresentação própria da equipe: a página ocupa a tela inteira, sem moldura */
+.tl-slide.sl-apresPag { background: #0d0a14 !important; }
+.sl-pag { position: absolute !important; inset: 0; display: grid; place-items: center; }
+.sl-pag img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.sl-noar.sl-chamada { background: var(--c-laranja); }
+/* botão de volta para o site oficial do Instituto (topo, ao lado do sol/lua).
+   Com pouco espaço (celular e menu cheio) fica só a seta e a flor do Instituto. */
+.brandmark { flex: none; }
+.inst-voltar { flex: none; display: inline-flex; align-items: center; gap: .3rem; height: 40px; padding: 0 .55rem 0 .4rem; margin-left: auto; border-radius: 999px;
+  background: #fff4e6; border: 1px solid #f3cf99; color: #b45a10; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background .2s, border-color .2s; }
+.inst-voltar:hover { background: #ffe8cc; border-color: #eab26a; color: #9a4a08; }
+.inst-voltar:focus-visible { outline: 2px solid var(--c-laranja); outline-offset: 2px; }
+.inst-voltar svg { width: 15px; height: 15px; flex: none; }
+.iv-flor { width: 20px; height: 20px; display: block; flex: none; }
+.inst-voltar .iv-l { display: none; }
+.inst-voltar + .tema-btn { margin-left: 8px; }
+@media (min-width: 1024px) {
+  .desknav + .inst-voltar { margin-left: 6px; }
+  .inst-voltar { padding: 0 .9rem 0 .5rem; }
+  .inst-voltar .iv-l { display: inline; }
+  /* menu cheio (painel/banca) ou tela estreita: só seta + flor */
+  .desknav[data-n="7"] + .inst-voltar, .desknav[data-n="8"] + .inst-voltar, .desknav[data-n="9"] + .inst-voltar { padding: 0 .55rem 0 .4rem; }
+  .desknav[data-n="7"] + .inst-voltar .iv-l, .desknav[data-n="8"] + .inst-voltar .iv-l, .desknav[data-n="9"] + .inst-voltar .iv-l { display: none; }
+}
+@media (min-width: 1024px) and (max-width: 1240px) { .inst-voltar { padding: 0 .55rem 0 .4rem; } .inst-voltar .iv-l { display: none; } }
+@media (min-width: 1024px) and (max-width: 1700px) {
+  .desknav[data-n="8"] .lbl, .desknav[data-n="9"] .lbl { display: none; }
+  .desknav[data-n="8"] .lbl-short, .desknav[data-n="9"] .lbl-short { display: inline; }
+}
+html[data-tema="escuro"] .inst-voltar { background: rgba(255, 132, 51, .12); border-color: rgba(255, 132, 51, .4); color: #ffb27a; }
+html[data-tema="escuro"] .inst-voltar:hover { background: rgba(255, 132, 51, .2); color: #ffc79e; }
+@media (min-width: 1024px) and (max-width: 1180px) {
+  .desknav[data-n="7"] .navbtn, .desknav[data-n="8"] .navbtn, .desknav[data-n="9"] .navbtn { padding: 0 .5rem; }
+  .desknav[data-n="7"] .navbtn[aria-current="page"]::after, .desknav[data-n="8"] .navbtn[aria-current="page"]::after, .desknav[data-n="9"] .navbtn[aria-current="page"]::after { left: .5rem; right: .5rem; }
+}
