@@ -2189,7 +2189,7 @@
         }
         var cod = r && r.erro;
         toast(cod === 'chave_invalida' ? 'Salvei neste aparelho, mas a senha não confere com a do banco. Saia do painel e entre de novo.'
-          : cod === 'conteudo_grande_demais' ? 'Salvei neste aparelho, mas o conteúdo ficou grande demais para publicar. Use a aba Trilha 2026 para fotos.'
+          : cod === 'conteudo_grande_demais' ? 'Salvei neste aparelho, mas o conteúdo ficou grande demais para publicar. Use a aba Fotos do painel.'
           : 'Salvei neste aparelho, mas não consegui publicar. Tente salvar de novo.');
       }).catch(function (e) {
         conteudo.enviando = false;
@@ -2849,22 +2849,28 @@
 
   // aba Leilão: desligada depois do leilão (o código continua aqui; para religar, troque para true)
   var LEILAO_ATIVO = false;
-  var ADMIN_TABS = [
-    ['check', 'Checklist'], ['camisas', 'Camisas'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []).concat([['geral', 'Visão geral'], ['votacao', 'Votação'], ['evento', 'Evento'],
-    ['programacao', 'Programação'], ['projetos', 'Projetos'],
-    ['herois', 'Heróis'], ['banca', 'Banca'], ['retro', 'Trilha 2026'], ['dados', 'Dados']
-  ]);
+  /* abas em dois grupos: o que se usa no DIA da formatura (na ordem da
+     manhã) e a CONFIGURAÇÃO do site no dia a dia                          */
+  var ADMIN_GRUPOS = [
+    { id: 'dia', rot: 'Dia da formatura', abas: [['check', 'Checklist'], ['camisas', 'Camisas'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['votacao', 'Votação'], ['banca', 'Banca']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []) },
+    { id: 'site', rot: 'Configuração do site', abas: [['geral', 'Visão geral'], ['evento', 'Evento'], ['programacao', 'Programação'], ['projetos', 'Projetos'], ['herois', 'Heróis'], ['retro', 'Fotos'], ['dados', 'Dados e backup']] }
+  ];
+  var ADMIN_TABS = ADMIN_GRUPOS.reduce(function (a, g) { return a.concat(g.abas); }, []);
 
   var login = { erro: '', ocupado: false };
 
   function viewAdmin() {
     if (!localState.admin) return viewEntrar('admin');
 
-    var tabs = '<div class="tabs" role="tablist">' + ADMIN_TABS.map(function (t) {
-      var curto = { programacao: 'Agenda', retro: 'Fotos', geral: 'Geral', apres: 'Slides' }[t[0]];
-      if (t[0] === 'aovivo') return '<button role="tab" class="tab-aovivo" data-atab="aovivo" aria-selected="' + (admin.tab === 'aovivo') + '"><i class="tab-ponto"></i>Ao vivo</button>';
-      return '<button role="tab" data-atab="' + t[0] + '" aria-selected="' + (admin.tab === t[0]) + '">' +
-        (curto ? '<span class="tb-l">' + esc(t[1]) + '</span><span class="tb-c">' + esc(curto) + '</span>' : esc(t[1])) + '</button>';
+    var grupoAtual = (ADMIN_GRUPOS.filter(function (g) { return g.abas.some(function (t) { return t[0] === admin.tab; }); })[0] || {}).id;
+    var tabs = '<div class="tabs-grupos">' + ADMIN_GRUPOS.map(function (g) {
+      return '<div class="tabs-g tabs-g-' + g.id + (grupoAtual === g.id ? ' atual' : '') + '"><span class="tabs-rot">' + esc(g.rot) + '</span>' +
+        '<div class="tabs" role="tablist" aria-label="' + esc(g.rot) + '">' + g.abas.map(function (t) {
+          var curto = { programacao: 'Agenda', geral: 'Geral', apres: 'Slides', dados: 'Dados' }[t[0]];
+          if (t[0] === 'aovivo') return '<button role="tab" class="tab-aovivo" data-atab="aovivo" aria-selected="' + (admin.tab === 'aovivo') + '"><i class="tab-ponto"></i>Ao vivo</button>';
+          return '<button role="tab" data-atab="' + t[0] + '" aria-selected="' + (admin.tab === t[0]) + '">' +
+            (curto ? '<span class="tb-l">' + esc(t[1]) + '</span><span class="tb-c">' + esc(curto) + '</span>' : esc(t[1])) + '</button>';
+        }).join('') + '</div></div>';
     }).join('') + '</div>';
 
     return '<div class="adminbar"><div class="adminbar-in">' +
@@ -2954,77 +2960,57 @@
   }
 
   /* --- visão geral: tudo o que a organização precisa ver de uma vez --- */
+  /* Visão geral: a porta de entrada do painel, dividida como as abas.
+     "Dia da formatura" mostra o estado de cada coisa do evento; "Configuração
+     do site" leva às edições do dia a dia.                                */
   function adminGeral() {
     var fase = eventPhase(), a = agora();
     var aberta = remote.on ? remote.aberta : localState.unlocked;
     var res = adminRes.dados;
     var totalVotos = res && res.liberado ? (res.total || 0) : null;
-
-    var estadoVot = !remote.on ? 'Modo prévia'
-      : remote.erro ? 'Sem conexão'
-      : (aberta ? 'Aberta' : 'Fechada');
-
     var faseTxt = fase === 'dia' ? 'É hoje' : fase === 'depois' ? 'Já aconteceu' : contagemTexto();
+    if (remote.on && !adminRes.dados && !adminRes.carregando && !adminRes.erro && localState.adminKey) setTimeout(loadResult, 0);
+    if (remote.on && localState.adminKey && !cam.itens && !cam.carregando && !cam.erro) setTimeout(function () { camCarregar(true); }, 0);
 
     var cartoes = '<div class="statgrid">' +
-      '<div class="stat"><div class="sv" style="font-size:19px">' + esc(estadoVot) + '</div><div class="sl">Votação</div></div>' +
-      '<div class="stat"><div class="sv">' + (totalVotos == null ? '—' : totalVotos) + '</div><div class="sl">Votos recebidos</div></div>' +
       '<div class="stat"><div class="sv" style="font-size:19px">' + esc(faseTxt || '—') + '</div><div class="sl">' + esc(db.event.dateLabel || 'Data do evento') + '</div></div>' +
       '<div class="stat"><div class="sv">' + pad2(a.hh) + ':' + pad2(a.mm) + '</div><div class="sl">Agora em Curitiba</div></div>' +
+      '<div class="stat"><div class="sv">' + nProjetos() + '</div><div class="sl">Projetos</div></div>' +
+      '<div class="stat"><div class="sv">' + nHerois() + '</div><div class="sl">Heróis</div></div>' +
       '</div>';
 
-    var comandos = '<section class="stack">' +
-      '<h3 class="h3">Comandos rápidos</h3>' +
-      '<p class="small">A votação pode ser aberta a qualquer momento — inclusive antes do dia do evento.</p>' +
-      '<div class="row wrap" style="gap:8px">' +
-      (remote.on
-        ? (aberta
-          ? '<button class="btn btn-danger" data-act="askClose">Encerrar votação</button>'
-          : '<button class="btn btn-primary" data-act="askOpen">Abrir votação agora</button>') +
-          '<button class="btn btn-primary" data-act="askRevelar">' + ico('i-spark') + (remote.revelar ? ' Revelado no telão' : ' Revelar o Herói no telão') + '</button>' +
-          '<button class="btn btn-outline" data-act="pubResult">' + (remote.resultadoPublico ? 'Tirar os vencedores do site' : 'Mostrar os vencedores no site') + '</button>' +
-          '<button class="btn btn-outline" data-act="loadResult">Atualizar as respostas</button>'
-        : '<button class="btn btn-outline" data-atab="votacao">Abrir a aba Votação</button>') +
-      '</div>' +
-      (remote.on && aberta
-        ? '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">A votação está aberta para todo mundo agora. O resultado só aparece para o público quando você publicar.</p></div>'
-        : '') +
-      '</section>';
-
-
-    var atalhos = [
-      ['evento', 'i-cal', 'Informações do evento', 'Nome, data, horário, local, playlist dos vídeos e total de trilheiros.'],
-      ['programacao', 'i-clock', 'Programação do dia', db.schedule.length + ' atividades — criar, editar, reordenar.'],
-      ['projetos', 'i-grid', 'Textos e fotos dos projetos', db.projects.length + ' páginas de projeto (' + nProjetos() + ' projetos): textos, trilheiros e fotos das equipes.'],
-      ['herois', 'i-spark', 'Textos e vídeos dos Heróis', nHerois() + ' Heróis: história, inspiração, ilustração e vídeo.'],
-      ['votacao', 'i-vote', 'Votação e palavra-chave', 'Abrir, encerrar, trocar a palavra do palco e apurar.'],
-      ['retro', 'i-eye', 'A Trilha em 2026', fotosDoSite().length + ' fotos na aba Fotos, contando as das equipes.'],
-      ['dados', 'i-save', 'Relógio e backup', 'Ensaio do relógio, exportar e importar o conteúdo.']
-    ].map(function (t) {
-      return '<button class="card card-btn shortcut" data-atab="' + t[0] + '">' +
+    var camOk = cam.itens ? cam.itens.filter(function (x) { return x.entregue; }).length : null;
+    var nSl = deckSlides().length, iSl = deckIndice(remote.slide);
+    function card(t) {
+      return '<button class="card card-btn shortcut' + (t[4] ? ' sc-' + t[4] : '') + '" data-atab="' + t[0] + '">' +
         '<span class="ic">' + ico(t[1]) + '</span>' +
-        '<span><span class="st">' + esc(t[2]) + '</span><br><span class="ss">' + esc(t[3]) + '</span></span></button>';
-    }).join('');
-
-    // sem banco não há o que buscar; com banco, a primeira busca sai daqui
-    if (remote.on && !adminRes.dados && !adminRes.carregando && !adminRes.erro && localState.adminKey) setTimeout(loadResult, 0);
+        '<span><span class="st">' + esc(t[2]) + '</span><br><span class="ss">' + t[3] + '</span></span></button>';
+    }
+    var dia = [
+      ['check', 'i-vote', 'Checklist', 'Confere banco, internet, votação, banca e telão antes de começar.'],
+      ['camisas', 'i-users', 'Camisas', camOk == null ? 'Entrega das camisas aos trilheiros.' : '<b>' + camOk + ' de ' + cam.itens.length + '</b> entregues.'],
+      ['aovivo', 'i-spark', 'Ao vivo', 'Palco, votação, banca e telão numa tela só, para o celular.', 'aovivo'],
+      ['apres', 'i-play', 'Apresentação', (remote.on && iSl >= 0 ? 'No telão: <b>slide ' + (iSl + 1) + ' de ' + nSl + '</b>.' : nSl + ' slides no roteiro.') + ' Roteiro e textos dos slides.'],
+      ['votacao', 'i-vote', 'Votação do público', (remote.on ? '<b>' + (aberta ? 'Aberta' : 'Fechada') + '</b>' + (totalVotos != null ? ' · ' + totalVotos + (totalVotos === 1 ? ' voto' : ' votos') : '') + '. ' : '') + 'Candidatos, apuração e vencedores no site.'],
+      ['banca', 'i-users', 'Banca', (remote.on ? 'Avaliações <b>' + (remote.avaliacoes ? 'abertas' : 'fechadas') + '</b> · decisão <b>' + (remote.decisao ? 'aberta' : 'fechada') + '</b>. ' : '') + 'Notas, decisão final e planilha.']
+    ].map(card).join('');
+    var site = [
+      ['evento', 'i-cal', 'Evento', 'Nome, data, horário, local, playlist e modo pós-evento.'],
+      ['programacao', 'i-clock', 'Programação', db.schedule.length + ' atividades: criar, editar, reordenar.'],
+      ['projetos', 'i-grid', 'Projetos', db.projects.length + ' projetos: textos, trilheiros e fotos das equipes.'],
+      ['herois', 'i-spark', 'Heróis', nHerois() + ' Heróis: história, inspiração, ilustração e vídeo.'],
+      ['retro', 'i-eye', 'Fotos', fotosDoSite().length + ' fotos na aba Fotos do site, contando as das equipes.'],
+      ['dados', 'i-save', 'Dados e backup', 'Relógio de ensaio, exportar e importar o conteúdo.']
+    ].map(card).join('');
 
     return '<div class="stack-lg">' +
-      (remote.on ? '<button class="av-chamada" data-atab="aovivo"><span class="tab-ponto"></span><span><b>Modo evento · Ao vivo</b><span class="tiny">Palco, votação, banca e telão numa tela só, feita para o celular.</span></span>' + ico('i-chev') + '</button>' : '') +
-      controlePalco() +
-      painelResultado() +
-      '<section class="stack">' +
-      '<h2 class="h2">Visão geral</h2>' +
-      '<p class="small">Tudo o que a organização controla está aqui dentro. Esta conta é a única com acesso.</p>' +
+      '<section class="stack"><h2 class="h2">Visão geral</h2>' +
+      '<p class="small">O painel tem duas partes: o que se usa <b>no dia da formatura</b>, na ordem da manhã, e a <b>configuração do site</b> no dia a dia.</p>' +
       cartoes + '</section>' +
-      comandos +
-      '<section class="stack"><h3 class="h3">Onde editar cada coisa</h3>' +
-      '<div class="shortcuts">' + atalhos + '</div></section>' +
-      (remote.on ? '<section class="zerar-tudo">' +
-        '<div class="grow"><h3 class="h3">Zerar tudo</h3>' +
-        '<p class="small">Depois do ensaio, deixa o site pronto para o dia: apaga <b>votos</b>, <b>avaliações e decisão da banca</b> e os <b>projetos conhecidos</b> de todos os aparelhos; fecha a votação, a decisão e a revelação e tira a equipe do palco.</p>' +
-        '<p class="tiny">Continuam: textos, Heróis, fotos, senhas, palavra-chave, candidatos e a chave "mostrar a votação".</p></div>' +
-        '<button class="btn btn-danger" data-act="askZerarTudo">' + ico('i-trash') + ' Zerar tudo</button></section>' : '') +
+      '<section class="stack ag-grupo ag-dia"><div class="ag-cab"><span class="ag-tag">No dia</span><h3 class="h3">Dia da formatura</h3></div>' +
+        '<div class="shortcuts">' + dia + '</div></section>' +
+      '<section class="stack ag-grupo ag-site"><div class="ag-cab"><span class="ag-tag">Dia a dia</span><h3 class="h3">Configuração do site</h3></div>' +
+        '<div class="shortcuts">' + site + '</div></section>' +
       '</div>';
   }
 
@@ -3282,7 +3268,8 @@
 
   function adminVotacao() {
     var link = siteBase() + '/#/telao';
-    return '<div class="stack-lg">' +
+    if (remote.on && !adminRes.dados && !adminRes.carregando && !adminRes.erro && localState.adminKey) setTimeout(loadResult, 0);
+    return '<div class="stack-lg">' + painelResultado() +
       '<section class="stack">' +
       '<h2 class="h2">Telão</h2>' +
       '<p class="small">Abra no computador ligado ao projetor: mostra os Heróis candidatos e o QR Code grande da votação, com um selo do horário ("Abre às…" / "Vote agora"). Os "+1" que sobem em volta dos Heróis são só um convite a votar: passam por todos igualmente e não usam os votos reais. ' +
