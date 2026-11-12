@@ -4627,7 +4627,7 @@
   /* Roteiro padrão da apresentação, na ordem do cronograma oficial
      (PDF "Programação Convidados", 10/11/2026). Os slides "secao" abrem cada
      parte do dia e agrupam o roteiro no controle.                         */
-  var DECK_V = 2;
+  var DECK_V = 4;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4653,31 +4653,41 @@
     // Ouvir para transformar (Heroína Samantha; no Canva: "Além de Palavras")
     'prj_ouvir': ['canva:https://www.canva.com/design/DAHaoyKvqp0/yiw7Z4Oqm-tCyiKjd3Obvg/view?embed']
   };
+  /* Roteiro da apresentação pelo roteiro operacional da MC (12/11/2026,
+     "Programação IDL Tech 2026"). A programação do SITE continua a versão
+     simples para os visitantes; aqui vale a ordem fina do palco.          */
   var DECK_PADRAO = [
     { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
-    { id: 'sec_abertura',   tipo: 'secao',        on: true, titulo: 'Abertura', texto: '', hora: '8h' },
+    { id: 'sec_abertura',   tipo: 'secao',        on: true, titulo: 'Abertura oficial', texto: '', hora: '8h' },
     { id: 'abertura',       tipo: 'abertura',     on: true, titulo: 'Banca Final IDL Tech', texto: 'Trilhei: de sementes para raízes' },
     { id: 'instituto',      tipo: 'instituto',    on: true, titulo: 'Instituto Dente de Leão', texto: 'Fortalecendo pessoas, semeando consciência e transformando realidades.' },
     { id: 'programacao',    tipo: 'programacao',  on: true, titulo: 'Programação do dia' },
     { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
-    { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
     { id: 'comofunciona',   tipo: 'comofunciona', on: true, titulo: 'Como funciona a Banca Final' },
-    { id: 'sec_bloco1',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Primeiro bloco', hora: '8h20' },
+    { id: 'sebrae',         tipo: 'secao',        on: true, titulo: 'SEBRAE', texto: '', hora: '8h10', logo: 'img/sebrae.png' },
+    { id: 'sec_retro',      tipo: 'secao',        on: true, titulo: 'Retrospectiva da Trilha', texto: '', hora: '8h15' },
+    { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
+    { id: 'sec_bloco1',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Primeiro bloco', hora: '8h19' },
     { id: 'equipes1',       tipo: 'equipes',      on: true, titulo: 'Primeiro bloco', bloco: '1º bloco' },
-    { id: 'cafe',           tipo: 'secao',        on: true, titulo: 'Intervalo para o café', texto: 'Voltamos às 10h10 com o segundo bloco.', hora: '9h40' },
-    { id: 'sec_bloco2',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Segundo bloco', hora: '10h10' },
+    { id: 'cafe',           tipo: 'secao',        on: true, titulo: 'Pausa para o café', texto: 'Voltamos às 10h09 com o segundo bloco de apresentações.', hora: '9h39' },
+    { id: 'sec_bloco2',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Segundo bloco', hora: '10h09' },
     { id: 'equipes2',       tipo: 'equipes',      on: true, titulo: 'Segundo bloco', bloco: '2º bloco' },
-    { id: 'sec_premios',    tipo: 'secao',        on: true, titulo: 'Vídeos dos Heróis, votação, homenagens e premiações', texto: '', hora: '11h30 às 12h30' },
-    { id: 'candidatos',     tipo: 'candidatos',   on: true, titulo: 'Vídeos dos candidatos a Herói' },
+    { id: 'sec_herois',     tipo: 'secao',        on: true, titulo: 'Os Heróis da Trilha', texto: 'Cada Herói nasceu das histórias e das causas de um grupo de trilheiros.', hora: '11h29' },
+    { id: 'candidatos',     tipo: 'candidatos',   on: true, titulo: 'Vídeos dos Heróis' },
+    { id: 'sec_votacao',    tipo: 'secao',        on: true, titulo: 'Votação dos Heróis', texto: 'Aponte a câmera do celular para o QR Code. A votação encerra às 12h04.', hora: '11h54' },
     { id: 'votacao',        tipo: 'votacao',      on: true, titulo: 'Votação do público' },
-    { id: 'intervalo',      tipo: 'texto',        on: true, titulo: 'A banca está deliberando', texto: 'Em instantes: as homenagens e as premiações.' },
-    { id: 'homenagens',     tipo: 'texto',        on: true, titulo: 'Homenagens', texto: 'Obrigado a quem caminhou com a Trilha 2026.' },
-    { id: 'revelaBanca',    tipo: 'revelaBanca',  on: true, titulo: 'Revelação · Projeto destaque' },
+    { id: 'homenagens',     tipo: 'secao',        on: true, titulo: 'Homenagens', texto: 'Coordenadores, instrutores, time IDL Tech, voluntários e convidados especiais.', hora: '12h04' },
+    { id: 'sec_heroi',      tipo: 'secao',        on: true, titulo: 'O Herói da Trilha 2026', texto: 'Escolhido pelo público', hora: '12h24' },
     { id: 'revelaHeroi',    tipo: 'revelaHeroi',  on: true, titulo: 'Revelação · Herói da Trilha' },
-    { id: 'sec_fim',        tipo: 'secao',        on: true, titulo: 'Encerramento', texto: '', hora: '12h30' },
-    { id: 'fotos',          tipo: 'fotos',        on: true, titulo: 'Fotos da Trilha 2026' },
+    { id: 'destaques',      tipo: 'secao',        on: true, titulo: 'Alunos destaques', texto: 'Premiação e entrega', hora: '12h28' },
+    { id: 'sec_banca',      tipo: 'secao',        on: true, titulo: 'A banca no palco', texto: 'Homenagem, devolutiva e resultados dos projetos', hora: '12h38' },
+    { id: 'revelaBanca',    tipo: 'revelaBanca',  on: true, titulo: 'Revelação · Projeto destaque' },
+    { id: 'formatura',      tipo: 'secao',        on: true, titulo: 'Formatura', texto: 'Certificados, brindes e medalhas', hora: '12h46' },
+    { id: 'foto',           tipo: 'secao',        on: true, titulo: 'Foto oficial dos formandos', texto: 'Trilha 2026', hora: '13h06' },
+    { id: 'sec_fim',        tipo: 'secao',        on: true, titulo: 'Encerramento', texto: '', hora: '13h09' },
     { id: 'agradecimentos', tipo: 'texto',        on: true, titulo: 'Obrigado!', texto: 'A Trilha 2026 foi feita por cada trilheiro, cada família e cada parceiro que acreditou. Até a próxima!' },
-    { id: 'almoco',         tipo: 'secao',        on: true, titulo: 'Almoço para os trilheiros', texto: 'Obrigado por trilhar com a gente!', hora: 'Em seguida' }
+    { id: 'almoco',         tipo: 'secao',        on: true, titulo: 'Almoço e confraternização', texto: 'Obrigado por trilhar com a gente!', hora: 'Após 13h10' },
+    { id: 'fotos',          tipo: 'fotos',        on: true, titulo: 'Fotos da Trilha 2026' }
   ];
   function deckConfig() {
     var ap = db.apresentacao || {}, salvo = ap.slides || [];
@@ -4693,7 +4703,8 @@
     var porId = {}; salvo.forEach(function (x) { porId[x.id] = x; });
     return DECK_PADRAO.map(function (d) {
       var n = JSON.parse(JSON.stringify(d)), o = porId[d.id];
-      if (o) ['titulo', 'texto', 'video', 'on'].forEach(function (k) { if (o[k] !== undefined && o[k] !== '') n[k] = o[k]; });
+      // horários e textos mudaram com o roteiro novo: aproveita só o link de vídeo e o liga/desliga
+      if (o) ['video', 'on'].forEach(function (k) { if (o[k] !== undefined && o[k] !== '') n[k] = o[k]; });
       return n;
     });
   }
@@ -4762,7 +4773,8 @@
       case 'secao':
         h = '<div class="sl-centro sl-secao-in">' +
           (it.hora ? '<span class="sl-hora">' + esc(it.hora) + '</span>' : '') +
-          '<h1 class="sl-mega' + (String(it.titulo || '').length > 34 ? ' sl-mega-m' : '') + '">' + esc(it.titulo) + '</h1>' +
+          (it.logo ? '<img class="sl-secao-logo" src="' + esc(it.logo) + '" alt="' + esc(it.titulo) + '">'
+            : '<h1 class="sl-mega' + (String(it.titulo || '').length > 34 ? ' sl-mega-m' : '') + '">' + esc(it.titulo) + '</h1>') +
           '<span class="sl-traco" aria-hidden="true"><i></i>' + idlFlorSvg('sl-traco-flor') + '<i></i></span>' +
           (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
         break;
@@ -4817,14 +4829,26 @@
         if (!p) { h = '<div class="sl-centro"><h1 class="sl-mega">Equipe</h1></div>'; break; }
         var hs = (p.heroes || []).filter(function (h2) { return h2.image; }).slice(0, 2);
         var membros = (p.teams && p.teams.length > 1) ? p.teams.reduce(function (a, t) { return a.concat(t.members || []); }, []) : (p.members || []);
-        h = '<div class="sl-equipe">' +
-          '<div class="sl-eq-txt"><span class="sl-noar' + (s.temApres ? ' sl-chamada' : '') + '"><i></i>' + (s.temApres ? 'Chamada ao palco' : 'No palco') + ' · equipe ' + s.n + ' de ' + s.de + '</span>' +
-            '<h1 class="sl-eq-nome">' + esc(p.name) + '</h1>' +
+        // chamada ao palco: a MC chama a equipe e fala um pouco sobre ela
+        var hsT = (p.heroes || []);
+        // "Içami Tiba. Kizuna significa laço…" → "Içami Tiba"; só o significado do nome → não mostra
+        var insp = hsT.map(function (h2) {
+          var t = String(h2.inspiration || '').trim();
+          if (/signific/i.test(t)) { var pri = t.split(/\.\s+/)[0]; t = /signific/i.test(pri) ? '' : pri; }
+          return t;
+        }).filter(Boolean);
+        var nomesH = hsT.map(function (h2) { return String(h2.name).split(/\s+[—–-]\s+/)[0]; });
+        h = '<div class="sl-equipe sl-eq2">' +
+          '<div class="sl-eq-txt">' +
+            '<span class="sl-eq-ordem"><b class="num">' + pad2(s.n) + '</b><span>equipe ' + s.n + ' de ' + s.de + (blocoDe(p) ? ' · ' + esc(blocoDe(p).rot) : '') + '</span></span>' +
+            '<h1 class="sl-eq-nome' + (p.name.length > 44 ? ' longo2' : p.name.length > 28 ? ' longo' : '') + '">' + esc(p.name) + '</h1>' +
             (p.tagline ? '<p class="sl-eq-lead">' + esc(p.tagline) + '</p>' : '') +
-            '<p class="sl-eq-meta">' + esc([p.group ? 'Grupo ' + p.group : '', p.category, horaRot(p)].filter(Boolean).join(' · ')) + '</p>' +
-            (membros.length ? '<p class="sl-eq-membros">' + esc(membros.join(' · ')) + '</p>' : '') +
+            '<div class="sl-eq-chips">' + [p.group ? 'Grupo ' + p.group : '', p.category].filter(Boolean).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' +
+            (nomesH.length ? '<div class="sl-eq-heroi"><span class="sl-eq-rot">' + (nomesH.length > 1 ? 'Heróis da equipe' : 'Herói da equipe') + '</span>' +
+              '<b>' + esc(nomesH.join(' e ')) + '</b>' + (insp.length ? '<span class="sl-eq-insp">Inspirado em ' + esc(insp.join(' · ')) + '</span>' : '') + '</div>' : '') +
+            (membros.length ? '<div class="sl-eq-trilh"><span class="sl-eq-rot">Trilheiros</span><p>' + membros.map(function (m) { return '<span>' + esc(m) + '</span>'; }).join('') + '</p></div>' : '') +
           '</div>' +
-          '<div class="sl-eq-figs n' + hs.length + '">' + hs.map(function (h2) { return '<figure><img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt=""><figcaption>' + esc(String(h2.name).split(/\s+[—–-]\s+/)[0]) + '</figcaption></figure>'; }).join('') + '</div>' +
+          '<div class="sl-eq-figs n' + hs.length + '">' + idlFlorSvg('sl-eq-flor') + hs.map(function (h2) { return '<figure><img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt=""></figure>'; }).join('') + '</div>' +
         '</div>';
         break;
       case 'fotos':
