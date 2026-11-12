@@ -4772,7 +4772,6 @@
         break;
       case 'secao':
         h = '<div class="sl-centro sl-secao-in">' +
-          (it.hora ? '<span class="sl-hora">' + esc(it.hora) + '</span>' : '') +
           (it.logo ? '<img class="sl-secao-logo" src="' + esc(it.logo) + '" alt="' + esc(it.titulo) + '">'
             : '<h1 class="sl-mega' + (String(it.titulo || '').length > 34 ? ' sl-mega-m' : '') + '">' + esc(it.titulo) + '</h1>') +
           '<span class="sl-traco" aria-hidden="true"><i></i>' + idlFlorSvg('sl-traco-flor') + '<i></i></span>' +

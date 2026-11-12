@@ -3142,3 +3142,13 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .sl-eq2 .sl-eq-nome.longo { font-size: clamp(34px, 6.4vh, 96px); }
 .sl-eq2 .sl-eq-nome.longo2 { font-size: clamp(28px, 5vh, 76px); max-width: 22ch; }
 .sl-eq2 .sl-eq-lead { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* ---------- rodapé com os logos (Instituto · Trilhei · IDL Tech) sempre livre ----------
+   Os slides reservam uma faixa embaixo só para os logos: nada do conteúdo entra
+   nela e nada fica por cima deles.                                         */
+.tl-slide:not(.pausa):not(.sl-video):not(.sl-videoHeroi):not(.sl-fotos):not(.sl-apresPag):not(.sl-apresCanva) { padding-bottom: 11vh; box-sizing: border-box; }
+.tl-slide:not(.pausa) .sl-equipe { bottom: 11vh !important; height: auto; padding-bottom: 2vh; }
+.tl-slide:not(.pausa) .sl-eq2 .sl-eq-figs { height: 100%; max-height: 82vh; }
+.tl-slide:not(.pausa) .sl-desfile { bottom: 11vh; height: 22vh; }
+.tl-slide:not(.pausa) .sl-rodape { z-index: 6 !important; bottom: 3vh; }
+.tl-slide:not(.pausa) .sl-flor-b { left: -20vh; bottom: auto; top: 18vh; }
+.tl-slide:not(.pausa) .sl-comofunciona .sl-col, .tl-slide:not(.pausa) .sl-programacao .sl-col { padding-bottom: 0; }
