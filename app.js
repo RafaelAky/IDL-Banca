@@ -4641,7 +4641,7 @@
     bethcastro:  { nome: 'Beth Castro Alta Costura', img: 'beth-castro.webp' },
     teia:        { nome: 'Teia Conceito', img: 'teia.webp', quadrado: true },
     camilo:      { nome: 'Camilo Joalheiros', img: 'camilo.webp' },
-    lc:          { nome: 'Clínica LC', img: 'clinica-lc.svg', quadrado: true },
+    lc:          { nome: 'Clínica LC', img: 'clinica-lc.webp', quadrado: true },
     thais:       { nome: 'Thais Lacerda Odontologia & Harmonização Facial', img: 'thais-lacerda.webp', fundo: '#1d1d1f' },
     nc:          { nome: 'NC', img: 'nc.webp' },
     manu:        { nome: 'Instituto Manu Buffara', img: 'manu-buffara.webp' },
@@ -4658,6 +4658,7 @@
     avenna:      { nome: 'Avenna Studio', img: 'avenna.webp' },
     stephanie:   { nome: 'Dra. Stephanie Saab', img: 'stephanie-saab.webp' },
     vita:        { nome: 'Método Vita Beach Tennis', img: 'metodo-vita.webp' },
+    marina:      { nome: 'Dra. Marina Guerini Dermatologista', img: 'marina-guerini.webp', quadrado: true },
     akiyama:     { nome: 'Grupo Akiyama', img: 'akiyama.webp' },
     topo:        { nome: 'Topo Leilões', img: 'topo-leiloes.webp' },
     sebrae:      { nome: 'Sebrae', img: 'sebrae.webp' },
@@ -4673,7 +4674,7 @@
     patrocinadores: ['akiyama', 'topo', 'sebrae', 'pimpao', 'brenex'],
     institucionais: ['abasc', 'abcvida', 'senhorinha', 'novas'],
     parceiros1: ['daju', 'gisele', 'castro', 'cia', 'ceraflame', 'studiodoc', 'faceart', 'bethcastro', 'teia', 'camilo', 'lc', 'thais', 'nc', 'manu'],
-    parceiros2: ['secret', 'adeildo', 'mw7', 'moka', 'bruna', 'mariadolores', 'hwakuo', 'lume', 'gabriel', 'priscila', 'avenna', 'stephanie', 'vita', 'obrigado']
+    parceiros2: ['secret', 'adeildo', 'mw7', 'moka', 'bruna', 'mariadolores', 'hwakuo', 'lume', 'gabriel', 'priscila', 'avenna', 'stephanie', 'vita', 'marina', 'obrigado']
   };
   var DECK_V = 6;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
