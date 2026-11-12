@@ -4627,7 +4627,55 @@
   /* Roteiro padrão da apresentação, na ordem do cronograma oficial
      (PDF "Programação Convidados", 10/11/2026). Os slides "secao" abrem cada
      parte do dia e agrupam o roteiro no controle.                         */
-  var DECK_V = 4;
+  /* Parceiros (patrocinadores do leilão), 11/2026. Logos em img/parceiros/.
+     fundo: cor do cartão quando o logo vem com fundo próprio (escuro etc.);
+     sub: linha de texto embaixo do logo (quando o arquivo veio cortado).   */
+  var PARCEIROS = {
+    daju:        { nome: 'DAJU', img: 'daju.webp' },
+    gisele:      { nome: 'Gisele Cipili', img: 'gisele-cipili.webp' },
+    castro:      { nome: 'Castro Dental Esthetic', img: 'castro.webp', quadrado: true },
+    cia:         { nome: 'Cia. Marítima', img: 'cia-maritima.webp' },
+    ceraflame:   { nome: 'Ceraflame', img: 'ceraflame.webp' },
+    studiodoc:   { nome: 'Studio DOC Dental Clinic', img: 'studio-doc.webp' },
+    faceart:     { nome: 'Faceart', img: 'faceart.webp', sub: 'Instituto dental e facial' },
+    bethcastro:  { nome: 'Beth Castro Alta Costura', img: 'beth-castro.webp' },
+    teia:        { nome: 'Teia Conceito', img: 'teia.webp', quadrado: true },
+    camilo:      { nome: 'Camilo Joalheiros', img: 'camilo.webp' },
+    lc:          { nome: 'Clínica LC', img: 'clinica-lc.svg', quadrado: true },
+    thais:       { nome: 'Thais Lacerda Odontologia & Harmonização Facial', img: 'thais-lacerda.webp', fundo: '#1d1d1f' },
+    nc:          { nome: 'NC', img: 'nc.webp' },
+    manu:        { nome: 'Instituto Manu Buffara', img: 'manu-buffara.webp' },
+    secret:      { nome: 'Secret Outlet', img: 'secret-outlet.webp' },
+    adeildo:     { nome: 'Palestras adeildo.com', img: 'palestras-adeildo.webp', fundo: '#02162e' },
+    mw7:         { nome: 'MW7 Production & Entertainment', img: 'mw7.webp' },
+    moka:        { nome: 'Moka Clube café & torrefação', img: 'moka-clube.webp', quadrado: true },
+    bruna:       { nome: 'Bruna Passaura estética e saúde', img: 'bruna-passaura.webp' },
+    mariadolores:{ nome: 'Maria Dolores', img: 'maria-dolores.webp' },
+    hwakuo:      { nome: 'Hwa-Kuo Chinese Cuisine', img: 'hwa-kuo.webp', fundo: '#7f170e', quadrado: true },
+    lume:        { nome: 'Lume', img: 'lume.webp' },
+    gabriel:     { nome: 'Gabriel Camargo Personal Soccer', img: 'gabriel-camargo.webp' },
+    priscila:    { nome: 'Priscila Bonatto', img: 'priscila-bonatto.webp' },
+    avenna:      { nome: 'Avenna Studio', img: 'avenna.webp' },
+    stephanie:   { nome: 'Dra. Stephanie Saab', img: 'stephanie-saab.webp' },
+    vita:        { nome: 'Método Vita Beach Tennis', img: 'metodo-vita.webp' },
+    akiyama:     { nome: 'Grupo Akiyama', img: 'akiyama.webp' },
+    topo:        { nome: 'Topo Leilões', img: 'topo-leiloes.webp' },
+    sebrae:      { nome: 'Sebrae', img: 'sebrae.webp' },
+    pimpao:      { nome: 'Pimpão Playgrounds e Equipamentos', img: 'pimpao.webp', quadrado: true },
+    brenex:      { nome: 'Grupo Brenex', img: 'brenex.webp' },
+    abasc:       { nome: 'ABASC Colombo', img: 'abasc.webp', quadrado: true },
+    abcvida:     { nome: 'ABC Vida · Educa', img: 'abc-vida.webp' },
+    senhorinha:  { nome: 'Colégio Cívico-Militar Senhorinha', img: 'colegio-civico-militar.webp', quadrado: true },
+    novas:       { nome: 'Instituto Novas Histórias', img: 'novas-historias.webp' }
+  };
+  // quais logos entram em cada slide (id do slide → lista); 'obrigado' é o cartão final
+  var PARCEIROS_SLIDES = {
+    patrocinadores: ['akiyama', 'topo', 'sebrae', 'pimpao', 'brenex'],
+    institucionais: ['abasc', 'abcvida', 'senhorinha', 'novas'],
+    parceiros1: ['daju', 'gisele', 'castro', 'cia', 'ceraflame', 'studiodoc', 'faceart', 'bethcastro', 'teia', 'camilo', 'lc', 'thais', 'nc', 'manu'],
+    parceiros2: ['secret', 'adeildo', 'mw7', 'moka', 'bruna', 'mariadolores', 'hwakuo', 'lume', 'gabriel', 'priscila', 'avenna', 'stephanie', 'vita', 'obrigado']
+  };
+  var DECK_V = 6;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4661,7 +4709,15 @@
     // Family Cast (Herói Kizuna; no Canva: "Saúde no Relacionamento Familiar")
     'prj_familycast': ['canva:https://www.canva.com/design/DAHYwFzUF_w/knJpjsILqsNvN5RT_k8Buw/view?embed'],
     // Moeda de Troca (Herói Virtus; no Canva: "Troca de Talentos")
-    'prj_troca': ['canva:https://www.canva.com/design/DAHYwBQstWc/pJkQscoguh4zLCkaM0itAQ/view?embed']
+    'prj_troca': ['canva:https://www.canva.com/design/DAHYwBQstWc/pJkQscoguh4zLCkaM0itAQ/view?embed'],
+    // Construindo memórias de cuidado (Herói Lumen; no Canva: "Jardim das memórias")
+    'prj_memorias': ['canva:https://www.canva.com/design/DAHat5ASals/ScymoMBAvoPRScdnBoxjTg/view?embed'],
+    // Além das Fronteiras (Herói Félix; no Canva: "Quebrando Fronteiras")
+    'prj_fronteira': ['canva:https://www.canva.com/design/DAHat7Dg_Jg/pYz1Jkx5N7x00W_l5BhBxw/view?embed'],
+    // Conexão de verdade (Heroína Duda; no Canva: "Desconecte da tela e reconecte a vida")
+    'prj_conexao': ['canva:https://www.canva.com/design/DAHatxmb_Bc/jFq9dBTnTc9np8roZcDPhA/view?embed'],
+    // Da reciclagem à mesa (Herói Miguel, inspirado em Tião Santos)
+    'prj_reciclagem': ['canva:https://www.canva.com/design/DAHat8Jji9k/_oeHJhyOa5KUtDQiJVOzAg/view?embed']
   };
   /* Roteiro da apresentação pelo roteiro operacional da MC (12/11/2026,
      "Programação IDL Tech 2026"). A programação do SITE continua a versão
@@ -4687,6 +4743,10 @@
     { id: 'sec_votacao',    tipo: 'secao',        on: true, titulo: 'Votação dos Heróis', texto: 'Aponte a câmera do celular para o QR Code. A votação encerra às 12h04.', hora: '11h54' },
     { id: 'votacao',        tipo: 'votacao',      on: true, titulo: 'Votação do público' },
     { id: 'homenagens',     tipo: 'secao',        on: true, titulo: 'Homenagens', texto: 'Coordenadores, instrutores, time IDL Tech, voluntários e convidados especiais.', hora: '12h04' },
+    { id: 'patrocinadores', tipo: 'parceiros',    on: true, titulo: 'Patrocinadores' },
+    { id: 'institucionais', tipo: 'parceiros',    on: true, titulo: 'Parceiros Institucionais' },
+    { id: 'parceiros1',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
+    { id: 'parceiros2',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
     { id: 'sec_heroi',      tipo: 'secao',        on: true, titulo: 'O Herói da Trilha 2026', texto: 'Escolhido pelo público', hora: '12h24' },
     { id: 'revelaHeroi',    tipo: 'revelaHeroi',  on: true, titulo: 'Revelação · Herói da Trilha' },
     { id: 'destaques',      tipo: 'secao',        on: true, titulo: 'Alunos destaques', texto: 'Premiação e entrega', hora: '12h28' },
@@ -4786,6 +4846,17 @@
             : '<h1 class="sl-mega' + (String(it.titulo || '').length > 34 ? ' sl-mega-m' : '') + '">' + esc(it.titulo) + '</h1>') +
           '<span class="sl-traco" aria-hidden="true"><i></i>' + idlFlorSvg('sl-traco-flor') + '<i></i></span>' +
           (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
+        break;
+      case 'parceiros':
+        var lp = PARCEIROS_SLIDES[it.id] || [];
+        h = '<div class="sl-parc"><h2 class="sl-tit">' + esc(it.titulo || 'Parceiros') + '</h2>' +
+          '<span class="sl-traco" aria-hidden="true"><i></i>' + idlFlorSvg('sl-traco-flor') + '<i></i></span>' +
+          '<ul class="sl-parc-grade n' + lp.length + '">' + lp.map(function (k) {
+            if (k === 'obrigado') return '<li class="sl-parc-card obrigado"><span>Obrigado</span></li>';
+            var pc = PARCEIROS[k]; if (!pc) return '';
+            return '<li class="sl-parc-card' + (pc.fundo ? ' escuro' : '') + (pc.quadrado ? ' quadrado' : '') + (pc.mescla ? ' mescla' : '') + '"' + (pc.fundo ? ' style="background:' + pc.fundo + '"' : '') + '>' +
+              '<img src="img/parceiros/' + pc.img + '" alt="' + esc(pc.nome) + '">' + (pc.sub ? '<small>' + esc(pc.sub) + '</small>' : '') + '</li>';
+          }).join('') + '</ul></div>';
         break;
       case 'texto':
         h = '<div class="sl-centro"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
@@ -5349,6 +5420,7 @@
         : it.tipo === 'equipes' ? 'Automático: 1 slide por equipe do ' + (it.bloco || 'evento') + ', na ordem da programação (marca a equipe No palco)'
         : it.tipo === 'candidatos' ? 'Automático: 1 vídeo por Herói candidato com vídeo' : it.tipo === 'votacao' ? 'Tela viva: QR da votação'
         : it.tipo === 'revelaHeroi' || it.tipo === 'revelaBanca' ? (SOM_REVELACAO ? 'Tela viva: revelação com animação e som' : 'Tela viva: revelação com animação (som desligado por enquanto)') : it.tipo === 'programacao' ? 'Automático: puxa a Programação'
+        : it.tipo === 'parceiros' ? 'Logos dos parceiros (definidos no código, img/parceiros/)'
         : it.tipo === 'numeros' ? 'Automático: números da Trilha' : it.tipo === 'fotos' ? 'Automático: fotos da aba Fotos' : '';
       var temTexto = /^(abertura|instituto|texto|secao)$/.test(it.tipo);
       return '<li class="ap-item' + (it.on ? '' : ' off') + '" data-i="' + i + '">' +
