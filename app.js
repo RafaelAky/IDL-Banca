@@ -847,7 +847,7 @@
       '<div class="rf-base"><div class="cont">© ' + new Date().getFullYear() + ' Instituto Dente de Leão. Todos os direitos reservados.</div></div>' +
       '</footer>';
   }
-  function comRodape() { return !/^(telao|mesa|admin|banca|decisao|mosaico|controle)$/.test(route.name); }
+  function comRodape() { return !/^(telao|mesa|admin|banca|decisao|mosaico|controle|mc)$/.test(route.name); }
 
   /* faixa de abertura das páginas internas
      tom: 'escuro' (degradê roxo → lilás) ou 'claro'
@@ -2149,7 +2149,7 @@
   var rt = { ws: null, ok: false, ref: 0, hb: null, falhas: 0, espera: null };
   function rtEnviar(o) { try { rt.ws.send(JSON.stringify(o)); } catch (e) { /* conexão caiu */ } }
   function rtConectar() {
-    if (!remote.on || rt.ws || rt.espera || !window.WebSocket || !/^(telao|controle)$/.test(route.name)) return;
+    if (!remote.on || rt.ws || rt.espera || !window.WebSocket || !/^(telao|controle|mc)$/.test(route.name)) return;
     var url = String(BE.url).replace(/^http/, 'ws').replace(/\/+$/, '') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(BE.anonKey) + '&vsn=1.0.0';
     var ws;
     try { ws = new WebSocket(url); } catch (e) { return; }
@@ -4061,9 +4061,10 @@
   function normSenha(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
   function viewEntrar(contexto, sub) {
     var jaAdm = !!localState.admin, jaBan = bancaLogada();
-    var titulo = contexto === 'admin' ? 'Painel da organização' : contexto === 'banca' ? 'Área da banca' : 'Entrar';
+    var titulo = contexto === 'admin' ? 'Painel da organização' : contexto === 'banca' ? 'Área da banca' : contexto === 'mc' ? 'Roteiro da apresentadora' : 'Entrar';
     var texto = sub || (contexto === 'admin' ? 'Entre com o seu nome e a senha da organização.'
       : contexto === 'banca' ? 'Avalie cada projeto em 6 critérios, de 1 a 5, e confirme.'
+      : contexto === 'mc' ? 'Suas falas slide a slide e o controle do telão. Entre com a senha da apresentadora.'
       : 'Acesso da organização e da banca. Use o seu nome completo e a senha que você recebeu.');
     var status = (jaAdm || jaBan) ? '<div class="entrar-status">' +
         (jaAdm ? '<div><b>Organização</b><span class="tiny">' + esc(localState.name || 'conectado') + '</span></div><button class="btn btn-primary btn-sm" data-go="admin">Abrir o painel</button>' : '') +
@@ -4098,7 +4099,14 @@
         if (nome) localState.name = nome;
         saveLocal(); entrada.erro = ''; entrada.nome = '';
         toast('Bem-vindo ao painel' + (nome ? ', ' + firstName(nome) : '') + '.');
-        go('admin'); render(); if (remote.on) loadResult();
+        go(route.name === 'mc' ? 'mc' : 'admin'); render(); if (remote.on) loadResult();
+        return;
+      }
+      if (p === 'mc') {
+        localState.mcKey = senha; if (nome) localState.name = localState.name || nome;
+        saveLocal(); entrada.erro = ''; entrada.nome = ''; mcR.falas = null;
+        toast('Bem-vinda ao roteiro' + (nome ? ', ' + firstName(nome) : '') + '.');
+        go('mc'); render();
         return;
       }
       if (p === 'banca') {
@@ -4688,6 +4696,10 @@
       '<p class="small" style="margin-top:6px">Senha da banca: é a mesma para todos os jurados. Começa como <b>banca2026</b>.</p>' +
       '<form id="senhaBancaForm" class="row wrap" style="gap:10px;align-items:flex-end">' +
       '<div class="field" style="flex:1 1 220px"><label for="novaSenhaBanca">Nova senha da banca</label><input id="novaSenhaBanca" type="text" autocomplete="off" minlength="4"></div>' +
+      '<button class="btn btn-primary" type="submit" style="min-height:53px">' + ico('i-save') + ' Salvar</button></form>' +
+      '<p class="small" style="margin-top:6px">Senha da apresentadora (página <a href="#/mc">/#/mc</a>: falas por slide e controle do telão). Começa como <b>roteiro2026</b>.</p>' +
+      '<form id="senhaMcForm" class="row wrap" style="gap:10px;align-items:flex-end">' +
+      '<div class="field" style="flex:1 1 220px"><label for="novaSenhaMc">Nova senha da apresentadora</label><input id="novaSenhaMc" type="text" autocomplete="off" minlength="4"></div>' +
       '<button class="btn btn-primary" type="submit" style="min-height:53px">' + ico('i-save') + ' Salvar</button></form>' +
       '</section>' +
       '<section class="stack"><h3 class="h3">Depois do ensaio</h3>' +
@@ -5666,7 +5678,7 @@
      teclado ou o passador troca os slides e liga a pausa, sem login. Sem o
      código, o telão só assiste. O código é conferido no banco.          */
   function telaoCodigo() { return route.name === 'telao' && /^acesso-[\w-]{16,}$/.test(route.param || '') ? route.param : ''; }
-  function chaveComando() { return localState.adminKey || telaoCodigo(); }
+  function chaveComando() { return localState.adminKey || (route.name === 'mc' && localState.mcKey) || telaoCodigo(); }
   function telaoPreta(forcar) {
     var el = $('#tlPreta'), ligar = forcar == null ? !el : forcar;
     if (ligar && !el) { el = document.createElement('div'); el.id = 'tlPreta'; el.className = 'tl-preta'; document.body.appendChild(el); }
@@ -5730,7 +5742,7 @@
             '<button class="btn btn-primary btn-lg" data-act="slideProx"' + (i >= l.length - 1 ? ' disabled' : '') + '>' + (i < 0 ? 'Começar' : 'Próximo') + ' ' + ico('i-chev') + '</button>' +
           '</div>' +
           (atual && atual.tipo === 'apresCanva' ? '<p class="ctlA-aviso-canva"><b>Apresentação no Canva:</b> o passador passa as páginas dentro do Canva. Quando a equipe terminar, toque em <b>Próximo</b> aqui para seguir.</p>' : '') +
-          '<p class="tiny ctlA-dica">No computador do telão: → ou passador avança · ← volta · P liga a pausa · B escurece. <a href="#/telao" target="_blank" rel="noopener">Abrir o telão</a></p>' +
+          '<p class="tiny ctlA-dica">No computador do telão: → ou passador avança · ← volta · P liga a pausa · B escurece. <a href="#/telao" target="_blank" rel="noopener">Abrir o telão</a> · <a href="#/mc">Roteiro da apresentadora</a></p>' +
           ('wakeLock' in navigator ? '<p class="tiny ctlA-dica">A tela deste aparelho fica sempre acesa enquanto o controle estiver aberto.</p>'
             : '<p class="tiny ctlA-dica">Este navegador não deixa o site manter a tela acesa: desligue o bloqueio automático nas configurações do tablet (Tela → Bloqueio automático → Nunca).</p>') +
         '</section>' +
@@ -5775,7 +5787,253 @@
       var e = b.querySelector('.ctl-escala'); if (e) e.style.transform = 'scale(' + (b.clientWidth / 1280).toFixed(4) + ')';
     });
   }
-  window.addEventListener('resize', function () { if (route.name === 'controle') ajustarPrevias(); });
+  window.addEventListener('resize', function () { if (route.name === 'controle' || route.name === 'mc') ajustarPrevias(); });
+
+  /* ===================== ROTEIRO DA APRESENTADORA (#/mc) =====================
+     Página da apresentadora (tablet ou notebook no púlpito): a fala de cada
+     slide, o telão agora e a seguir, e os botões para passar os slides.
+     O texto inicial vem do roteiro dela (roteiro-mc.js); o que ela (ou a
+     organização) editar fica no banco, slide a slide, e vale por cima.   */
+  var MC_TIPOS = {
+    fala: { rot: 'Fala', le: 1, ico: '<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>' },
+    aviso: { rot: 'Aviso ao público', le: 1, ico: '<path d="M3 11v2a1 1 0 0 0 1 1h3l6 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 9a4 4 0 0 1 0 6"/>' },
+    apoio: { rot: 'Agradecer apoiadores', le: 1, ico: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>' },
+    apres: { rot: 'No palco', le: 0, ico: '<circle cx="12" cy="6" r="2.5"/><path d="M7.5 21v-5.5a4.5 4.5 0 0 1 9 0V21"/><path d="M3 21h18"/>' },
+    video: { rot: 'Vídeo no telão', le: 0, ico: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/>' },
+    musica: { rot: 'Música', le: 0, ico: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>' },
+    mov: { rot: 'Movimentação', le: 0, ico: '<path d="M4 12h14M13 6l6 6-6 6"/>' },
+    deixa: { rot: 'Deixa / observação', le: 0, ico: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>' }
+  };
+  var MC_PREFS = 'idl.mc.prefs';
+  var mcR = { falas: null, versao: 0, carregando: false, erro: '', em: 0, edit: null, salvando: false, forcar: false, modo: 'vivo', fonte: 1, soFalas: false };
+  (function () { try { var o = JSON.parse(localStorage.getItem(MC_PREFS) || '{}'); if (o.fonte) mcR.fonte = o.fonte; mcR.soFalas = !!o.soFalas; if (o.modo === 'tudo') mcR.modo = 'tudo'; } catch (e) { /* sem armazenamento */ } })();
+  function mcPrefsSalvar() { try { localStorage.setItem(MC_PREFS, JSON.stringify({ fonte: mcR.fonte, soFalas: mcR.soFalas, modo: mcR.modo })); } catch (e) { /* ok */ } }
+  function mcChave() { return localState.mcKey || localState.adminKey || ''; }
+  function mcLogado() { return !!(localState.mcKey || localState.admin); }
+  function mcPadrao() { return (window.IDL_ROTEIRO_MC && window.IDL_ROTEIRO_MC.falas) || {}; }
+  function mcEditado(key) { return !!(mcR.falas && Object.prototype.hasOwnProperty.call(mcR.falas, key)); }
+  function mcFalas(key) { var l = mcEditado(key) ? mcR.falas[key] : mcPadrao()[key]; return Array.isArray(l) ? l : []; }
+  function mcCarregar(silencioso) {
+    if (!remote.on || !mcChave() || mcR.carregando) return;
+    mcR.carregando = true;
+    sbRpc('roteiro_ler', { p_chave: mcChave() }).then(function (r) {
+      mcR.carregando = false;
+      if (r && r.ok === false && r.erro === 'chave_invalida') {
+        if (localState.mcKey) { localState.mcKey = ''; saveLocal(); entrada.erro = 'A senha da apresentadora mudou. Entre de novo.'; }
+        mcRender(); return;
+      }
+      if (!r || !r.ok) throw new Error('falhou');
+      var antes = JSON.stringify(mcR.falas);
+      mcR.falas = r.falas || {}; mcR.versao = r.versao || 0; mcR.erro = ''; mcR.em = Date.now();
+      if ((!silencioso || antes !== JSON.stringify(mcR.falas)) && route.name === 'mc') render();
+    }).catch(function (e) {
+      mcR.carregando = false;
+      mcR.erro = String(e && e.message) === 'http 404' ? 'O banco ainda não tem o roteiro: rode o supabase.sql mais recente. Por enquanto aparece o texto original, sem salvar edições.' : 'Sem conexão com o servidor: mostrando a última versão carregada.';
+      if (mcR.falas == null) mcR.falas = {};
+      if (route.name === 'mc') render();
+    });
+  }
+  setInterval(function () { if (route.name === 'mc' && mcLogado() && !mcR.edit && document.visibilityState !== 'hidden') mcCarregar(true); }, 20000);
+  // redesenho pedido pela própria página (o automático fica parado enquanto ela edita)
+  function mcRender() { mcR.forcar = true; try { render(); } finally { mcR.forcar = false; } }
+  // texto com [pendências] marcadas
+  function mcTexto(t) {
+    return String(t || '').split(/(\[[^\]]*\])/).map(function (p) {
+      return /^\[[^\]]*\]$/.test(p) ? '<mark class="mc-pend">' + esc(p) + '</mark>' : esc(p);
+    }).join('');
+  }
+  function mcIco(k) { return '<svg class="mc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ((MC_TIPOS[k] || MC_TIPOS.deixa).ico) + '</svg>'; }
+  function mcLinhasHtml(key, vazio) {
+    var ls = mcFalas(key).filter(function (l) { return !mcR.soFalas || (MC_TIPOS[l.k] || {}).le; });
+    if (!ls.length) return '<p class="mc-vazio">' + esc(vazio || (mcR.soFalas && mcFalas(key).length ? 'Só deixas técnicas neste slide.' : 'Sem fala neste slide.')) + '</p>';
+    return ls.map(function (l) {
+      var t = MC_TIPOS[l.k] || MC_TIPOS.deixa;
+      return '<div class="mc-l mc-k-' + esc(l.k in MC_TIPOS ? l.k : 'deixa') + (t.le ? ' le' : ' tec') + '">' +
+        '<span class="mc-tag">' + mcIco(l.k) + esc(t.rot) + (l.q ? ' <b>· ' + esc(l.q) + '</b>' : '') + '</span>' +
+        '<p>' + mcTexto(l.t) + '</p></div>';
+    }).join('');
+  }
+  function mcEditorHtml(key) {
+    var ls = mcR.edit.linhas;
+    return '<div class="mc-editor" data-k="' + esc(key) + '">' +
+      ls.map(function (l, i) {
+        return '<div class="mc-ed-l">' +
+          '<div class="mc-ed-top"><select data-mi="' + i + '" data-campo="k" aria-label="Tipo">' +
+            Object.keys(MC_TIPOS).map(function (k) { return '<option value="' + k + '"' + (l.k === k ? ' selected' : '') + '>' + esc(MC_TIPOS[k].rot) + '</option>'; }).join('') + '</select>' +
+          '<input data-mi="' + i + '" data-campo="q" value="' + esc(l.q || '') + '" placeholder="Quem / quando (opcional)" maxlength="80" aria-label="Quem ou quando">' +
+          '<span class="mc-ed-bts"><button type="button" class="iconbtn" data-act="mcLinhaMover" data-i="' + i + '" data-d="-1"' + (i ? '' : ' disabled') + ' aria-label="Subir">↑</button>' +
+          '<button type="button" class="iconbtn" data-act="mcLinhaMover" data-i="' + i + '" data-d="1"' + (i < ls.length - 1 ? '' : ' disabled') + ' aria-label="Descer">↓</button>' +
+          '<button type="button" class="iconbtn iconbtn-danger" data-act="mcLinhaTirar" data-i="' + i + '" aria-label="Apagar este trecho">' + ico('i-trash') + '</button></span></div>' +
+          '<textarea data-mi="' + i + '" data-campo="t" rows="' + Math.min(14, Math.max(3, String(l.t || '').split('\n').length + Math.ceil(String(l.t || '').length / 70))) + '" placeholder="Texto. Use [colchetes] para o que ainda falta definir.">' + esc(l.t || '') + '</textarea></div>';
+      }).join('') +
+      '<button type="button" class="btn btn-outline btn-sm" data-act="mcLinhaNova">' + ico('i-plus') + ' Adicionar trecho</button>' +
+      '<div class="mc-ed-acoes"><button type="button" class="btn btn-primary" data-act="mcSalvar"' + (mcR.salvando ? ' disabled' : '') + '>' + ico('i-save') + (mcR.salvando ? ' Salvando…' : ' Salvar') + '</button>' +
+        '<button type="button" class="btn btn-ghost" data-act="mcCancelar">Cancelar</button>' +
+        (mcEditado(key) ? '<button type="button" class="btn btn-ghost btn-sm mc-ed-orig" data-act="mcOriginal">Voltar ao texto original</button>' : '') + '</div></div>';
+  }
+  // bloco de falas de um slide (com o editor no lugar quando estiver editando)
+  function mcCartao(s, j, i, grande) {
+    var editando = mcR.edit && mcR.edit.key === s.key;
+    return '<article class="mc-cartao' + (j === i ? ' no-ar' : '') + (grande ? ' grande' : '') + '" id="mc-s-' + j + '">' +
+      '<header><span class="mc-num">' + (j + 1) + '</span><div class="grow"><b>' + esc(s.rotulo) + '</b>' + (s.grupo ? '<span class="tiny">' + esc(s.grupo) + '</span>' : '') + '</div>' +
+        (j === i ? '<span class="mc-noar">No telão</span>' : '') +
+        (mcEditado(s.key) ? '<span class="mc-editado" title="Texto editado (diferente do roteiro original)">editado</span>' : '') +
+        (!editando ? '<button type="button" class="btn btn-ghost btn-sm" data-act="mcEditar" data-k="' + esc(s.key) + '">' + ico('i-pencil') + ' Editar</button>' : '') +
+        (!grande && j !== i ? '<button type="button" class="btn btn-outline btn-sm" data-act="slideIr" data-k="' + esc(s.key) + '">Pôr no telão</button>' : '') +
+      '</header>' +
+      '<div class="mc-falas">' + (editando ? mcEditorHtml(s.key) : mcLinhasHtml(s.key)) + '</div></article>';
+  }
+  function mcFerramentas() {
+    return '<div class="mc-ferr">' +
+      '<div class="segmento cam-filtro mc-modo"><button type="button" data-act="mcModo" data-m="vivo" aria-pressed="' + (mcR.modo === 'vivo') + '">Ao vivo</button><button type="button" data-act="mcModo" data-m="tudo" aria-pressed="' + (mcR.modo === 'tudo') + '">Roteiro completo</button></div>' +
+      '<div class="mc-fonte" role="group" aria-label="Tamanho da letra"><button type="button" class="iconbtn" data-act="mcFonte" data-d="-1" aria-label="Letra menor">A−</button><button type="button" class="iconbtn" data-act="mcFonte" data-d="1" aria-label="Letra maior">A+</button></div>' +
+      '<label class="mc-so"><input type="checkbox" data-act="mcSoFalas"' + (mcR.soFalas ? ' checked' : '') + '> Só o que eu falo</label>' +
+      '<button type="button" class="btn btn-ghost btn-sm" data-act="mcSair">Sair</button></div>';
+  }
+  function viewMc() {
+    if (!mcLogado()) return viewEntrar('mc');
+    if (!remote.on) return '<div class="view"><div class="corpo"><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">O roteiro da apresentadora funciona na versão publicada, com o banco ligado.</p></div></div></div>';
+    if (mcR.falas == null && !mcR.carregando) setTimeout(function () { mcCarregar(); }, 0);
+    var l = deckSlides(), i = deckIndice(remote.slide), atual = l[i] || null, prox = i < 0 ? l[0] : (l[i + 1] || null);
+    var agora, estado, cor;
+    if (remote.pausa) { agora = 'pausa'; estado = 'Modo pausa · fotos passando'; cor = 'pausa'; }
+    else if (atual) { agora = atual; estado = 'Slide ' + (i + 1) + ' de ' + l.length; cor = remote.revelar || remote.revelarBanca ? 'revela' : 'apres'; }
+    else { agora = { tipo: 'votacao' }; estado = 'Fora da apresentação · votação no telão'; cor = 'fora'; }
+    var topo = '<div class="ctlA-status mc-status ' + cor + '"><span class="ctlA-ponto"></span><div class="grow"><span class="eyebrow">Roteiro da apresentadora</span><b id="mcEstado">' + esc(estado) + (atual ? ' · ' + esc(atual.rotulo) : '') + '</b></div>' + mcFerramentas() + '</div>' +
+      (mcR.erro ? '<div class="banner mc-aviso"><span class="bi">' + ico('i-info') + '</span><p class="grow">' + esc(mcR.erro) + '</p></div>' : '');
+    var nav = '<div class="mc-nav">' +
+      '<button class="btn btn-outline btn-lg" data-act="slideAnt"' + (i <= 0 ? ' disabled' : '') + '>' + ico('i-arrow-left') + ' Anterior</button>' +
+      '<button class="btn btn-primary btn-lg" data-act="slideProx"' + (i >= l.length - 1 ? ' disabled' : '') + '>' + (i < 0 ? 'Começar' : 'Próximo') + ' ' + ico('i-chev') + '</button></div>';
+    var estilo = ' style="--mc-f:' + mcR.fonte.toFixed(2) + '"';
+    if (mcR.modo === 'tudo') {
+      var ult = '', html = '', chaves = {};
+      l.forEach(function (s, j) {
+        chaves[s.key] = 1;
+        if (s.grupo && s.grupo !== ult) html += '<h3 class="mc-grupo">' + esc(s.grupo) + '</h3>';
+        ult = s.grupo || ult;
+        html += mcCartao(s, j, i, false);
+      });
+      // falas guardadas para slides que hoje não estão no roteiro (ex.: Herói sem vídeo, slide desligado)
+      var fora = Object.keys(mcPadrao()).concat(Object.keys(mcR.falas || {})).filter(function (k, n, a) { return a.indexOf(k) === n && !chaves[k] && mcFalas(k).length; });
+      if (fora.length) html += '<h3 class="mc-grupo">Falas de slides que não estão no telão agora</h3><p class="small">Slides desligados na aba Apresentação ou Heróis sem vídeo. Aparecem aqui só para consulta.</p>' +
+        fora.map(function (k) { return '<article class="mc-cartao fora"><header><div class="grow"><b>' + esc(k) + '</b></div></header><div class="mc-falas">' + mcLinhasHtml(k) + '</div></article>'; }).join('');
+      return '<div class="view mc mc-tudo"' + estilo + '>' + topo + '<div class="mc-lista-toda">' + html + '</div>' + nav + '</div>';
+    }
+    var lista = '', ultG = '';
+    l.forEach(function (s, j) {
+      var g = s.grupo || '';
+      if (g && g !== ultG) lista += '<li class="ctl-grupo">' + esc(g) + '</li>';
+      ultG = g;
+      lista += '<li><button class="ctl-item' + (j === i ? ' on' : '') + '" data-act="slideIr" data-k="' + esc(s.key) + '"><span class="num">' + (j + 1) + '</span><span class="ctl-item-t">' + esc(s.rotulo) + '</span>' +
+        (mcFalas(s.key).some(function (x) { return (MC_TIPOS[x.k] || {}).le; }) ? '<span class="mc-tem" title="Tem fala">' + mcIco('fala') + '</span>' : '') + '</button></li>';
+    });
+    var principal = atual ? mcCartao(atual, i, i, true)
+      : '<article class="mc-cartao grande"><header><div class="grow"><b>' + esc(estado) + '</b></div></header><div class="mc-falas"><p class="mc-vazio">Toque em <b>Começar</b> para colocar o primeiro slide no telão.</p></div></article>';
+    var seguinte = prox ? '<section class="mc-seguir"><span class="ctl-rot">Depois · ' + esc(prox.rotulo) + '</span><div class="mc-falas mc-falas-prox">' + mcLinhasHtml(prox.key, 'Sem fala no próximo slide.') + '</div></section>' : '';
+    return '<div class="view mc mc-vivo"' + estilo + '>' + topo +
+      '<div class="mc-grade">' +
+        '<section class="mc-esq"><div class="mc-rolar" id="mcRolar">' + principal + seguinte + '</div>' + nav + '</section>' +
+        '<aside class="mc-dir">' +
+          '<div class="ctlA-previas mc-previas">' +
+            '<div class="ctlA-pv"><span class="ctl-rot">No telão agora</span>' + previaTela(agora) + '</div>' +
+            '<div class="ctlA-pv"><span class="ctl-rot">A seguir</span>' + previaTela(prox, 'Fim do roteiro') + '</div>' +
+          '</div>' +
+          (atual && atual.tipo === 'apresCanva' ? '<p class="ctlA-aviso-canva"><b>Apresentação no Canva:</b> as páginas passam dentro do Canva. Quando a equipe terminar, toque em <b>Próximo</b>.</p>' : '') +
+          '<label class="av-vis mc-pausa' + (remote.pausa ? ' on' : '') + '"><input type="checkbox" data-act="togglePausa"' + (remote.pausa ? ' checked' : '') + '><span class="cv-trilho" aria-hidden="true"><span></span></span><span><b>Modo pausa · fotos</b></span></label>' +
+          '<div class="ctlA-card ctlA-roteiro mc-roteiro"><span class="ctlA-tit">' + ico('i-grid') + ' Slides <span class="tiny">· toque para ir direto</span></span><ol class="ctl-lista">' + lista + '</ol></div>' +
+          '<p class="tiny ctlA-dica">Teclado ou passador: → avança · ← volta. ' + ('wakeLock' in navigator ? 'A tela fica acesa com esta página aberta.' : 'Deixe o bloqueio automático da tela desligado.') + '</p>' +
+        '</aside>' +
+      '</div></div>';
+  }
+  // depois de desenhar: lista de slides com o atual visível
+  // depois de desenhar: slide atual no meio da lista; ao redesenhar no mesmo slide, cada área volta para onde estava
+  var mcUltRolado = null, mcRolagem = {};
+  document.addEventListener('scroll', function (e) {
+    var t = e.target; if (route.name !== 'mc' || !t || !t.classList) return;
+    if (t.classList.contains('ctl-lista')) mcRolagem.lista = t.scrollTop;
+    else if (t.id === 'mcRolar') mcRolagem.fala = t.scrollTop;
+    else if (t.classList.contains('mc-dir')) mcRolagem.dir = t.scrollTop;
+  }, true);
+  function mcDepois() {
+    ajustarPrevias();
+    var lista = document.querySelector('.mc .ctl-lista'), on = document.querySelector('.mc .ctl-item.on'), fala = $('#mcRolar'), dir = document.querySelector('.mc-vivo .mc-dir');
+    if (mcUltRolado !== remote.slide) {
+      if (on && lista) { var ro = on.getBoundingClientRect(), rl = lista.getBoundingClientRect(); lista.scrollTop += (ro.top - rl.top) - rl.height / 2 + ro.height / 2; mcRolagem.lista = lista.scrollTop; }
+      if (fala) fala.scrollTop = 0; mcRolagem.fala = 0;
+      if (mcR.modo === 'tudo') { var c = document.querySelector('.mc-cartao.no-ar'); if (c && !mcR.edit) c.scrollIntoView({ block: 'center' }); }
+    } else {
+      if (lista && mcRolagem.lista != null) lista.scrollTop = mcRolagem.lista;
+      if (fala && mcRolagem.fala != null) fala.scrollTop = mcRolagem.fala;
+    }
+    if (dir && mcRolagem.dir != null) dir.scrollTop = mcRolagem.dir;
+    mcUltRolado = remote.slide;
+  }
+  // enquanto ela edita, o redesenho automático espera; só o texto do status muda
+  function mcStatusParcial() {
+    var el = $('#mcEstado'); if (!el) return;
+    var l = deckSlides(), i = deckIndice(remote.slide), s = l[i];
+    el.textContent = remote.pausa ? 'Modo pausa · fotos passando' : s ? 'Slide ' + (i + 1) + ' de ' + l.length + ' · ' + s.rotulo + ' (termine a edição para acompanhar)' : 'Fora da apresentação';
+  }
+  function mcAcao(act, el) {
+    if (act === 'mcModo') { mcR.modo = el.getAttribute('data-m') === 'tudo' ? 'tudo' : 'vivo'; mcUltRolado = null; mcPrefsSalvar(); mcRender(); return true; }
+    if (act === 'mcFonte') { mcR.fonte = Math.max(0.8, Math.min(1.8, Math.round((mcR.fonte + 0.1 * (+el.getAttribute('data-d') || 0)) * 10) / 10)); mcPrefsSalvar(); var v = $('.mc'); if (v) v.style.setProperty('--mc-f', mcR.fonte.toFixed(2)); return true; }
+    if (act === 'mcSoFalas') { mcR.soFalas = !!el.checked; mcPrefsSalvar(); mcRender(); return true; }
+    if (act === 'mcSair') { localState.mcKey = ''; saveLocal(); mcR.edit = null; mcR.falas = null; toast('Você saiu do roteiro neste aparelho.'); mcRender(); return true; }
+    if (act === 'mcEditar') {
+      var k = el.getAttribute('data-k');
+      if (mcR.edit && mcR.edit.key !== k && JSON.stringify(mcR.edit.linhas) !== JSON.stringify(mcFalas(mcR.edit.key)) && !confirm('Descartar a edição do outro slide?')) return true;
+      mcR.edit = { key: k, linhas: JSON.parse(JSON.stringify(mcFalas(k))) };
+      if (!mcR.edit.linhas.length) mcR.edit.linhas.push({ k: 'fala', q: '', t: '' });
+      mcRender();
+      var ta = document.querySelector('.mc-editor textarea'); if (ta) ta.focus();
+      return true;
+    }
+    if (!mcR.edit) return false;
+    var ls = mcR.edit.linhas, n = +el.getAttribute('data-i');
+    if (act === 'mcLinhaNova') { ls.push({ k: 'fala', q: '', t: '' }); mcRender(); var tas = document.querySelectorAll('.mc-editor textarea'); if (tas.length) tas[tas.length - 1].focus(); return true; }
+    if (act === 'mcLinhaTirar') { ls.splice(n, 1); mcRender(); return true; }
+    if (act === 'mcLinhaMover') { var d = +el.getAttribute('data-d'), m = n + d; if (m >= 0 && m < ls.length) { var t = ls[n]; ls[n] = ls[m]; ls[m] = t; } mcRender(); return true; }
+    if (act === 'mcCancelar') { mcR.edit = null; mcRender(); return true; }
+    if (act === 'mcSalvar' || act === 'mcOriginal') {
+      var key = mcR.edit.key, orig = act === 'mcOriginal';
+      if (orig && !confirm('Voltar este slide ao texto original do roteiro? A edição salva será apagada.')) return true;
+      var linhas = orig ? null : ls.map(function (x) { return { k: x.k in MC_TIPOS ? x.k : 'fala', q: String(x.q || '').trim(), t: String(x.t || '').replace(/\s+$/, '') }; }).filter(function (x) { return x.t || x.q; });
+      mcR.salvando = true; mcRender();
+      sbRpc('roteiro_salvar', { p_chave: mcChave(), p_slide: key, p_linhas: linhas }).then(function (r) {
+        mcR.salvando = false;
+        if (!r || !r.ok) throw new Error(r && r.erro || 'falhou');
+        mcR.falas = mcR.falas || {};
+        if (orig) delete mcR.falas[key]; else mcR.falas[key] = linhas;
+        mcR.versao = r.versao || mcR.versao; mcR.edit = null;
+        toast(orig ? 'Voltou ao texto original.' : 'Fala salva. Já aparece em todos os aparelhos.');
+        mcRender();
+      }).catch(function (e) {
+        mcR.salvando = false; mcRender();
+        toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente para salvar o roteiro.' : String(e && e.message) === 'chave_invalida' ? 'A senha mudou. Saia e entre de novo.' : 'Não consegui salvar. Confira a internet e tente de novo.');
+      });
+      return true;
+    }
+    return false;
+  }
+  // digitação no editor: guarda sem redesenhar
+  document.addEventListener('input', function (e) {
+    var t = e.target; if (!mcR.edit || !t || !t.getAttribute || t.getAttribute('data-mi') == null) return;
+    var l = mcR.edit.linhas[+t.getAttribute('data-mi')]; if (l) l[t.getAttribute('data-campo')] = t.value;
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target; if (!mcR.edit || !t || t.tagName !== 'SELECT' || t.getAttribute('data-mi') == null) return;
+    var l = mcR.edit.linhas[+t.getAttribute('data-mi')]; if (l) l.k = t.value;
+  });
+  // teclado / passador na página da apresentadora (fora dos campos de texto)
+  document.addEventListener('keydown', function (e) {
+    if (route.name !== 'mc' || !mcLogado() || e.altKey || e.ctrlKey || e.metaKey) return;
+    var a = document.activeElement;
+    if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) return;
+    var k = e.key;
+    if (k === 'F5') { e.preventDefault(); return; }
+    if (k === 'ArrowRight' || k === 'PageDown') { e.preventDefault(); if (remote.pausa) definirPausaTelao(false); else passoSlide(1); }
+    else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); if (remote.pausa) definirPausaTelao(false); else passoSlide(-1); }
+  });
 
   // ---------- aba Apresentação do painel ----------
   function adminApresentacao() {
@@ -6094,7 +6352,7 @@
       pul.carregando = false;
       if (!r || !r.ok) { pul.erro = r && r.erro === 'chave_invalida' ? 'A senha deste aparelho não confere. Saia e entre de novo.' : 'Não consegui buscar a lista.'; render(); return; }
       var antes = JSON.stringify(pul.itens), novo = r.itens || [];
-      pul.itens = novo; pul.erro = ''; pul.em = Date.now();
+      pul.itens = novo; pul.livres = r.livres || []; pul.erro = ''; pul.em = Date.now();
       var ativo = document.activeElement, digitando = ativo && /^(INPUT|SELECT|TEXTAREA)$/.test(ativo.tagName) && ativo.closest && ativo.closest('.pul');
       if ((!silencioso || antes !== JSON.stringify(novo)) && route.name === 'admin' && admin.tab === 'pulseiras' && !digitando) render();
     }).catch(function (e) {
@@ -6135,6 +6393,15 @@
         return '<li class="cam-item editando"><form class="pul-form cam-form" data-id="' + esc(x.id) + '">' +
           '<input name="nome" value="' + esc(x.nome) + '" aria-label="Nome" required maxlength="80">' +
           '<input name="grupo" value="' + esc(x.grupo || '') + '" list="pulGrupos" placeholder="Grupo" aria-label="Grupo" maxlength="40">' +
+          // camisa: tamanho e vínculo com a lista de camisas (trocar aqui troca na aba Camisas também)
+          '<span class="pul-ed-cam"><label class="tiny" for="pulCam">Camisa</label>' +
+          '<select name="camisa" id="pulCam" aria-label="Camisa vinculada">' +
+            '<option value="=" selected>' + (x.camisa ? esc(x.camisa) + ' (atual)' : 'Sem camisa') + '</option>' +
+            (x.camisa ? '<option value="">Sem camisa</option>' : '') +
+            '<option value="*novo">Nova camisa com este nome</option>' +
+            ((pul.livres || []).length ? '<optgroup label="Camisas sem pulseira">' + pul.livres.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.nome) + (c.tamanho ? ' (' + esc(c.tamanho) + ')' : '') + '</option>'; }).join('') + '</optgroup>' : '') +
+          '</select>' +
+          '<select name="tam" aria-label="Tamanho da camisa"><option value="">Tam. —</option>' + CAM_TAMS.map(function (t) { return '<option' + (x.camisa_tam === t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></span>' +
           '<button class="btn btn-primary btn-sm" type="submit">Salvar</button>' +
           '<button class="btn btn-ghost btn-sm" type="button" data-act="pulCancelar">Cancelar</button>' +
           '<button class="iconbtn iconbtn-danger" type="button" data-act="pulApagar" data-id="' + esc(x.id) + '" aria-label="Tirar da lista">' + ico('i-trash') + '</button></form></li>';
@@ -6144,9 +6411,9 @@
         '<div class="cam-txt"><b>' + esc(x.nome) + (cont[camNorm(x.nome)] > 1 ? ' <span class="cam-rep" title="Há outra pessoa com este mesmo nome na lista">nome repetido</span>' : '') + '</b>' +
           '<span class="tiny">' + (x.entregue ? 'Recebeu' + (x.em ? ' às ' + new Date(x.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + (x.por ? ' · ' + esc(x.por) : '') : 'Ainda não recebeu') + '</span></div>' +
         (x.grupo ? '<span class="pul-grupo">' + esc(x.grupo) + '</span>' : '') +
-        (x.camisa ? '<span class="pul-cam' + (x.camisa_ok ? ' ok' : '') + '" title="Camisa vinculada: ' + esc(x.camisa) + ' (marca junto)">' + (x.camisa_ok ? '✓ ' : '') + 'camisa ' + esc(x.camisa_tam || '?') + '</span>'
-          : (/trilheir/i.test(x.grupo || '') ? '<span class="pul-cam falta" title="Sem vínculo com a lista de camisas (nome repetido lá): marque a camisa na aba Camisas">camisa à parte</span>' : '')) +
-        '<button type="button" class="iconbtn" data-act="pulEditar" data-id="' + esc(x.id) + '" aria-label="Corrigir nome ou grupo">' + ico('i-pencil') + '</button></li>';
+        (x.camisa ? '<button type="button" data-act="pulEditar" data-id="' + esc(x.id) + '" class="pul-cam' + (x.camisa_ok ? ' ok' : '') + '" title="Camisa vinculada: ' + esc(x.camisa) + ' (marca junto). Toque para trocar o tamanho.">' + (x.camisa_ok ? '✓ ' : '') + 'camisa ' + esc(x.camisa_tam || '?') + '</button>'
+          : (/trilheir/i.test(x.grupo || '') ? '<button type="button" data-act="pulEditar" data-id="' + esc(x.id) + '" class="pul-cam falta" title="Sem vínculo com a lista de camisas (nome repetido lá). Toque para vincular a camisa certa.">camisa à parte</button>' : '')) +
+        '<button type="button" class="iconbtn" data-act="pulEditar" data-id="' + esc(x.id) + '" aria-label="Corrigir nome, grupo ou camisa">' + ico('i-pencil') + '</button></li>';
     }
     var filtros = [['faltam', 'Faltam', tot - ok], ['entregues', 'Receberam', ok], ['todos', 'Todos', tot]];
     var importar = '<section class="painelinho stack pul-importar"><span class="eyebrow">' + (tot ? 'Acrescentar vários nomes' : 'Colar a lista de nomes') + '</span>' +
@@ -6191,9 +6458,23 @@
   function pulSalvar(f) {
     var id = f.getAttribute('data-id') || '', nome = String(f.nome.value || '').trim(), g = String(f.grupo.value || '').trim();
     if (!nome) { toast('Informe o nome.'); return; }
+    // camisa (só na edição): tamanho e vínculo
+    var x0 = id ? (pul.itens || []).filter(function (i) { return i.id === id; })[0] : null;
+    var camV = f.camisa ? f.camisa.value : '=', tamV = f.tam ? f.tam.value : null, camPed = null;
+    if (x0 && f.camisa) {
+      if (camV === '=' && !x0.camisa && tamV) camV = '*novo';   // sem camisa e escolheu tamanho: cria a camisa
+      if (camV !== '=' || (x0.camisa && tamV !== (x0.camisa_tam || ''))) camPed = { p_chave: localState.adminKey, p_id: id, p_camisa: camV === '=' ? null : camV, p_tamanho: camV === '' ? null : tamV };
+    }
     sbRpc('pulseira_salvar', { p_chave: localState.adminKey, p_id: id, p_nome: nome, p_grupo: g }).then(function (r) {
       if (!r || !r.ok) throw new Error('falhou');
-      toast(id ? 'Corrigido.' : nome + ' entrou na lista.'); pul.editando = null; pulCarregar(true);
+      if (!camPed) return r;
+      return sbRpc('pulseira_camisa', camPed).then(function (r2) {
+        if (!r2 || !r2.ok) throw new Error(r2 && r2.erro === 'tamanho_invalido' ? 'tam' : 'falhou');
+        if (cam.itens) camCarregar(true);
+        return r;
+      });
+    }).then(function () {
+      toast(id ? (camPed ? 'Corrigido. A camisa foi atualizada também.' : 'Corrigido.') : nome + ' entrou na lista.'); pul.editando = null; pulCarregar(true);
       if (!id) f.reset();
     }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Não consegui salvar agora.'); });
   }
@@ -7202,6 +7483,7 @@
       case 'banca': return viewBanca();
       case 'entrar': return viewEntrar();
       case 'controle': return viewControle();
+      case 'mc': return viewMc();
       case 'mosaico': return viewPausa();
       case 'decisao': return viewDecisao();
       case 'mesa': return viewMesa();
@@ -7405,7 +7687,7 @@
     var r = route.name, nome = {
       trilhei: 'Por que Trilhei?', programacao: 'Programação', projetos: 'Projetos', herois: 'Heróis',
       trilha2026: 'A Trilha em 2026', votacao: 'Votação', resultado: 'Resultado', admin: 'Painel',
-      banca: 'Banca', decisao: 'Decisão final', entrar: 'Entrar', telao: 'Telão', controle: 'Controle', mosaico: 'Mosaico de fotos'
+      banca: 'Banca', decisao: 'Decisão final', entrar: 'Entrar', telao: 'Telão', controle: 'Controle', mc: 'Roteiro da apresentadora', mosaico: 'Mosaico de fotos'
     }[r] || '';
     if (r === 'projeto') { var p = byId(route.param); nome = p ? p.name : 'Projeto'; }
     if (r === 'heroi') { var x = heroById(route.param); nome = x ? String(x.hero.name).split(/\s+[—–-]\s+/)[0] : 'Herói'; }
@@ -7415,17 +7697,20 @@
     return nome ? nome + ' - IDL' : 'IDL';
   }
   function render() {
+    // apresentadora editando uma fala: o redesenho automático espera (só o status muda)
+    if (route.name === 'mc' && mcR.edit && !mcR.forcar) { mcStatusParcial(); renderNav(); return; }
     if (route.name === 'banca' && bancaEditando()) { banca.renderPendente = true; renderNav(); return; }
     renderBrand(); renderNav();
     document.title = tituloPagina();
-    if (/^(telao|controle)$/.test(route.name)) rtConectar(); else rtFechar();
+    if (/^(telao|controle|mc)$/.test(route.name)) rtConectar(); else rtFechar();
     var app = $('#app');
     var ehTelao = route.name === 'telao';
     var ehMesa = route.name === 'mesa';
     var ehMosaico = route.name === 'mosaico';
     document.body.classList.toggle('is-mesa', ehMesa);
     document.body.classList.toggle('is-mosaico', ehMosaico);
-    document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao' || route.name === 'controle');
+    document.body.classList.toggle('is-mc', route.name === 'mc' && mcLogado());
+    document.body.classList.toggle('is-banca', route.name === 'banca' || route.name === 'decisao' || route.name === 'controle' || route.name === 'mc');
     document.body.classList.toggle('is-revela', ehTelao && remote.on && (remote.revelar || remote.revelarBanca));
     document.body.classList.toggle('is-revela-banca', ehTelao && remote.on && remote.revelarBanca);
     // som sempre ligado no telão, sem menu na tela: o primeiro clique/tecla libera
@@ -7453,6 +7738,7 @@
 
     countUp();
     if (route.name === 'controle') { ajustarPrevias(); ctlRolarRoteiro(); }
+    if (route.name === 'mc') mcDepois();
     tickLive();
     telaoMontar();
     pausaMontar();
@@ -7885,6 +8171,7 @@
     }
 
     var act = el.getAttribute('data-act');
+    if (act && /^mc[A-Z]/.test(act) && mcAcao(act, el)) return;
     if (!act || el.tagName === 'INPUT') return;
     var escFoto = el.getAttribute('data-esc') || 'geral';
     if (act === 'sfTudo') {
@@ -8024,7 +8311,7 @@
     else if (act === 'bancaSair') { localState.banca = null; banca.itens = {}; banca.rascunho = {}; banca.carregou = false; banca.dec = { dados: null, erro: '', escolha: null, enviando: false, buscando: false }; saveLocal(); go('banca'); render(); }
     else if (act === 'bancaNota') bancaMarcar(el);
     else if (act === 'sairTudo') {
-      localState.admin = false; localState.adminKey = ''; localState.banca = null;
+      localState.admin = false; localState.adminKey = ''; localState.banca = null; localState.mcKey = '';
       banca.itens = {}; banca.rascunho = {}; banca.carregou = false; banca.dec = { dados: null, erro: '', escolha: null, enviando: false, buscando: false };
       saveLocal(); toast('Você saiu deste aparelho.'); go('home'); render();
     }
@@ -8405,6 +8692,15 @@
       }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
       return;
     }
+    if (f.id === 'senhaMcForm') {
+      var novaM = normSenha($('#novaSenhaMc').value);
+      if (novaM.length < 4) { toast('Use pelo menos 4 caracteres.'); return; }
+      sbRpc('definir_senha_mc', { p_chave: localState.adminKey || '', p_nova: novaM }).then(function (r) {
+        if (r && r.ok) { toast('Senha da apresentadora trocada. Passe a nova para ela.'); $('#novaSenhaMc').value = ''; }
+        else toast(r && r.erro === 'senha_repetida' ? 'Use uma senha diferente da organização e da banca.' : 'Não consegui trocar a senha.');
+      }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
+      return;
+    }
     if (f.id === 'senhaBancaForm') {
       var nova = normSenha($('#novaSenhaBanca').value);
       if (nova.length < 4) { toast('Use pelo menos 4 caracteres.'); return; }
@@ -8566,7 +8862,7 @@
      apaga a tela sozinho enquanto a página estiver aberta (Wake Lock). Ao
      voltar para a aba, pede de novo; nas outras telas do site, libera.    */
   var acesa = { lock: null, pedindo: false };
-  function telaAcesaDeve() { return /^(controle|telao|mosaico|admin|banca|decisao)$/.test(route.name) && document.visibilityState === 'visible'; }
+  function telaAcesaDeve() { return /^(controle|telao|mosaico|admin|banca|decisao|mc)$/.test(route.name) && document.visibilityState === 'visible'; }
   function telaAcesa() {
     if (!('wakeLock' in navigator)) return;
     if (telaAcesaDeve()) {
@@ -8692,7 +8988,7 @@
     syncConteudo();
     setInterval(function () { syncEstado(); }, 12000);
     setInterval(function () { if (/^(banca|decisao|mesa)$/.test(route.name)) syncEstado(); if (route.name === 'decisao') carregarDecisao(); }, 3000);
-    setInterval(function () { if (/^(telao|controle)$/.test(route.name) && document.visibilityState !== 'hidden') syncEstado(); }, 1000);
+    setInterval(function () { if (/^(telao|controle|mc)$/.test(route.name) && document.visibilityState !== 'hidden') syncEstado(); }, 1000);
     setInterval(function () { syncFotos(); }, 60000);
     setInterval(function () { syncConteudo(); }, 30000);
     window.addEventListener('focus', function () { syncEstado(); syncFotos(); syncOpcoes(); syncConteudo(); });

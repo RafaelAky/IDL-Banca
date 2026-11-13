@@ -8,12 +8,12 @@
    conteúdo editado sempre vêm da internet.
    Ao publicar uma mudança grande, aumente VERSAO para limpar as cópias.
    ===================================================================== */
-var VERSAO = 'idl-banca-v22';
+var VERSAO = 'idl-banca-v23';
 var BASE = VERSAO + '-base';
 var IMAGENS = VERSAO + '-imagens';
 
 var ESSENCIAIS = [
-  './', 'styles.css', 'config.js', 'data.js', 'app.js', 'vendor/qrcode.js',
+  './', 'styles.css', 'config.js', 'data.js', 'roteiro-mc.js', 'app.js', 'vendor/qrcode.js',
   'favicon.ico', 'img/icon/favicon-32.png', 'site.webmanifest',
   'img/kv/trilhei.webp', 'img/kv/idltech.webp', 'img/kv/dente.svg',
   'img/kv/arvore-lilas.webp', 'img/kv/mao.webp', 'img/kv/mao-creme.webp', 'img/kv/flor-roxa.svg?v=3'
