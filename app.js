@@ -4783,6 +4783,11 @@
     if (!telao.mural || telao.mural.vis.length !== Math.min(MURAL_N, todos.length)) telao.mural = { vis: todos.slice(0, MURAL_N), fila: todos.slice(MURAL_N) };
     return telao.mural;
   }
+  function muCamada(k, extra) {
+    var pc = PARCEIROS[k] || {};
+    return '<span class="mu-l' + (pc.fundo ? ' escuro' : '') + (pc.quadrado ? ' quadrado' : '') + (pc.mescla ? ' mescla' : '') + (extra || '') + '"' + (pc.fundo ? ' style="background:' + pc.fundo + '"' : '') + '>' + parcMiolo(k) + '</span>';
+  }
+  // troca suave: o logo novo aparece por cima enquanto o antigo some (crossfade), um quadro por vez
   function muralTrocar() {
     var m = muralEstado(); if (!m.fila.length) return;
     var q = Math.floor(Math.random() * m.vis.length);
@@ -4790,15 +4795,16 @@
     m.ultimo = q;
     var sai = m.vis[q], entra = m.fila.shift(); m.vis[q] = entra; m.fila.push(sai);
     var el = document.querySelector('.tl-slide:not(.sl-previa) .sl-mural [data-q="' + q + '"]'); if (!el) return;
-    el.classList.add('troca');
-    setTimeout(function () {
-      var pc = PARCEIROS[entra] || {};
-      el.className = 'sl-parc-card troca' + (pc.fundo ? ' escuro' : '') + (pc.quadrado ? ' quadrado' : '') + (pc.mescla ? ' mescla' : '');
-      el.style.background = pc.fundo || '';
-      el.innerHTML = parcMiolo(entra);
-      requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.remove('troca'); }); });
-    }, 650);
+    var velhas = el.querySelectorAll('.mu-l');
+    el.insertAdjacentHTML('beforeend', muCamada(entra, ' entrando'));
+    var nova = el.lastElementChild;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      nova.classList.remove('entrando');
+      Array.prototype.forEach.call(velhas, function (v) { v.classList.add('saindo'); });
+    }); });
+    setTimeout(function () { Array.prototype.forEach.call(velhas, function (v) { if (v.parentNode) v.parentNode.removeChild(v); }); }, 1700);
   }
+
   var DECK_V = 8;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
@@ -4999,7 +5005,7 @@
           var mu = muralEstado();
           h = '<div class="sl-parc"><h2 class="sl-tit">' + esc(it.titulo || 'Parceiros') + '</h2>' +
             '<span class="sl-traco" aria-hidden="true"><i></i><b class="sl-traco-ponto"></b><i></i></span>' +
-            '<ul class="sl-parc-grade sl-mural n' + mu.vis.length + '">' + mu.vis.map(function (k, q) { return parcCartao(k, '', ' data-q="' + q + '"'); }).join('') + '</ul></div>';
+            '<ul class="sl-parc-grade sl-mural n' + mu.vis.length + '">' + mu.vis.map(function (k, q) { return '<li class="sl-parc-card mu" data-q="' + q + '">' + muCamada(k, '') + '</li>'; }).join('') + '</ul></div>';
           break;
         }
         var lp = PARCEIROS_SLIDES[it.id] || [], nDest = PARC_DESTAQUE[it.id] || 0;
@@ -5179,7 +5185,7 @@
     if (s.tipo === 'parceiros' && s.key === 'parceiros' && !telao.muralTimer) telao.muralTimer = setInterval(function () {
       if (route.name !== 'telao' || remote.slide !== 'parceiros' || remote.pausa) { clearInterval(telao.muralTimer); telao.muralTimer = null; return; }
       muralTrocar();
-    }, 1800);
+    }, 2200);
     var limpo = /^(video|videoHeroi|fotos|apresPag|apresCanva)$/.test(s.tipo);   // apresentação da equipe ocupa a tela inteira
     return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + (/^apres/.test(s.tipo) ? '' : slideFundoIdl()) + slideHtml(s, false) +
       (limpo ? '' : slideRodape()) + '</div>';

@@ -3485,3 +3485,26 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
   .sl-comb-card p { font-size: clamp(15px, 2.8cqh, 40px); }
   .sl-comb-img { font-size: clamp(13px, 2.4cqh, 34px); padding: 2cqh 2.4cqw; }
 }
+
+/* mural dos parceiros: troca em crossfade suave (camadas sobrepostas) */
+.sl-mural .sl-parc-card.mu { position: relative; padding: 0; overflow: hidden; background: #fffdf8; }
+.sl-mural .mu-l { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1cqh; padding: 2cqh 1.4cqw; box-sizing: border-box; background: #fffdf8; border-radius: inherit;
+  opacity: 1; transform: scale(1); filter: blur(0); transition: opacity 1.5s cubic-bezier(.4, 0, .2, 1), transform 1.5s cubic-bezier(.4, 0, .2, 1), filter 1.5s ease; }
+.sl-mural .mu-l.entrando { opacity: 0; transform: scale(1.06); filter: blur(4px); }
+.sl-mural .mu-l.saindo { opacity: 0; transform: scale(.96); filter: blur(3px); }
+.sl-mural .mu-l img { width: 88%; height: 72%; min-height: 0; object-fit: contain; display: block; }
+.sl-mural .mu-l.quadrado { padding: 1.6cqh 1.4cqw; }
+.sl-mural .mu-l.quadrado img { width: 100%; height: 100%; }
+.sl-mural .mu-l:has(small) img { height: 52%; }
+.sl-mural .mu-l small { font-family: var(--fonte); font-weight: 300; font-size: .62cqw; letter-spacing: .24em; text-transform: uppercase; color: #8a6f5c; white-space: nowrap; }
+
+/* combinados: compacto em qualquer proporção de tela (nunca encosta nos logos do rodapé) */
+.sl-comb { height: 100%; align-content: center; gap: 2cqh; }
+.sl-comb .sl-tit { font-size: min(8cqh, 5cqw); line-height: 1.05; }
+.sl-comb-cards { width: min(84cqw, 150cqh); }
+.sl-comb-card { padding: 3.6cqh 2.6cqw; gap: 1.4cqh; }
+.sl-comb-ic { width: min(14cqh, 8cqw); height: min(14cqh, 8cqw); }
+.sl-comb-card h3 { font-size: min(5.6cqh, 3.4cqw); line-height: 1.08; }
+.sl-comb-card p { font-size: min(3.2cqh, 1.9cqw); line-height: 1.32; max-width: 30ch; }
+.sl-comb-img { width: min(84cqw, 150cqh); font-size: min(2.7cqh, 1.6cqw); padding: 2cqh 2.4cqw; margin-top: .6cqh; }
+.sl-comb-ic-p { width: min(6cqh, 3.6cqw); height: min(6cqh, 3.6cqw); }
