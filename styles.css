@@ -3508,3 +3508,63 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .sl-comb-card p { font-size: min(3.2cqh, 1.9cqw); line-height: 1.32; max-width: 30ch; }
 .sl-comb-img { width: min(84cqw, 150cqh); font-size: min(2.7cqh, 1.6cqw); padding: 2cqh 2.4cqw; margin-top: .6cqh; }
 .sl-comb-ic-p { width: min(6cqh, 3.6cqw); height: min(6cqh, 3.6cqw); }
+
+/* =================== slides de 13/11 (2ª revisão) =================== */
+/* pais e familiares */
+.sl-familia-ic { width: 12cqh; height: 12cqh; color: var(--c-laranja); animation: slPulsa 2.4s ease-in-out infinite; }
+.sl-familia-ic svg { width: 100%; height: 100%; }
+@keyframes slPulsa { 50% { transform: scale(1.1); } }
+.sl-familia .sl-mega { font-size: min(13cqh, 8cqw); }
+.sl-familia .sl-lead { font-size: min(4cqh, 2.4cqw); max-width: 30ch; }
+
+/* homenagens */
+.sl-hom .sl-mega { font-size: min(12cqh, 7.4cqw); }
+.sl-hom-nomes { list-style: none; margin: 1cqh 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.4cqh 1.2cqw; max-width: 84cqw; }
+.sl-hom-nomes li { padding: 1.2cqh 2cqw; border-radius: 99px; background: rgba(255, 255, 255, .1); border: 1.5px solid rgba(255, 255, 255, .25); font-size: min(3.4cqh, 2cqw); font-weight: 600; color: #fff; animation: slSobe .6s cubic-bezier(.2,.9,.3,1.2) calc(.2s + var(--i) * 60ms) both; }
+.sl-hom-nomes.muitos li { font-size: min(2.6cqh, 1.6cqw); padding: .9cqh 1.4cqw; }
+
+/* versículo */
+.sl-vers { gap: 2cqh; max-width: 80cqw; }
+.sl-vers-aspas { font-family: Georgia, serif; font-size: 22cqh; line-height: .6; color: var(--c-laranja); height: 10cqh; }
+.sl-vers-txt { margin: 0; font-size: min(6.4cqh, 3.8cqw); font-weight: 600; line-height: 1.3; color: #fff; max-width: 28ch; font-style: italic; }
+.sl-vers-ref { margin: 0; font-size: min(3.6cqh, 2.2cqw); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #ffb37a; }
+
+/* programação sem horários */
+.tl-slide .sl-prog li { padding-left: 2.6cqh; position: relative; }
+.tl-slide .sl-prog li::before { content: ""; position: absolute; left: 0; top: .6em; width: 1.2cqh; height: 1.2cqh; border-radius: 50%; background: var(--c-laranja); }
+
+/* revelação do Herói antes do vídeo: silhueta, clarão e o Herói */
+.sl-hrev { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: center; gap: 4cqw; width: 100%; height: 100%; padding: 0 7cqw; box-sizing: border-box; text-align: left; }
+.sl-hrev-fig { position: relative; height: 82cqh; display: flex; align-items: flex-end; justify-content: center; }
+.sl-hrev-fig img { position: relative; z-index: 1; height: 100%; width: auto; max-width: 40cqw; object-fit: contain; object-position: bottom;
+  filter: drop-shadow(0 3cqh 5cqh rgba(0, 0, 0, .45)); animation: slHrevImg 3.6s cubic-bezier(.3, 0, .2, 1) var(--t0, 0ms) both; }
+@keyframes slHrevImg {
+  0% { filter: brightness(0) drop-shadow(0 0 0 rgba(0,0,0,0)); opacity: 0; transform: scale(.9); }
+  12% { opacity: .9; }
+  70% { filter: brightness(0) drop-shadow(0 0 3cqh rgba(232, 219, 247, .5)); opacity: .9; transform: scale(.96); }
+  78% { filter: brightness(2.2) drop-shadow(0 0 6cqh rgba(255, 210, 140, .9)); opacity: 1; transform: scale(1.04); }
+  100% { filter: brightness(1) drop-shadow(0 3cqh 5cqh rgba(0, 0, 0, .45)); opacity: 1; transform: scale(1); }
+}
+.sl-hrev-luz { position: absolute; left: 50%; top: 45%; width: 80cqh; height: 80cqh; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(249, 114, 24, .5), rgba(185, 143, 232, .2) 60%, transparent); animation: slHrevLuz 3.6s ease var(--t0, 0ms) both; }
+@keyframes slHrevLuz { 0%, 70% { opacity: .25; transform: translate(-50%, -50%) scale(.7); } 80% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); } 100% { opacity: .8; transform: translate(-50%, -50%) scale(1); } }
+.sl-hrev-q { position: absolute; z-index: 2; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 26cqh; font-weight: 800; color: #fff; text-shadow: 0 0 4cqh rgba(185, 143, 232, .9); opacity: 0; animation: slHrevQ 3.6s ease var(--t0, 0ms) both; }
+@keyframes slHrevQ { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 15%, 62% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 74%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } }
+.sl-hrev-txt { display: grid; gap: 2cqh; justify-items: start; }
+.sl-hrev-nome { margin: 0; font-family: var(--fonte); font-weight: 800; font-size: min(15cqh, 8.4cqw); line-height: .95; letter-spacing: -.03em; color: #fff; animation: slHrevTxt 4.2s cubic-bezier(.2, .9, .3, 1.2) var(--t0, 0ms) both; }
+.sl-hrev-proj { margin: 0; font-size: min(4.6cqh, 2.8cqw); font-weight: 700; color: #ffb37a; line-height: 1.15; max-width: 26ch; animation: slHrevTxt 4.5s cubic-bezier(.2, .9, .3, 1.2) var(--t0, 0ms) both; }
+.sl-hrev-mb { margin: 0; display: flex; flex-wrap: wrap; gap: .6cqh 1cqw; font-size: min(3cqh, 1.8cqw); color: rgba(255, 255, 255, .88); max-width: 40ch; animation: slHrevTxt 4.8s ease var(--t0, 0ms) both; }
+.sl-hrev-mb .sl-eq-rot { flex-basis: 100%; }
+.sl-hrev-mb span + span:not(.sl-eq-rot)::before { content: "·"; margin-right: 1cqw; color: #b98fe8; }
+.sl-hrev-mb .sl-eq-rot + span::before { content: none; }
+.sl-hrev-eb { animation: slHrevEb 3.6s ease var(--t0, 0ms) both; }
+@keyframes slHrevTxt { 0%, 74% { opacity: 0; transform: translateY(4cqh); } 100% { opacity: 1; transform: none; } }
+@keyframes slHrevEb { 0% { opacity: 0; } 15%, 100% { opacity: 1; } }
+.sl-previa .sl-hrev-q { display: none; }
+
+/* revelação do Herói da Trilha: os trilheiros junto */
+.rv-membros { display: block; margin-top: .6cqh; font-size: clamp(14px, 2.4cqh, 32px); font-weight: 600; color: rgba(255, 255, 255, .9); max-width: 70cqw; animation: rvLetra .8s ease calc(var(--t1) + 1600ms) both; }
+.tl-slide .sl-familia .sl-mega { font-size: min(14cqh, 8.4cqw); }
+.tl-slide .sl-familia .sl-lead { font-size: min(4.4cqh, 2.6cqw); max-width: 32ch; }
+.tl-slide .sl-familia .sl-eyebrow { font-size: min(2.6cqh, 1.6cqw); }
+.sl-jur-logo img { max-width: 26cqw; max-height: 9cqh; width: auto; height: auto; }
+.tl-slide .sl-prog li { font-size: min(3.2cqh, 1.9cqw); padding-bottom: 1.2cqh; }
