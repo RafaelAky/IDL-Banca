@@ -6144,6 +6144,8 @@
         '<div class="cam-txt"><b>' + esc(x.nome) + (cont[camNorm(x.nome)] > 1 ? ' <span class="cam-rep" title="Há outra pessoa com este mesmo nome na lista">nome repetido</span>' : '') + '</b>' +
           '<span class="tiny">' + (x.entregue ? 'Recebeu' + (x.em ? ' às ' + new Date(x.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + (x.por ? ' · ' + esc(x.por) : '') : 'Ainda não recebeu') + '</span></div>' +
         (x.grupo ? '<span class="pul-grupo">' + esc(x.grupo) + '</span>' : '') +
+        (x.camisa ? '<span class="pul-cam' + (x.camisa_ok ? ' ok' : '') + '" title="Camisa vinculada: ' + esc(x.camisa) + ' (marca junto)">' + (x.camisa_ok ? '✓ ' : '') + 'camisa ' + esc(x.camisa_tam || '?') + '</span>'
+          : (/trilheir/i.test(x.grupo || '') ? '<span class="pul-cam falta" title="Sem vínculo com a lista de camisas (nome repetido lá): marque a camisa na aba Camisas">camisa à parte</span>' : '')) +
         '<button type="button" class="iconbtn" data-act="pulEditar" data-id="' + esc(x.id) + '" aria-label="Corrigir nome ou grupo">' + ico('i-pencil') + '</button></li>';
     }
     var filtros = [['faltam', 'Faltam', tot - ok], ['entregues', 'Receberam', ok], ['todos', 'Todos', tot]];
@@ -6177,12 +6179,13 @@
     var x = (pul.itens || []).filter(function (i) { return i.id === id; })[0]; if (!x) return;
     var antes = { e: x.entregue, em: x.em, por: x.por };
     x.entregue = !x.entregue; x.em = x.entregue ? new Date().toISOString() : null; x.por = x.entregue ? firstName(localState.name) || '' : null;
+    if (x.camisa) x.camisa_ok = x.entregue;
     render();
     sbRpc('pulseira_marcar', { p_chave: localState.adminKey, p_id: id, p_entregue: x.entregue, p_por: firstName(localState.name) || '' }).then(function (r) {
       if (!r || !r.ok) throw new Error('falhou');
       // a camisa do mesmo nome vai junto (o banco marca as duas)
       if (r.camisa) { toast(x.entregue ? 'Pulseira e camisa marcadas para ' + x.nome + '.' : 'Pulseira e camisa desmarcadas.'); if (cam.itens) camCarregar(true); }
-      else if (r.camisa_repetida) toast('Há mais de um ' + x.nome + ' na lista de camisas: marque a camisa na aba Camisas.');
+      else if (x.entregue && (r.camisa_repetida || /trilheir/i.test(x.grupo || ''))) toast('A camisa de ' + x.nome + ' não foi marcada junto (nome repetido na lista de camisas): marque na aba Camisas.');
     }).catch(function () { x.entregue = antes.e; x.em = antes.em; x.por = antes.por; render(); toast('Não consegui salvar. Confira a internet e tente de novo.'); });
   }
   function pulSalvar(f) {
@@ -8084,7 +8087,8 @@
       if (!xp) return;
       admin.confirm = xp.entregue
         ? { title: 'Desfazer a entrega de ' + xp.nome + '?', danger: true, yes: 'Sim, desfazer', body: 'A pessoa volta para a lista de quem ainda não recebeu a pulseira (e a camisa do mesmo nome também).', run: function () { pulMarcar(idP); } }
-        : { title: 'Entregar a pulseira para ' + xp.nome + '?', yes: 'Confirmar entrega', body: (xp.grupo ? xp.grupo + '. ' : '') + 'Confira o nome antes de confirmar. Se a pessoa está na lista de camisas, a camisa fica marcada junto.', run: function () { pulMarcar(idP); } };
+        : { title: 'Entregar a pulseira para ' + xp.nome + '?', yes: 'Confirmar entrega',
+            body: (xp.grupo ? xp.grupo + '. ' : '') + (xp.camisa ? 'A camisa ' + (xp.camisa_tam || '') + ' (' + xp.camisa + ') vai junto e fica marcada também.' : /trilheir/i.test(xp.grupo || '') ? 'A camisa desta pessoa não está vinculada: depois marque na aba Camisas.' : 'Confira o nome antes de confirmar.'), run: function () { pulMarcar(idP); } };
       renderOverlay();
     }
     else if (act === 'pulAtualizar') { pul.erro = ''; pulCarregar(); }

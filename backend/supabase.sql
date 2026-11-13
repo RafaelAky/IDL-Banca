@@ -198,10 +198,12 @@ set search_path = public, extensions as $$
 $$;
 revoke all on function public._telao_ok(text) from public, anon, authenticated;
 
--- normaliza a palavra-chave do palco: maiúsculas, sem espaços
+-- normaliza a palavra-chave do palco: maiúsculas, sem espaços e sem acento
+-- ("raizes", "Raízes" e "RAÍZES" valem igual)
 create or replace function public._norm(p text)
 returns text language sql immutable as $$
-  select nullif(upper(regexp_replace(coalesce(p, ''), '\s+', '', 'g')), '');
+  select nullif(translate(upper(regexp_replace(coalesce(p, ''), '\s+', '', 'g')),
+                          'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ', 'AAAAAEEEEIIIIOOOOOUUUUC'), '');
 $$;
 
 -- ---- público ----------------------------------------------------------
@@ -380,6 +382,22 @@ begin
 end $$;
 
 -- a palavra-chave atual, só para a organização (o telão do painel a exibe)
+-- passo da votação logo depois do CPF: confere a palavra-chave do palco
+-- (sem dizer qual é). O voto confere de novo na hora de registrar.
+create or replace function public.conferir_palavra(p_palavra text)
+returns jsonb language plpgsql stable security definer
+set search_path = public, extensions as $$
+declare e record; c record;
+begin
+  select * into e from public.estado_votacao where id = 1;
+  if not coalesce(e.exige_chave, false) then return jsonb_build_object('ok', true); end if;
+  select * into c from public.config_privada where id = 1;
+  if public._norm(p_palavra) is distinct from public._norm(c.chave_evento) then
+    return jsonb_build_object('ok', false, 'erro', 'palavra_invalida');
+  end if;
+  return jsonb_build_object('ok', true);
+end $$;
+
 create or replace function public.ler_chave_evento(p_chave text)
 returns jsonb language plpgsql stable security definer
 set search_path = public, extensions as $$
@@ -553,7 +571,7 @@ begin
     pausa = false,
     palco = case when p_palco is null then palco else nullif(trim(p_palco), '') end,
     revelar_telao = coalesce(sl = 'revelaHeroi', false),
-    revelar_banca = coalesce(sl = 'revelaBanca', false),
+    revelar_banca = coalesce(sl like 'revelaBanca%', false),   -- revelaBanca3, 2, 1 (um lugar por vez)
     atualizado_em = now()
   where id = 1;
   return jsonb_build_object('ok', true, 'slide', sl);
@@ -802,7 +820,7 @@ begin
     'registrar_voto(text,text,text)', 'consultar_voto(text)', 'resultado(text)',
     'entrar_admin(text)', 'entrar(text)', 'definir_senha_admin(text,text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
     'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)', 'zerar_tudo(text)', 'definir_palco(text,text)', 'definir_revelacao(text,boolean)', 'entrar_banca(text)',
-    'salvar_avaliacao(text,text,text,jsonb,text)', 'definir_decisao(text,boolean)', 'definir_avaliacoes(text,boolean)', 'definir_revelacao_banca(text,boolean)', 'vencedor_banca(text)', 'definir_slide(text,text,text)', 'definir_pausa(text,boolean)', 'zerar_banca(text,boolean)', 'votar_decisao(text,text,jsonb)', 'decisao_banca_ver(text,text)', 'minhas_avaliacoes(text,text)', 'avaliacoes_banca(text)', 'definir_senha_banca(text,text)', 'definir_visibilidade(text,boolean)', 'ler_chave_evento(text)',
+    'salvar_avaliacao(text,text,text,jsonb,text)', 'definir_decisao(text,boolean)', 'definir_avaliacoes(text,boolean)', 'definir_revelacao_banca(text,boolean)', 'vencedor_banca(text)', 'definir_slide(text,text,text)', 'definir_pausa(text,boolean)', 'zerar_banca(text,boolean)', 'votar_decisao(text,text,jsonb)', 'decisao_banca_ver(text,text)', 'minhas_avaliacoes(text,text)', 'avaliacoes_banca(text)', 'definir_senha_banca(text,text)', 'definir_visibilidade(text,boolean)', 'ler_chave_evento(text)', 'conferir_palavra(text)',
     'adicionar_foto(text,text,text,text,boolean,text)', 'remover_foto(text,uuid)',
     'ordenar_fotos(text,uuid[])', 'definir_capa_foto(text,uuid)', 'atualizar_fotos(text,jsonb)']
   loop
@@ -878,9 +896,9 @@ where not exists (select 1 from public.fotos);
 -- Troque pelo painel (aba Banca). Rodar este arquivo de novo não muda a senha escolhida.
 update public.config_privada set chave_banca_hash = coalesce(chave_banca_hash, extensions.crypt('banca2026', extensions.gen_salt('bf'))) where id = 1;
 
--- palavra-chave do palco: começa ativa com SEMEAR. Troque pelo painel
--- (aba Votação) — de preferência no próprio dia, para não vazar antes.
-update public.config_privada set chave_evento = coalesce(chave_evento, 'SEMEAR') where id = 1;
+-- palavra-chave da votação do Herói (pedida logo depois do CPF): RAÍZES. Troque pelo
+-- painel (aba Votação). Quem ainda estava com a antiga padrão (SEMEAR) passa para RAÍZES.
+update public.config_privada set chave_evento = 'RAÍZES' where id = 1 and (chave_evento is null or chave_evento = 'SEMEAR');
 update public.estado_votacao e set exige_chave = (c.chave_evento is not null)
   from public.config_privada c where e.id = 1 and c.id = 1;
 
@@ -1031,3 +1049,137 @@ end $$;
 
 grant execute on function public.camisas_listar(text), public.camisa_marcar(text, text, boolean, text),
   public.camisa_salvar(text, text, text, text), public.camisa_apagar(text, text) to anon, authenticated;
+
+-- ===================== PULSEIRAS DO EVENTO (painel · aba Pulseiras) =====================
+-- Controle de quem já recebeu a pulseira na entrada.
+-- Mesma ideia das camisas: a organização marca quem já recebeu; várias pessoas
+-- marcam ao mesmo tempo. "grupo" é livre (Trilheiro, Família, Convidado…).
+create table if not exists public.pulseiras (
+  id           text primary key,
+  nome         text not null check (length(trim(nome)) between 1 and 80),
+  grupo        text not null default '' check (length(grupo) <= 40),
+  ordem        int  not null default 0,
+  entregue     boolean not null default false,
+  entregue_em  timestamptz,
+  entregue_por text
+);
+alter table public.pulseiras enable row level security;
+revoke all on public.pulseiras from anon, authenticated;
+-- camisa da mesma pessoa (a lista de camisas usa nomes curtos): marca/desmarca junto
+alter table public.pulseiras add column if not exists camisa_id text;
+
+create or replace function public.pulseiras_listar(p_chave text)
+returns jsonb language plpgsql stable security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  return jsonb_build_object('ok', true, 'itens', coalesce((
+    select jsonb_agg(jsonb_build_object('id', p.id, 'nome', p.nome, 'grupo', p.grupo, 'entregue', p.entregue,
+                                        'em', p.entregue_em, 'por', p.entregue_por,
+                                        'camisa', c.nome, 'camisa_tam', c.tamanho, 'camisa_ok', c.entregue) order by p.ordem, p.nome)
+      from public.pulseiras p left join public.camisas c on c.id = p.camisa_id), '[]'::jsonb));
+end $$;
+
+-- nome para comparar as duas listas: minúsculas, sem acento e com um espaço só
+create or replace function public._nome_chave(p text)
+returns text language sql immutable as $$
+  select translate(lower(regexp_replace(trim(coalesce(p, '')), '\s+', ' ', 'g')),
+                   'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc');
+$$;
+
+-- camisa e pulseira são entregues juntas: marcar (ou desfazer) uma marca a
+-- outra do mesmo nome. Só quando o nome aparece UMA vez na outra lista
+-- (nome repetido fica para conferir na mão).
+create or replace function public.pulseira_marcar(p_chave text, p_id text, p_entregue boolean, p_por text default '')
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare nm text; alvo text; n int; e boolean := coalesce(p_entregue, false); por text := left(nullif(trim(coalesce(p_por, '')), ''), 60);
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.pulseiras set entregue = e,
+    entregue_em = case when e then now() else null end,
+    entregue_por = case when e then por else null end
+  where id = p_id returning nome, camisa_id into nm, alvo;
+  if nm is null then return jsonb_build_object('ok', false); end if;
+  if alvo is not null and exists (select 1 from public.camisas where id = alvo) then n := 1;
+  else select count(*), min(id) into n, alvo from public.camisas where public._nome_chave(nome) = public._nome_chave(nm); end if;
+  if n = 1 then
+    update public.camisas set entregue = e, entregue_em = case when e then now() else null end, entregue_por = case when e then por else null end
+     where id = alvo and entregue is distinct from e;
+    return jsonb_build_object('ok', true, 'camisa', true, 'camisa_id', alvo);
+  end if;
+  return jsonb_build_object('ok', true, 'camisa', false, 'camisa_repetida', n > 1);
+end $$;
+
+-- e o contrário: entregar a camisa já marca a pulseira do mesmo nome
+-- (substitui a camisa_marcar lá de cima)
+create or replace function public.camisa_marcar(p_chave text, p_id text, p_entregue boolean, p_por text default '')
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare nm text; alvo text; n int; e boolean := coalesce(p_entregue, false); por text := left(nullif(trim(coalesce(p_por, '')), ''), 60);
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  update public.camisas set entregue = e,
+    entregue_em = case when e then now() else null end,
+    entregue_por = case when e then por else null end
+  where id = p_id returning nome into nm;
+  if nm is null then return jsonb_build_object('ok', false); end if;
+  select count(*), min(id) into n, alvo from public.pulseiras where camisa_id = p_id;
+  if n = 0 then select count(*), min(id) into n, alvo from public.pulseiras where camisa_id is null and public._nome_chave(nome) = public._nome_chave(nm); end if;
+  if n = 1 then
+    update public.pulseiras set entregue = e, entregue_em = case when e then now() else null end, entregue_por = case when e then por else null end
+     where id = alvo and entregue is distinct from e;
+    return jsonb_build_object('ok', true, 'pulseira', true, 'pulseira_id', alvo);
+  end if;
+  return jsonb_build_object('ok', true, 'pulseira', false, 'pulseira_repetida', n > 1);
+end $$;
+
+-- acrescenta (p_id vazio) ou corrige o nome/grupo de uma pessoa
+create or replace function public.pulseira_salvar(p_chave text, p_id text, p_nome text, p_grupo text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare novo text;
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if coalesce(trim(p_nome), '') = '' then return jsonb_build_object('ok', false, 'erro', 'nome_vazio'); end if;
+  if coalesce(p_id, '') = '' then
+    novo := 'pul_' || substr(md5(random()::text || clock_timestamp()::text), 1, 10);
+    insert into public.pulseiras (id, nome, grupo, ordem)
+    values (novo, left(trim(p_nome), 80), left(coalesce(trim(p_grupo), ''), 40), coalesce((select max(ordem) from public.pulseiras), 0) + 1);
+    return jsonb_build_object('ok', true, 'id', novo);
+  end if;
+  update public.pulseiras set nome = left(trim(p_nome), 80), grupo = left(coalesce(trim(p_grupo), ''), 40) where id = p_id;
+  return jsonb_build_object('ok', found, 'id', p_id);
+end $$;
+
+-- colar a lista inteira de uma vez: [{ "nome": "...", "grupo": "..." }, ...]
+create or replace function public.pulseiras_importar(p_chave text, p_itens jsonb)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+declare base int; n int;
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if jsonb_typeof(p_itens) <> 'array' then return jsonb_build_object('ok', false, 'erro', 'lista_invalida'); end if;
+  select coalesce(max(ordem), 0) into base from public.pulseiras;
+  insert into public.pulseiras (id, nome, grupo, ordem)
+    select 'pul_' || substr(md5(random()::text || clock_timestamp()::text || k::text), 1, 10),
+           left(trim(x->>'nome'), 80), left(coalesce(trim(x->>'grupo'), ''), 40), base + k::int
+      from jsonb_array_elements(p_itens) with ordinality e(x, k)
+     where coalesce(trim(x->>'nome'), '') <> '';
+  get diagnostics n = row_count;
+  return jsonb_build_object('ok', true, 'importados', n);
+end $$;
+
+create or replace function public.pulseira_apagar(p_chave text, p_id text)
+returns jsonb language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
+  if p_id = '*' then delete from public.pulseiras where true; return jsonb_build_object('ok', true); end if;
+  delete from public.pulseiras where id = p_id;
+  return jsonb_build_object('ok', found);
+end $$;
+
+grant execute on function public.pulseiras_listar(text), public.pulseira_marcar(text, text, boolean, text),
+  public.pulseira_salvar(text, text, text, text), public.pulseiras_importar(text, jsonb), public.pulseira_apagar(text, text) to anon, authenticated;
+notify pgrst, 'reload schema';
