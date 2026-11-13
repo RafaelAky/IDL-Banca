@@ -4841,7 +4841,7 @@
     setTimeout(function () { Array.prototype.forEach.call(velhas, function (v) { if (v.parentNode) v.parentNode.removeChild(v); }); }, 1700);
   }
 
-  var DECK_V = 13;
+  var DECK_V = 14;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4910,7 +4910,7 @@
     { id: 'jurado2', tipo: 'jurado', on: true, titulo: 'Rafael Rodrigues Guimarães Wollmann', cargo: 'CFO · Grupo Brenex', area: 'Estratégia & liderança', texto: 'Executivo com atuação em finanças, estratégia, governança e gestão. É CFO do Grupo Brenex, do setor logístico, e traz experiência em avaliação voluntária de projetos voltados à educação e ao desenvolvimento de crianças e adolescentes.', frase: 'Visão de negócios com atenção às pessoas.', foto: 'img/banca/rafael-rodrigues.webp', logo: '' },
     { id: 'jurado3', tipo: 'jurado', on: true, titulo: 'Rosana Pimpão', cargo: 'Empresária · Grupo Pimpão', area: 'Educação & propósito', texto: 'Empresária vinculada ao Grupo Pimpão, que atua com playgrounds e soluções educacionais. Participa da comunidade C12 Brasil e representa a importância de empreender com valores, propósito e atenção ao desenvolvimento das novas gerações.', frase: 'Empreender também é investir em futuros.', foto: 'img/banca/rosana-pimpao.webp', logo: '' },
     { id: 'jurado4', tipo: 'jurado', on: true, titulo: 'Andrei Amaral', cargo: 'Fundador e CEO · Secret Group', area: 'Empreendedorismo & tecnologia', texto: 'Fundador e CEO do Secret Group, com trajetória empreendedora em varejo, e-commerce, tecnologia e logística. Atua na conexão entre inovação e negócios e aprofunda estudos em robótica humanoide e inteligência artificial aplicada.', frase: 'O futuro se constrói com atitude e inovação.', foto: 'img/banca/andrei-amaral.webp', logo: '' },
-    { id: 'jurado5', tipo: 'jurado', on: true, titulo: 'Ismar Becker', cargo: 'Empresário · Mentor · Conselheiro', area: 'Experiência & governança', texto: 'Administrador, empresário, mentor e conselheiro com carreira internacional. Com formação executiva em Harvard e INSEAD, dedica-se à estratégia, à governança e ao desenvolvimento de empresas familiares, compartilhando conhecimento como palestrante e autor.', frase: 'Experiência que inspira novas escolhas.', foto: '', logo: '' },
+    { id: 'jurado5', tipo: 'jurado', on: true, titulo: 'Ismar Becker', cargo: 'Empresário · Mentor · Conselheiro', area: 'Experiência & governança', texto: 'Administrador, empresário, mentor e conselheiro com carreira internacional. Com formação executiva em Harvard e INSEAD, dedica-se à estratégia, à governança e ao desenvolvimento de empresas familiares, compartilhando conhecimento como palestrante e autor.', frase: 'Experiência que inspira novas escolhas.', foto: 'img/banca/ismar-becker.webp', logo: '' },
     { id: 'jurado6', tipo: 'jurado', on: true, titulo: 'Thiago Nieweglowski', cargo: 'CEO · C12 Brasil', area: 'Liderança & propósito', texto: 'CEO do C12 Brasil e presidente do fundo de pensão Mais Futuro. Administrador com formação em Teologia e especializações em Finanças, atua há mais de 15 anos com liderança, investimentos e educação financeira, unindo negócios, valores e propósito.', frase: 'Grandes negócios. Grandes propósitos.', foto: 'img/banca/thiago-nieweglowski.webp', logo: '' },
     { id: 'jurado7', tipo: 'jurado', on: true, titulo: 'Rebeca Acure', cargo: 'Psicóloga · Fundadora da Acure', area: 'Cuidado & desenvolvimento', texto: 'Psicóloga formada pela UEM, mestre em Bioética pela PUCPR e especialista em Gestalt-terapia. Fundadora da Acure Psicoterapia, atua no cuidado emocional, no desenvolvimento humano e em consultoria para pessoas e organizações.', frase: 'Cuidar de pessoas é impulsionar possibilidades.', foto: 'img/banca/rebeca-acure.webp', logo: '' },
     { id: 'banca_obrigado', tipo: 'bancaObrigado', on: true, titulo: 'Muito obrigado, avaliadores!', texto: 'Quando a experiência encontra o potencial, novas possibilidades começam a nascer.' },
@@ -5155,6 +5155,12 @@
       case 'jurado':
         // membro da banca: foto, nome, minibio e a logo da empresa/instituição (tudo editável no painel)
         var ehDest = it.grupoP === 'destaque';
+        if (ehDest) {
+          // aluno destaque: só o nome, grande
+          h = '<div class="sl-centro sl-dest"><h1 class="sl-mega' + (String(it.titulo || '').length > 24 ? ' longo' : '') + '">' + esc(it.titulo || '') + '</h1>' +
+            '<span class="sl-traco" aria-hidden="true"><i></i><b class="sl-traco-ponto"></b><i></i></span></div>';
+          break;
+        }
         if (!ehDest) {
           var jusB = juradosBanca(), jb = jusB.map(function (x) { return x.id; }).indexOf(it.id) + 1;
           h = '<div class="sl-jur sl-banca">' +

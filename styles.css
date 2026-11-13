@@ -3626,3 +3626,18 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 /* alunos destaque */
 .sl-jur:not(.sl-banca) .sl-jur-nome { font-size: min(10cqh, 6cqw); }
 .sl-dest-inst { color: #ffb37a !important; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+/* aluno destaque: só o nome */
+.sl-dest .sl-mega { font-size: min(14cqh, 8.4cqw); max-width: 16ch; line-height: 1.02; }
+.sl-dest .sl-mega.longo { font-size: min(11cqh, 6.6cqw); max-width: 18ch; }
+
+/* Heróis colados na base da tela (sem faixa vazia embaixo do corte) */
+.tl-slide:not(.pausa) .sl-equipe.sl-eq3 { overflow: visible; }
+.tl-slide .sl-eq3 .sl-eq-gigante { top: 4cqh; }
+/* revelação antes do vídeo: texto à esquerda, Herói à direita apoiado na base da tela */
+.sl-hrev { grid-template-columns: minmax(0, 1fr); padding-right: 46cqw; }
+.sl-hrev .sl-hrev-fig { position: absolute; right: 3cqw; bottom: -12cqh; width: 44cqw; height: 96cqh; align-items: flex-end; }
+.sl-hrev .sl-hrev-fig img { max-width: 44cqw; height: 100%; }
+.sl-hrev-robo { top: 46%; }
+.sl-hrev-mb .sl-eq-rot + span::before, .sl-hrev-mb span.sl-eq-rot + span:not(.sl-eq-rot)::before { content: none; }
+.sl-banca .sl-jur-bio { -webkit-line-clamp: 7; }
