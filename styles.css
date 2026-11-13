@@ -3315,3 +3315,20 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .sl-canva { background: #000; display: grid; place-items: center; overflow: hidden; --canva-corte: 110px; container-type: size; }
 .sl-canva-quadro { position: relative; width: min(100cqw, calc(100cqh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; }
 .sl-canva .sl-canva-quadro iframe { position: absolute; left: 0; width: 100%; top: calc(-1 * var(--canva-corte)); height: calc(100% + 2 * var(--canva-corte)); border: 0; display: block; }
+
+/* aba Apresentação: arrastar e digitar a posição */
+.ap-alca { cursor: grab; touch-action: none; user-select: none; font-size: 20px; line-height: 1; color: var(--c-lilas); padding: 6px 4px; border-radius: 8px; }
+.ap-alca:hover { background: var(--c-tint); color: var(--c-acao); }
+.ap-pos { width: 56px; font: inherit; font-weight: 800; text-align: center; color: var(--c-roxo); border: 1.5px solid var(--c-linha); border-radius: 10px; padding: 7px 4px; -moz-appearance: textfield; }
+.ap-pos::-webkit-inner-spin-button, .ap-pos::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.ap-pos:focus { outline: 2px solid var(--c-acao); border-color: transparent; }
+.ap-item.ap-arrastando { position: fixed; z-index: 50; pointer-events: none; box-shadow: 0 18px 40px rgba(46, 0, 106, .25); border-color: var(--c-acao); cursor: grabbing; }
+.ap-marca { list-style: none; border: 2px dashed var(--c-acao); border-radius: 14px; background: rgba(122, 63, 196, .06); }
+.ap-item.ap-movido { animation: apPisca .9s ease; }
+@keyframes apPisca { 0%, 40% { border-color: var(--c-laranja); box-shadow: 0 0 0 4px rgba(249, 114, 24, .2); } }
+.ap-aviso { position: sticky; top: 76px; z-index: 5; }
+.ap-dica { margin: 0; }
+.ap-dica-l { align-items: center; gap: 10px; }
+.ap-compacto .ap-item { padding: 6px 10px; gap: 0; }
+.ap-compacto .ap-item > :not(.ap-cab) { display: none; }
+.ap-compacto .ap-tit { padding: 5px 8px; }

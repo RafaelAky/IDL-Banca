@@ -5458,7 +5458,9 @@
         : it.tipo === 'numeros' ? 'Automático: números da Trilha' : it.tipo === 'fotos' ? 'Automático: fotos da aba Fotos' : '';
       var temTexto = /^(abertura|instituto|texto|secao)$/.test(it.tipo);
       return '<li class="ap-item' + (it.on ? '' : ' off') + '" data-i="' + i + '">' +
-        '<div class="ap-cab"><label class="ap-on"><input type="checkbox" data-ap="on"' + (it.on ? ' checked' : '') + '> <span class="num">' + (i + 1) + '</span></label>' +
+        '<div class="ap-cab"><span class="ap-alca" title="Arraste para mudar a ordem" aria-hidden="true">⠿</span>' +
+          '<input class="ap-pos num" type="number" min="1" max="' + cfg.length + '" value="' + (i + 1) + '" aria-label="Posição do slide (digite o número para mover)" title="Digite a nova posição e aperte Enter">' +
+          '<label class="ap-on" title="Ligar ou desligar este slide"><input type="checkbox" data-ap="on"' + (it.on ? ' checked' : '') + '></label>' +
           '<input class="ap-tit" data-ap="titulo" value="' + esc(it.titulo || '') + '" aria-label="Título do slide">' +
           '<span class="ap-mov"><button type="button" class="iconbtn" data-act="apMover" data-d="-1" aria-label="Subir">' + ico('i-up') + '</button><button type="button" class="iconbtn" data-act="apMover" data-d="1" aria-label="Descer">' + ico('i-down') + '</button></span></div>' +
         (auto ? '<p class="tiny ap-auto">' + esc(auto) + '</p>' : '') +
@@ -5472,7 +5474,10 @@
       '<p class="small">A apresentação roda no telão (<b>' + esc(siteBase() + '/#/telao') + '</b>, em F11) e é comandada pelo controle (<b>' + esc(siteBase() + '/#/controle') + '</b>) no celular, ou pelo teclado/passador no computador do telão. Ligue, desligue, reordene e edite os textos aqui; depois clique em Salvar.</p>' +
       '<div class="row wrap" style="gap:8px"><a class="btn btn-primary" href="#/controle" target="_blank" rel="noopener">Abrir o controle</a><a class="btn btn-outline" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
         '<button class="btn btn-ghost" data-act="apPadrao">Voltar ao roteiro padrão</button></div></section>' +
-      '<form id="apForm" class="stack"><ol class="ap-lista">' + linhas + '</ol>' +
+      '<div class="row wrap ap-dica-l"><p class="small ap-dica grow">Para mudar a ordem: <b>arraste</b> pelo ⠿, <b>digite o número</b> da nova posição ou use as setas. Depois clique em Salvar.</p>' +
+        '<button type="button" class="btn btn-outline btn-sm" data-act="apCompacto">' + (apCompacto ? 'Mostrar os textos' : 'Lista compacta (só a ordem)') + '</button></div>' +
+      (apOrdemMudou ? '<div class="banner ap-aviso"><span class="bi">' + ico('i-info') + '</span><p class="grow">A ordem mudou e ainda não foi salva.</p><button class="btn btn-primary btn-sm" type="submit" form="apForm">Salvar agora</button></div>' : '') +
+      '<form id="apForm" class="stack"><ol class="ap-lista' + (apCompacto ? ' ap-compacto' : '') + '">' + linhas + '</ol>' +
       '<button class="btn btn-primary btn-lg" type="submit">' + ico('i-save') + ' Salvar a apresentação</button></form></div>';
   }
   /* ---------- aba Leilão: atalhos para as telas usadas no leilão do IDL ---------- */
@@ -5560,6 +5565,62 @@
         '<ul class="lei-espera">' + espera.map(function (e) { return '<li><b>' + esc(e[0]) + '</b><span>' + esc(e[1]) + '</span><i>em espera</i></li>'; }).join('') + '</ul></section>' +
       '</div>';
   }
+  // ---- mudar a ordem: arrastar (mouse ou dedo), digitar a posição ou setas ----
+  var apOrdemMudou = false, apCompacto = false;
+  function apMoverPara(de, para) {
+    var cfg = apLerForm(); if (de === para || de < 0 || de >= cfg.length) return;
+    para = Math.max(0, Math.min(cfg.length - 1, para));
+    var it = cfg.splice(de, 1)[0]; cfg.splice(para, 0, it);
+    db.apresentacao = { v: DECK_V, slides: cfg }; apOrdemMudou = true;
+    var y = window.scrollY; render(); window.scrollTo(0, y);
+    var li = document.querySelector('.ap-item[data-i="' + para + '"]');
+    if (li) { li.classList.add('ap-movido'); setTimeout(function () { li.classList.remove('ap-movido'); }, 900); }
+  }
+  (function () {
+    var arr = null;
+    document.addEventListener('pointerdown', function (e) {
+      var alca = e.target.closest && e.target.closest('.ap-alca'); if (!alca) return;
+      var li = alca.closest('.ap-item'), lista = li && li.parentNode; if (!li) return;
+      e.preventDefault();
+      var r = li.getBoundingClientRect();
+      arr = { li: li, de: +li.getAttribute('data-i'), dy: e.clientY - r.top, para: +li.getAttribute('data-i'), lista: lista,
+              marca: document.createElement('li') };
+      arr.marca.className = 'ap-marca';
+      li.classList.add('ap-arrastando'); li.style.width = r.width + 'px'; li.style.top = r.top + 'px'; li.style.left = r.left + 'px';
+      lista.insertBefore(arr.marca, li.nextSibling); arr.marca.style.height = r.height + 'px';
+      try { alca.setPointerCapture(e.pointerId); } catch (x) { /* ok */ }
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!arr) return;
+      arr.li.style.top = (e.clientY - arr.dy) + 'px';
+      var itens = Array.prototype.filter.call(arr.lista.children, function (x) { return x.classList.contains('ap-item') && x !== arr.li; });
+      var antes = null;
+      for (var k = 0; k < itens.length; k++) { var q = itens[k].getBoundingClientRect(); if (e.clientY < q.top + q.height / 2) { antes = itens[k]; break; } }
+      arr.lista.insertBefore(arr.marca, antes);
+      arr.para = antes ? itens.indexOf(antes) : itens.length;
+      // rola a página perto das bordas
+      if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > window.innerHeight - 70) window.scrollBy(0, 14);
+    });
+    function solta() {
+      if (!arr) return;
+      var a = arr; arr = null;
+      a.li.classList.remove('ap-arrastando'); a.li.style.width = a.li.style.top = a.li.style.left = '';
+      if (a.marca.parentNode) a.marca.parentNode.removeChild(a.marca);
+      apMoverPara(a.de, a.para);
+    }
+    document.addEventListener('pointerup', solta);
+    document.addEventListener('pointercancel', solta);
+    // digitar a posição: Enter ou sair do campo
+    document.addEventListener('change', function (e) {
+      if (!e.target.matches || !e.target.matches('.ap-pos')) return;
+      var li = e.target.closest('.ap-item'), de = +li.getAttribute('data-i'), n = parseInt(e.target.value, 10);
+      if (isNaN(n)) { e.target.value = de + 1; return; }
+      apMoverPara(de, n - 1);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && e.target.matches && e.target.matches('.ap-pos')) { e.preventDefault(); e.target.blur(); }
+    });
+  })();
   function apLerForm() {
     var cfg = deckConfig();
     Array.prototype.forEach.call(document.querySelectorAll('.ap-item'), function (li) {
@@ -7436,11 +7497,10 @@
     else if (act === 'pausaOn') definirPausaTelao(true);
     else if (act === 'pausaOff') definirPausaTelao(false);
     else if (act === 'apMover') {
-      var cfgM = apLerForm(), li = el.closest('.ap-item'), iM = +li.getAttribute('data-i'), dM = +el.getAttribute('data-d'), jM = iM + dM;
-      if (jM < 0 || jM >= cfgM.length) return;
-      var tM = cfgM[iM]; cfgM[iM] = cfgM[jM]; cfgM[jM] = tM;
-      db.apresentacao = { v: DECK_V, slides: cfgM }; render();
+      var liM = el.closest('.ap-item'), iM = +liM.getAttribute('data-i');
+      apMoverPara(iM, iM + (+el.getAttribute('data-d')));
     }
+    else if (act === 'apCompacto') { var cfgC = apLerForm(); db.apresentacao = { v: DECK_V, slides: cfgC }; apCompacto = !apCompacto; render(); }
     else if (act === 'apPadrao') {
       admin.confirm = { title: 'Voltar ao roteiro padrão?', body: 'A ordem, os slides ligados e os textos voltam ao padrão. Os textos que vocês editaram se perdem.', yes: 'Sim, voltar', danger: true,
         run: function () { db.apresentacao = null; save(); toast('Roteiro padrão restaurado.'); } };
@@ -7803,7 +7863,7 @@
     if (f.matches && f.matches('form.bp-form')) return;
     if (f.id === 'entrarForm') { entrarSubmit(); return; }
     if (f.classList && f.classList.contains('cam-form')) { camSalvar(f); return; }
-    if (f.id === 'apForm') { db.apresentacao = { v: DECK_V, slides: apLerForm() }; save(); toast('Apresentação salva. O telão e o controle já usam o roteiro novo.'); return; }
+    if (f.id === 'apForm') { db.apresentacao = { v: DECK_V, slides: apLerForm() }; apOrdemMudou = false; save(); toast('Apresentação salva. O telão e o controle já usam o roteiro novo.'); return; }
     if (f.id === 'senhaAdminForm') {
       var novaA = normSenha($('#novaSenhaAdmin').value);
       if (novaA.length < 6) { toast('Use pelo menos 6 caracteres.'); return; }
