@@ -3346,3 +3346,142 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .pul-grupos button b { color: var(--c-roxo); font-size: .95rem; }
 .pul-grupos button span { font-size: 12.5px; color: var(--c-texto-2); }
 .pul-grupos button.feito { background: #ecfaf1; border-color: #9fd8b3; }
+
+/* =================== slides novos (13/11/2026) =================== */
+/* números: 3 colunas */
+.sl-nums.n3 { grid-template-columns: repeat(3, 1fr); gap: 6cqw; }
+
+/* Mantenedores e Apoiadores: 2 em destaque + 3 menores */
+.sl-parc-grade.sl-parc-dest { width: min(70cqw, 124cqh); gap: 2.4cqh 2cqw; }
+.sl-parc-grade.sl-parc-dest .sl-parc-card { flex: 0 0 calc((100% - 2cqw) / 2); height: 30cqh; padding: 4cqh 3cqw; }
+.sl-parc-grade.sl-parc-menor { width: min(62cqw, 110cqh); gap: 2.4cqh 1.6cqw; margin-top: 2.4cqh; }
+.sl-parc-grade.sl-parc-menor .sl-parc-card { flex: 0 0 calc((100% - 3.2cqw) / 3); height: 19cqh; padding: 2.4cqh 2cqw; }
+.sl-parc-nome { font-family: var(--fonte); font-weight: 800; font-size: clamp(20px, 4.6cqh, 64px); letter-spacing: -.02em; color: #2b2622; }
+
+/* mural dos parceiros: os quadros apagam e aparecem com outro logo */
+.sl-mural .sl-parc-card { transition: opacity .6s ease, transform .6s ease; }
+.sl-mural .sl-parc-card.troca { opacity: 0; transform: scale(.94); }
+
+/* combinados */
+.sl-comb { position: relative; z-index: 2; display: grid; justify-items: center; gap: 2.4cqh; width: 100%; padding: 0 8cqw; box-sizing: border-box; text-align: center; }
+.sl-comb-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 3cqw; width: min(84cqw, 150cqh); margin-top: 1cqh; }
+.sl-comb-card { display: grid; justify-items: center; gap: 1.6cqh; padding: 4.4cqh 3cqw; border-radius: 3cqh; background: rgba(255, 255, 255, .08); border: 2px solid rgba(255, 255, 255, .18); animation: slSobe .8s cubic-bezier(.2,.9,.3,1.2) both; }
+.sl-comb-card + .sl-comb-card { animation-delay: .15s; }
+.sl-comb-ic { display: grid; place-items: center; width: 14cqh; height: 14cqh; border-radius: 50%; background: var(--c-laranja); color: #fff; box-shadow: 0 0 0 1.4cqh rgba(249, 114, 24, .2); }
+.sl-comb-ic svg { width: 60%; height: 60%; }
+.sl-comb-card h3 { margin: 0; font-family: var(--fonte); font-weight: 800; font-size: clamp(24px, 5.4cqh, 74px); color: #fff; letter-spacing: -.02em; }
+.sl-comb-card p { margin: 0; font-size: clamp(16px, 3cqh, 40px); color: rgba(255, 255, 255, .86); max-width: 26ch; line-height: 1.35; }
+.sl-comb-img { display: flex; align-items: center; gap: 1.6cqw; margin: 1cqh 0 0; padding: 2.2cqh 2.6cqw; border-radius: 2.4cqh; background: rgba(185, 143, 232, .16); border: 1.5px solid rgba(232, 219, 247, .3); width: min(84cqw, 150cqh); box-sizing: border-box; text-align: left; font-size: clamp(14px, 2.5cqh, 34px); color: rgba(255, 255, 255, .9); line-height: 1.4; }
+.sl-comb-img b { color: #fff; }
+.sl-comb-ic-p { flex: none; width: 7cqh; height: 7cqh; color: #e8dbf7; }
+.sl-comb-ic-p svg { width: 100%; height: 100%; }
+
+/* membro da banca */
+.sl-jur { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 5cqw; width: 100%; height: 100%; padding: 6cqh 7cqw 0; box-sizing: border-box; text-align: left; }
+.sl-jur-foto { justify-self: center; width: min(36cqw, 66cqh); aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: rgba(255, 255, 255, .1); box-shadow: 0 0 0 1.2cqh rgba(249, 114, 24, .9), 0 0 0 2.6cqh rgba(249, 114, 24, .2), 0 4cqh 10cqh rgba(0, 0, 0, .35); display: grid; place-items: center; }
+.sl-jur-foto img { width: 100%; height: 100%; object-fit: cover; }
+.sl-jur-sem { width: 60%; color: rgba(232, 219, 247, .55); }
+.sl-jur-txt { display: grid; gap: 2.4cqh; justify-items: start; }
+.sl-jur-nome { margin: 0; font-family: var(--fonte); font-weight: 800; font-size: clamp(40px, 10cqh, 150px); line-height: 1; letter-spacing: -.03em; color: #fff; }
+.sl-jur-bio { margin: 0; font-size: clamp(17px, 3.3cqh, 46px); line-height: 1.4; color: rgba(255, 255, 255, .88); max-width: 34ch; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.sl-jur-falta { color: rgba(255, 255, 255, .45); font-style: italic; }
+.sl-jur-logo { margin-top: 1cqh; min-width: 22cqw; height: 13cqh; padding: 2cqh 2.4cqw; border-radius: 2.2cqh; background: #fff; display: grid; place-items: center; box-sizing: border-box; box-shadow: 0 2cqh 5cqh rgba(0, 0, 0, .25); }
+.sl-jur-logo img { max-width: 30cqw; max-height: 100%; object-fit: contain; }
+.sl-jur-logo span { color: #9a8db0; font-size: clamp(12px, 2cqh, 26px); font-weight: 600; border: 2px dashed #d8cdea; border-radius: 1.4cqh; padding: 1.4cqh 2cqw; }
+
+/* como funcionam as avaliações: prêmio da banca */
+.sl-cf { gap: 2cqh; }
+.sl-cf .sl-tit { font-size: clamp(36px, 9cqh, 130px); }
+.tl-slide:not(.pausa) .sl-tag-banca { background: var(--c-laranja); color: #fff; }
+.sl-cf .sl-tag { font-size: clamp(12px, 2.2cqh, 30px); padding: .8cqh 1.4cqw; }
+.sl-cf-lead { max-width: none; font-size: clamp(17px, 3.2cqh, 44px) !important; }
+.sl-cf-crit { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.8cqh 1.6cqw; width: 100%; counter-reset: cr; }
+.sl-cf-crit li { counter-increment: cr; display: grid; gap: .8cqh; align-content: start; padding: 2.2cqh 1.8cqw; border-radius: 2cqh; background: rgba(255, 255, 255, .08); border: 1.5px solid rgba(255, 255, 255, .16); animation: slSobe .7s cubic-bezier(.2,.9,.3,1.2) calc(.2s + var(--i) * 90ms) both; }
+.sl-cf-crit b { font-size: clamp(16px, 3.1cqh, 42px); color: #fff; font-weight: 800; }
+.sl-cf-crit b::before { content: counter(cr); display: inline-grid; place-items: center; width: 1.5em; height: 1.5em; margin-right: .5em; border-radius: 50%; background: var(--c-laranja); font-size: .7em; vertical-align: .15em; }
+.sl-cf-crit span { font-size: clamp(13px, 2.2cqh, 30px); color: rgba(255, 255, 255, .78); line-height: 1.35; }
+.sl-cf-podio { display: flex; align-items: center; gap: 2cqw; width: 100%; box-sizing: border-box; padding: 2.2cqh 2.4cqw; border-radius: 2.4cqh; background: rgba(249, 114, 24, .16); border: 2px solid rgba(249, 114, 24, .55); }
+.sl-cf-pod-t { flex: none; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; font-size: clamp(12px, 2cqh, 26px); color: #ffb37a; }
+.sl-cf-podio p { margin: 0; flex: 1; font-size: clamp(15px, 2.8cqh, 38px); color: #fff; line-height: 1.35; }
+.sl-cf-medalhas { display: flex; align-items: flex-end; gap: .8cqw; flex: none; }
+.sl-cf-medalhas i { display: grid; place-items: center; width: 7cqh; font-style: normal; font-weight: 800; font-size: clamp(12px, 2.4cqh, 32px); border-radius: 1cqh 1cqh 0 0; color: #3a1d00; }
+.sl-cf-medalhas i:nth-child(1) { height: 7cqh; background: #e8e4f0; }
+.sl-cf-medalhas i:nth-child(2) { height: 10cqh; background: #ffc23d; }
+.sl-cf-medalhas i:nth-child(3) { height: 5.5cqh; background: #f3c9a3; }
+
+/* como funcionam as avaliações: prêmio do público, com os Heróis passando */
+.sl-cfh { align-self: start; padding-top: 6cqh; }
+.sl-cf-grande { margin: 0; font-size: clamp(22px, 5cqh, 70px); font-weight: 600; color: #fff; line-height: 1.2; }
+.sl-cf-grande b { color: #ffb37a; }
+.sl-cf-passos { list-style: none; margin: 1cqh 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6cqw; width: 100%; }
+.sl-cf-passos li { display: grid; gap: 1.2cqh; align-content: start; padding: 2.4cqh 1.6cqw; border-radius: 2cqh; background: rgba(255, 255, 255, .08); border: 1.5px solid rgba(255, 255, 255, .16); animation: slSobe .7s cubic-bezier(.2,.9,.3,1.2) calc(.2s + var(--i) * 110ms) both; }
+.sl-cf-passos b { display: grid; place-items: center; width: 6cqh; height: 6cqh; border-radius: 50%; background: #fff; color: var(--c-roxo); font-size: clamp(16px, 3cqh, 40px); }
+.sl-cf-passos span { font-size: clamp(14px, 2.7cqh, 36px); color: #fff; line-height: 1.3; }
+.sl-cf-desfile { position: absolute !important; left: 0; right: 0; bottom: 10cqh; height: 30cqh; overflow: hidden; z-index: 1 !important; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.sl-cf-trilho { display: flex; align-items: flex-end; gap: 1.4cqw; height: 100%; width: max-content; animation: slDesfile 60s linear infinite; }
+.sl-cf-trilho img { height: 100%; width: auto; filter: drop-shadow(0 1.4cqh 2cqh rgba(0, 0, 0, .4)); }
+@keyframes slDesfile { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.sl-cfHeroi .sl-cf-passos { position: relative; z-index: 2; }
+.sl-previa .sl-cf-trilho { animation: none !important; }
+
+/* pausa para o café: fotos rolando por trás e o card no centro */
+.sl-cafe-fundo { position: absolute !important; inset: 0; z-index: 1 !important; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1cqw; padding: 0 1cqw; overflow: hidden; }
+.sl-cafe-col { display: flex; flex-direction: column; gap: 1cqw; animation: slCafeSobe calc(70s + var(--c) * 9s) linear infinite; }
+.sl-cafe-col:nth-child(even) { animation-direction: reverse; }
+.sl-cafe-col img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 1.4cqh; display: block; }
+@keyframes slCafeSobe { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.sl-cafe-veu { position: absolute !important; inset: 0; z-index: 1 !important; background: radial-gradient(60% 60% at 50% 50%, rgba(46, 0, 106, .55), rgba(26, 0, 62, .85)); }
+.sl-cafe-card { position: relative; z-index: 2; display: grid; justify-items: center; gap: 2cqh; padding: 6cqh 6cqw; border-radius: 4cqh; background: rgba(30, 0, 70, .72); border: 2px solid rgba(255, 255, 255, .2); box-shadow: 0 4cqh 12cqh rgba(0, 0, 0, .45); backdrop-filter: blur(6px); text-align: center; max-width: 70cqw; }
+.sl-cafe-xicara { width: 13cqh; height: 13cqh; color: #ffb37a; }
+.sl-cafe-xicara svg { width: 100%; height: 100%; }
+.sl-cafe-card .sl-mega { font-size: clamp(40px, 11cqh, 150px); }
+.sl-cafe-volta { margin: 0; font-size: clamp(22px, 5.4cqh, 76px); font-weight: 600; color: #fff; }
+.sl-cafe-volta b { color: var(--c-laranja); font-weight: 800; }
+.sl-cafe-card .sl-lead { font-size: clamp(16px, 3cqh, 40px); }
+.sl-previa .sl-cafe-col { animation: none !important; }
+
+/* chamada da equipe (13/11): Herói gigante cortado pela metade, nome do Herói em destaque */
+.tl-slide .sl-eq3 { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); padding: 6cqh 3cqw 0 6cqw; }
+.tl-slide .sl-eq3 .sl-eq-txt { gap: 1.8cqh; position: relative; z-index: 3; }
+.tl-slide .sl-eq3 .sl-eq-heroi-nome { font-size: clamp(48px, 14cqh, 210px); line-height: .95; max-width: none; }
+.tl-slide .sl-eq3 .sl-eq-heroi-nome.longo { font-size: clamp(40px, 10cqh, 150px); }
+.sl-eq-proj { margin: 0; font-family: var(--fonte); font-weight: 700; font-size: clamp(20px, 4.6cqh, 64px); line-height: 1.12; color: #ffb37a; max-width: 24ch; }
+.sl-eq-proj.longo { font-size: clamp(18px, 3.8cqh, 54px); max-width: 28ch; }
+.tl-slide .sl-eq3 .sl-eq-insp { margin: 0; font-size: clamp(14px, 2.6cqh, 36px); color: rgba(255, 255, 255, .72); }
+.tl-slide .sl-eq3 .sl-eq-lead { font-size: clamp(17px, 3.4cqh, 46px); max-width: 34ch; -webkit-line-clamp: 3; }
+.tl-slide .sl-eq3 .sl-eq-chips span { font-size: clamp(13px, 2.3cqh, 30px); }
+.tl-slide .sl-eq3 .sl-eq-trilh p { font-size: clamp(14px, 2.6cqh, 34px); }
+.tl-slide .sl-eq3 .sl-eq-rot { font-size: clamp(11px, 1.8cqh, 24px); }
+.tl-slide .sl-eq3 .sl-eq-gigante { position: absolute !important; right: -2cqw; top: 4cqh; bottom: auto; width: 52cqw; height: auto; display: flex; justify-content: center; align-items: flex-start; z-index: 1 !important; }
+.tl-slide .sl-eq3 .sl-eq-gigante::before { width: 90cqh; top: 40cqh; }
+.tl-slide .sl-eq3 .sl-eq-gigante img { height: 190cqh; max-height: none; width: auto; max-width: none; object-fit: contain; object-position: top; filter: drop-shadow(0 3cqh 5cqh rgba(0, 0, 0, .45)); }
+.tl-slide .sl-eq3.dois .sl-eq-gigante img { height: 160cqh; }
+.tl-slide .sl-eq3.dois .sl-eq-gigante img + img { margin-left: -8cqw; }
+.tl-slide:not(.pausa) .sl-equipe.sl-eq3 { overflow: hidden; }
+
+/* painel: dois campos lado a lado (foto e logo do jurado) */
+.ap-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ap-duo input, .ap-item input[data-ap=volta] { font: inherit; border: 1.5px solid var(--c-linha); border-radius: 10px; padding: 8px 10px; width: 100%; box-sizing: border-box; }
+@media (max-width: 600px) { .ap-duo { grid-template-columns: 1fr; } }
+/* ajustes de tamanho (ocupar melhor a tela) */
+.sl-parc-grade.sl-parc-dest { width: min(80cqw, 150cqh); }
+.sl-parc-grade.sl-parc-dest .sl-parc-card { height: 36cqh; }
+.sl-parc-grade.sl-parc-menor { width: min(72cqw, 136cqh); }
+.sl-parc-grade.sl-parc-menor .sl-parc-card { height: 25cqh; }
+.sl-comb-cards { width: min(88cqw, 160cqh); gap: 3.4cqw; }
+.sl-comb-card { padding: 5.4cqh 3cqw; gap: 2cqh; }
+.sl-comb-ic { width: 17cqh; height: 17cqh; }
+.sl-comb-card h3 { font-size: clamp(26px, 6.4cqh, 90px); }
+.sl-comb-card p { font-size: clamp(17px, 3.5cqh, 48px); }
+.sl-comb-img { width: min(88cqw, 160cqh); font-size: clamp(15px, 2.9cqh, 40px); padding: 2.8cqh 2.8cqw; }
+.sl-comb .sl-tit { font-size: clamp(36px, 8.4cqh, 120px); }
+/* telas mais quadradas (4:3): combinados mais compactos para não encostar no rodapé */
+@container (aspect-ratio < 1.5) {
+  .sl-comb { gap: 1.6cqh; }
+  .sl-comb .sl-tit { font-size: clamp(30px, 7cqh, 100px); }
+  .sl-comb-card { padding: 3.4cqh 2.4cqw; gap: 1.2cqh; }
+  .sl-comb-ic { width: 12cqh; height: 12cqh; }
+  .sl-comb-card h3 { font-size: clamp(22px, 5cqh, 70px); }
+  .sl-comb-card p { font-size: clamp(15px, 2.8cqh, 40px); }
+  .sl-comb-img { font-size: clamp(13px, 2.4cqh, 34px); padding: 2cqh 2.4cqw; }
+}

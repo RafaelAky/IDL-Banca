@@ -4747,6 +4747,7 @@
     vita:        { nome: 'Método Vita Beach Tennis', img: 'metodo-vita.webp' },
     marina:      { nome: 'Dra. Marina Guerini Dermatologista', img: 'marina-guerini.webp', quadrado: true },
     akiyama:     { nome: 'Grupo Akiyama', img: 'akiyama.webp' },
+    namoral:     { nome: 'Namoral', texto: true },   // provisório: o nome escrito até chegar a logo
     topo:        { nome: 'Topo Leilões', img: 'topo-leiloes.webp' },
     sebrae:      { nome: 'Sebrae', img: 'sebrae.webp' },
     pimpao:      { nome: 'Pimpão Playgrounds e Equipamentos', img: 'pimpao.webp', quadrado: true },
@@ -4758,12 +4759,47 @@
   };
   // quais logos entram em cada slide (id do slide → lista); 'obrigado' é o cartão final
   var PARCEIROS_SLIDES = {
-    patrocinadores: ['akiyama', 'topo', 'sebrae', 'pimpao', 'brenex'],
+    // Mantenedores e Apoiadores: os 2 primeiros em destaque (maiores)
+    patrocinadores: ['akiyama', 'brenex', 'namoral', 'topo', 'pimpao'],
     institucionais: ['abasc', 'abcvida', 'senhorinha', 'novas'],
-    parceiros1: ['daju', 'gisele', 'castro', 'cia', 'ceraflame', 'studiodoc', 'faceart', 'bethcastro', 'teia', 'camilo', 'lc', 'thais', 'nc', 'manu'],
-    parceiros2: ['secret', 'adeildo', 'mw7', 'moka', 'bruna', 'mariadolores', 'hwakuo', 'lume', 'gabriel', 'priscila', 'avenna', 'stephanie', 'vita', 'marina']
+    // mural dos parceiros do leilão: 15 quadros na tela, trocando um a um (como o mosaico de fotos)
+    parceiros: ['daju', 'gisele', 'castro', 'cia', 'ceraflame', 'studiodoc', 'faceart', 'bethcastro', 'teia', 'camilo', 'lc', 'thais', 'nc', 'manu',
+                'secret', 'adeildo', 'mw7', 'moka', 'bruna', 'mariadolores', 'hwakuo', 'lume', 'gabriel', 'priscila', 'avenna', 'stephanie', 'vita', 'marina']
   };
-  var DECK_V = 7;
+  var PARC_DESTAQUE = { patrocinadores: 2 };   // quantos logos do começo da lista ficam maiores
+  var MURAL_N = 15;
+  function parcCartao(k, extra, attrs) {
+    var pc = PARCEIROS[k]; if (!pc) return '';
+    return '<li class="sl-parc-card' + (pc.fundo ? ' escuro' : '') + (pc.quadrado ? ' quadrado' : '') + (pc.mescla ? ' mescla' : '') + (extra || '') + '"' + (attrs || '') + (pc.fundo ? ' style="background:' + pc.fundo + '"' : '') + '>' + parcMiolo(k) + '</li>';
+  }
+  function parcMiolo(k) {
+    var pc = PARCEIROS[k]; if (!pc) return '';
+    if (pc.texto) return '<span class="sl-parc-nome">' + esc(pc.nome) + '</span>';
+    return '<img src="img/parceiros/' + pc.img + '" alt="' + esc(pc.nome) + '">' + (pc.sub ? '<small>' + esc(pc.sub) + '</small>' : '');
+  }
+  // mural: que logo está em cada quadro (fica guardado para o telão redesenhar igual)
+  function muralEstado() {
+    var todos = PARCEIROS_SLIDES.parceiros.filter(function (k) { return PARCEIROS[k]; });
+    if (!telao.mural || telao.mural.vis.length !== Math.min(MURAL_N, todos.length)) telao.mural = { vis: todos.slice(0, MURAL_N), fila: todos.slice(MURAL_N) };
+    return telao.mural;
+  }
+  function muralTrocar() {
+    var m = muralEstado(); if (!m.fila.length) return;
+    var q = Math.floor(Math.random() * m.vis.length);
+    if (q === m.ultimo) q = (q + 1) % m.vis.length;
+    m.ultimo = q;
+    var sai = m.vis[q], entra = m.fila.shift(); m.vis[q] = entra; m.fila.push(sai);
+    var el = document.querySelector('.tl-slide:not(.sl-previa) .sl-mural [data-q="' + q + '"]'); if (!el) return;
+    el.classList.add('troca');
+    setTimeout(function () {
+      var pc = PARCEIROS[entra] || {};
+      el.className = 'sl-parc-card troca' + (pc.fundo ? ' escuro' : '') + (pc.quadrado ? ' quadrado' : '') + (pc.mescla ? ' mescla' : '');
+      el.style.background = pc.fundo || '';
+      el.innerHTML = parcMiolo(entra);
+      requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.remove('troca'); }); });
+    }, 650);
+  }
+  var DECK_V = 8;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4814,20 +4850,29 @@
   var DECK_PADRAO = [
     { id: 'abertura',       tipo: 'abertura',     on: true, titulo: 'Banca Final IDL Tech', texto: 'Trilhei: de sementes para raízes' },
     { id: 'sec_abertura',   tipo: 'secao',        on: true, titulo: 'Thais Akiyama', texto: 'Abertura oficial', hora: '8h' },
+    { id: 'thais_poema', tipo: 'secao', on: true, semGrupo: true, titulo: 'Thais Akiyama', texto: '“Talvez não possamos mudar o mundo inteiro, mas não podemos deixar de transformar o mundo que está ao nosso alcance.”', hora: '' },
     { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
     { id: 'programacao',    tipo: 'programacao',  on: true, titulo: 'Programação do dia' },
+    { id: 'combinados', tipo: 'combinados', on: true, titulo: 'Alguns combinados' },
     { id: 'patrocinadores', tipo: 'parceiros',    on: true, titulo: 'Mantenedores e Apoiadores' },
     { id: 'institucionais', tipo: 'parceiros',    on: true, titulo: 'Parceiros Institucionais' },
-    { id: 'parceiros1',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
-    { id: 'parceiros2',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
+    { id: 'parceiros', tipo: 'parceiros', on: true, titulo: 'Parceiros' },
     { id: 'sebrae',         tipo: 'secao',        on: true, titulo: 'SEBRAE', texto: '', hora: '8h10', logo: 'img/sebrae.png' },
     { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
     { id: 'sec_retro',      tipo: 'secao',        on: true, titulo: 'Retrospectiva da Trilha', texto: '', hora: '8h15' },
     { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
-    { id: 'comofunciona',   tipo: 'comofunciona', on: true, titulo: 'Como funcionarão as avaliações' },
+    { id: 'jurado1', tipo: 'jurado', on: true, titulo: 'Jurado 1', texto: '', foto: '', logo: '' },
+    { id: 'jurado2', tipo: 'jurado', on: true, titulo: 'Jurado 2', texto: '', foto: '', logo: '' },
+    { id: 'jurado3', tipo: 'jurado', on: true, titulo: 'Jurado 3', texto: '', foto: '', logo: '' },
+    { id: 'jurado4', tipo: 'jurado', on: true, titulo: 'Jurado 4', texto: '', foto: '', logo: '' },
+    { id: 'jurado5', tipo: 'jurado', on: true, titulo: 'Jurado 5', texto: '', foto: '', logo: '' },
+    { id: 'jurado6', tipo: 'jurado', on: true, titulo: 'Jurado 6', texto: '', foto: '', logo: '' },
+    { id: 'comofunciona', tipo: 'secao', on: true, titulo: 'Como funcionarão as avaliações', texto: 'Dois prêmios: o Herói da Trilha, escolhido pelo público, e os Projetos destaque, escolhidos pela banca.', hora: '' },
+    { id: 'cf_banca', tipo: 'cfBanca', on: true, titulo: 'Projetos destaque' },
+    { id: 'cf_heroi', tipo: 'cfHeroi', on: true, titulo: 'Herói da Trilha' },
     { id: 'sec_bloco1',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Primeiro bloco', hora: '8h19' },
     { id: 'equipes1',       tipo: 'equipes',      on: true, titulo: 'Primeiro bloco', bloco: '1º bloco' },
-    { id: 'cafe',           tipo: 'secao',        on: true, titulo: 'Pausa para o café', texto: 'Voltamos às 10h09 com o segundo bloco de apresentações.', hora: '9h39' },
+    { id: 'cafe', tipo: 'cafe', on: true, titulo: 'Pausa para o café', texto: 'Em seguida, o segundo bloco de apresentações.', hora: '9h39', volta: '10h09' },
     { id: 'sec_bloco2',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Segundo bloco', hora: '10h09' },
     { id: 'equipes2',       tipo: 'equipes',      on: true, titulo: 'Segundo bloco', bloco: '2º bloco' },
     { id: 'sec_herois',     tipo: 'secao',        on: true, titulo: 'Os Heróis da Trilha', texto: 'Cada Herói nasceu das histórias e das causas de um grupo de trilheiros.', hora: '11h29' },
@@ -4862,13 +4907,14 @@
     // o que a organização já tinha editado (textos, link do vídeo, ligado/desligado)
     var porId = {}; salvo.forEach(function (x) { porId[x.id] = x; });
     // roteiro da versão anterior (6): vale a ordem nova, mas os títulos e textos editados no painel ficam
-    var manterTextos = ap.v === 6;
+    var manterTextos = ap.v >= 6;
     if (porId.revelaBanca) ['revelaBanca3', 'revelaBanca2', 'revelaBanca1'].forEach(function (k) { if (!porId[k]) porId[k] = { on: porId.revelaBanca.on }; });
     return DECK_PADRAO.map(function (d) {
       var n = JSON.parse(JSON.stringify(d)), o = porId[d.id];
       // horários e textos mudaram com o roteiro novo: aproveita só o link de vídeo e o liga/desliga
       if (o) ['video', 'on'].forEach(function (k) { if (o[k] !== undefined && o[k] !== '') n[k] = o[k]; });
-      if (o && manterTextos) ['titulo', 'texto', 'hora'].forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
+      // títulos e textos editados no painel ficam (só se o slide continua do mesmo tipo)
+      if (o && manterTextos && (!o.tipo || o.tipo === n.tipo)) ['titulo', 'texto', 'hora', 'foto', 'logo', 'volta'].forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
       return n;
     });
   }
@@ -4882,7 +4928,7 @@
       return rot === '1º bloco' ? todas.slice(0, meio) : todas.slice(meio);
     }
     deckConfig().forEach(function (it) {
-      if (it.tipo === 'secao' && it.on) grupo = [it.hora, it.titulo].filter(Boolean).join(' · ');
+      if ((it.tipo === 'secao' || it.tipo === 'cafe') && it.on && !it.semGrupo) grupo = [it.hora, it.titulo].filter(Boolean).join(' · ');
       if (!it.on) return;
       if (it.tipo === 'equipes') {
         var ps = it.bloco ? doBloco(it.bloco) : todas;
@@ -4911,6 +4957,12 @@
   function deckIndice(key) { var l = deckSlides(); for (var i = 0; i < l.length; i++) if (l[i].key === key) return i; return -1; }
 
   // ---------- conteúdo de cada slide (telão e prévia do controlador) ----------
+  // ícones dos slides (traço branco, no estilo do site)
+  var SL_ICO_CEL = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="13" y="4" width="22" height="40" rx="4"/><path d="M21 38h6"/><path d="M6 18c-1.6 3.6-1.6 8.4 0 12M42 18c1.6 3.6 1.6 8.4 0 12" opacity=".55"/><path d="M8 8l32 32" stroke-width="3"/></svg>';
+  var SL_ICO_WC = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="9" r="4"/><circle cx="34" cy="9" r="4"/><path d="M9 17h10v14h-3v12h-4V31H9z"/><path d="M34 16l-7 17h4v10h6V33h4z"/><path d="M24 15v30" opacity=".5"/></svg>';
+  var SL_ICO_CAM = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15h9l3-5h12l3 5h9v24H6z"/><circle cx="24" cy="26" r="7"/></svg>';
+  var SL_ICO_PESSOA = '<svg viewBox="0 0 48 48" fill="currentColor"><circle cx="24" cy="17" r="9"/><path d="M6 44c1.5-10 8.6-16 18-16s16.5 6 18 16z"/></svg>';
+  var SL_ICO_CAFE = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18h26v10a12 12 0 0 1-12 12h-2A12 12 0 0 1 8 28z"/><path d="M34 21h3a5 5 0 0 1 0 10h-3"/><path d="M15 6c-2 3 2 5 0 8M22 6c-2 3 2 5 0 8M29 6c-2 3 2 5 0 8" opacity=".7"/></svg>';
   function slideMarca() { return '<span class="sl-marca"><img src="img/kv/trilhei.webp" alt=""><i></i><img src="img/kv/idltech.webp" alt=""></span>'; }
   function ytId(v) { var m = String(v || '').match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(String(v || '').trim()) ? String(v).trim() : ''); }
   // visual da apresentação: o do Instituto (fundo creme, flores douradas girando devagar, sementes de leve)
@@ -4943,7 +4995,21 @@
           (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
         break;
       case 'parceiros':
-        var lp = PARCEIROS_SLIDES[it.id] || [];
+        if (it.id === 'parceiros') {
+          var mu = muralEstado();
+          h = '<div class="sl-parc"><h2 class="sl-tit">' + esc(it.titulo || 'Parceiros') + '</h2>' +
+            '<span class="sl-traco" aria-hidden="true"><i></i><b class="sl-traco-ponto"></b><i></i></span>' +
+            '<ul class="sl-parc-grade sl-mural n' + mu.vis.length + '">' + mu.vis.map(function (k, q) { return parcCartao(k, '', ' data-q="' + q + '"'); }).join('') + '</ul></div>';
+          break;
+        }
+        var lp = PARCEIROS_SLIDES[it.id] || [], nDest = PARC_DESTAQUE[it.id] || 0;
+        if (nDest) {
+          h = '<div class="sl-parc"><h2 class="sl-tit">' + esc(it.titulo || 'Parceiros') + '</h2>' +
+            '<span class="sl-traco" aria-hidden="true"><i></i><b class="sl-traco-ponto"></b><i></i></span>' +
+            '<ul class="sl-parc-grade sl-parc-dest">' + lp.slice(0, nDest).map(function (k) { return parcCartao(k, ' grande'); }).join('') + '</ul>' +
+            '<ul class="sl-parc-grade sl-parc-menor">' + lp.slice(nDest).map(function (k) { return parcCartao(k, ''); }).join('') + '</ul></div>';
+          break;
+        }
         h = '<div class="sl-parc"><h2 class="sl-tit">' + esc(it.titulo || 'Parceiros') + '</h2>' +
           '<span class="sl-traco" aria-hidden="true"><i></i>' + '<b class="sl-traco-ponto"></b>' + '<i></i></span>' +
           '<ul class="sl-parc-grade n' + lp.length + '">' + lp.map(function (k) {
@@ -4952,6 +5018,56 @@
             return '<li class="sl-parc-card' + (pc.fundo ? ' escuro' : '') + (pc.quadrado ? ' quadrado' : '') + (pc.mescla ? ' mescla' : '') + '"' + (pc.fundo ? ' style="background:' + pc.fundo + '"' : '') + '>' +
               '<img src="img/parceiros/' + pc.img + '" alt="' + esc(pc.nome) + '">' + (pc.sub ? '<small>' + esc(pc.sub) + '</small>' : '') + '</li>';
           }).join('') + '</ul></div>';
+        break;
+      case 'combinados':
+        // combinados do evento: um card para o celular, um para o banheiro e o aviso de uso de imagem embaixo
+        h = '<div class="sl-comb"><span class="sl-eyebrow">Trilhei · Banca Final IDL Tech 2026</span><h2 class="sl-tit">' + esc(it.titulo || 'Alguns combinados') + '</h2>' +
+          '<div class="sl-comb-cards">' +
+            '<section class="sl-comb-card"><span class="sl-comb-ic" aria-hidden="true">' + SL_ICO_CEL + '</span><h3>Celular no silencioso</h3><p>Durante as apresentações, deixe o celular no modo silencioso. Os trilheiros agradecem!</p></section>' +
+            '<section class="sl-comb-card"><span class="sl-comb-ic" aria-hidden="true">' + SL_ICO_WC + '</span><h3>Banheiros</h3><p>Ficam logo na saída do auditório.</p></section>' +
+          '</div>' +
+          '<p class="sl-comb-img"><span class="sl-comb-ic-p" aria-hidden="true">' + SL_ICO_CAM + '</span><span><b>Uso de imagem.</b> Durante o evento faremos fotos e vídeos para a divulgação do Instituto. Ao participar, você autoriza o uso da sua imagem.</span></p></div>';
+        break;
+      case 'jurado':
+        // membro da banca: foto, nome, minibio e a logo da empresa/instituição (tudo editável no painel)
+        var jus = deckConfig().filter(function (x) { return x.tipo === 'jurado' && x.on; }), jn = jus.map(function (x) { return x.id; }).indexOf(it.id) + 1;
+        h = '<div class="sl-jur">' +
+          '<div class="sl-jur-foto">' + (it.foto ? '<img src="' + esc(it.foto) + '" alt="' + esc(it.titulo || '') + '">' : '<span class="sl-jur-sem" aria-hidden="true">' + SL_ICO_PESSOA + '</span>') + '</div>' +
+          '<div class="sl-jur-txt"><span class="sl-eyebrow">Banca avaliadora' + (jn ? ' · ' + jn + ' de ' + jus.length : '') + '</span>' +
+            '<h1 class="sl-jur-nome">' + esc(it.titulo || 'Nome do jurado') + '</h1>' +
+            (it.texto ? '<p class="sl-jur-bio">' + esc(it.texto) + '</p>' : '<p class="sl-jur-bio sl-jur-falta">Minibio do jurado (editar no painel, aba Apresentação).</p>') +
+            '<div class="sl-jur-logo">' + (it.logo ? '<img src="' + esc(it.logo) + '" alt="">' : '<span>Logo da empresa ou instituição</span>') + '</div>' +
+          '</div></div>';
+        break;
+      case 'cfBanca':
+        h = '<div class="sl-col sl-cf"><span class="sl-tag sl-tag-banca">Prêmio da banca</span><h2 class="sl-tit">' + esc(it.titulo || 'Projetos destaque') + '</h2>' +
+          '<p class="sl-lead sl-cf-lead">Cada jurado dá uma nota de 1 a 5 em seis critérios para todos os projetos:</p>' +
+          '<ol class="sl-cf-crit">' + CRITERIOS.map(function (c, i) { return '<li style="--i:' + i + '"><b>' + esc(c.t) + '</b><span>' + esc(c.d) + '</span></li>'; }).join('') + '</ol>' +
+          '<div class="sl-cf-podio"><span class="sl-cf-pod-t">Decisão final</span><p>Cada jurado escolhe o seu <b>1º</b>, <b>2º</b> e <b>3º</b> lugar (3, 2 e 1 pontos). Os 3 projetos com mais pontos são os <b>Projetos destaque</b>.</p>' +
+            '<span class="sl-cf-medalhas" aria-hidden="true"><i>2º</i><i>1º</i><i>3º</i></span></div></div>';
+        break;
+      case 'cfHeroi':
+        var hsCf = allHeroes().filter(function (x) { return x.hero.image; });
+        var faixaCf = hsCf.concat(hsCf).map(function (x) { return '<img src="' + esc(mini(x.hero.image)) + '" alt="">'; }).join('');
+        h = '<div class="sl-col sl-cf sl-cfh"><span class="sl-tag">Prêmio do público</span><h2 class="sl-tit">' + esc(it.titulo || 'Herói da Trilha') + '</h2>' +
+          '<p class="sl-cf-grande">A votação acontece pelo <b>aplicativo</b>, no seu celular.</p>' +
+          '<ol class="sl-cf-passos">' + ['Na hora da votação, aponte a câmera para o QR Code no telão', 'Informe o seu CPF', 'Digite a palavra-chave anunciada no palco', 'Escolha o seu Herói e confirme: um voto por pessoa'].map(function (t, i) {
+            return '<li style="--i:' + i + '"><b class="num">' + (i + 1) + '</b><span>' + esc(t) + '</span></li>'; }).join('') + '</ol></div>' +
+          '<div class="sl-cf-desfile" aria-hidden="true"><div class="sl-cf-trilho">' + faixaCf + '</div></div>';
+        break;
+      case 'cafe':
+        // fotos do site rolando por trás e um card com a pausa e o horário de volta
+        var fsC = pausaFotos().map(function (f) { return f.src; }).slice(0, 32);
+        var cols = [0, 1, 2, 3, 4].map(function (c) {
+          var mine = fsC.filter(function (x, i) { return i % 5 === c; }); if (!mine.length) return '';
+          var imgs = mine.concat(mine).map(function (src) { return '<img src="' + esc(previa ? mini(src) : src) + '" alt="" loading="lazy">'; }).join('');
+          return '<div class="sl-cafe-col" style="--c:' + c + '">' + imgs + '</div>';
+        }).join('');
+        h = '<div class="sl-cafe-fundo" aria-hidden="true">' + cols + '</div><span class="sl-cafe-veu" aria-hidden="true"></span>' +
+          '<div class="sl-cafe-card"><span class="sl-cafe-xicara" aria-hidden="true">' + SL_ICO_CAFE + '</span>' +
+            '<h1 class="sl-mega">' + esc(it.titulo || 'Pausa para o café') + '</h1>' +
+            (it.volta ? '<p class="sl-cafe-volta">Voltamos às <b>' + esc(it.volta) + '</b></p>' : '') +
+            (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
         break;
       case 'texto':
         h = '<div class="sl-centro"><span class="sl-eyebrow">Trilhei · Banca Final IDL Tech 2026</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
@@ -4965,7 +5081,7 @@
       case 'numeros':
         var nEq = db.projects.reduce(function (a, p) { return a + Math.max(1, (p.teams || []).length); }, 0);
         h = '<div class="sl-centro"><span class="sl-eyebrow">Trilhei · Banca Final IDL Tech 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
-          '<div class="sl-nums">' + [[nTrilheiros(), 'trilheiros'], [db.projects.length, 'projetos'], [nEq, 'equipes'], [allHeroes().length, 'Heróis']].map(function (n, i) {
+          '<div class="sl-nums n3">' + [[nTrilheiros(), 'trilheiros'], [db.projects.length, 'projetos'], [allHeroes().length, 'Heróis']].map(function (n, i) {
             return '<div style="--i:' + i + '"><b class="num">' + n[0] + '</b><span>' + n[1] + '</span></div>'; }).join('') + '</div></div>';
         break;
       case 'comofunciona':
@@ -5013,17 +5129,19 @@
           return t;
         }).filter(Boolean);
         var nomesH = hsT.map(function (h2) { return String(h2.name).split(/\s+[—–-]\s+/)[0]; });
-        h = '<div class="sl-equipe sl-eq2">' +
+        // chamada (13/11): o Herói grande, cortado pela metade, e o nome dele em destaque; o projeto menor embaixo
+        var nomeH = nomesH.join(' e ') || p.name;
+        h = '<div class="sl-equipe sl-eq2 sl-eq3' + (hs.length > 1 ? ' dois' : '') + '">' +
           '<div class="sl-eq-txt">' +
             '<span class="sl-eq-ordem"><b class="num">' + pad2(s.n) + '</b><span>equipe ' + s.n + ' de ' + s.de + (blocoDe(p) ? ' · ' + esc(blocoDe(p).rot) : '') + '</span></span>' +
-            '<h1 class="sl-eq-nome' + (p.name.length > 44 ? ' longo2' : p.name.length > 28 ? ' longo' : '') + '">' + esc(p.name) + '</h1>' +
+            '<h1 class="sl-eq-nome sl-eq-heroi-nome' + (nomeH.length > 18 ? ' longo' : '') + '">' + esc(nomeH) + '</h1>' +
+            '<p class="sl-eq-proj' + (p.name.length > 40 ? ' longo' : '') + '">' + esc(p.name) + '</p>' +
+            (insp.length ? '<p class="sl-eq-insp">Inspirado em ' + esc(insp.join(' · ')) + '</p>' : '') +
             (p.tagline ? '<p class="sl-eq-lead">' + esc(p.tagline) + '</p>' : '') +
             '<div class="sl-eq-chips">' + [p.group ? 'Grupo ' + p.group : '', p.category].filter(Boolean).map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' +
-            (nomesH.length ? '<div class="sl-eq-heroi"><span class="sl-eq-rot">' + (nomesH.length > 1 ? 'Heróis da equipe' : 'Herói da equipe') + '</span>' +
-              '<b>' + esc(nomesH.join(' e ')) + '</b>' + (insp.length ? '<span class="sl-eq-insp">Inspirado em ' + esc(insp.join(' · ')) + '</span>' : '') + '</div>' : '') +
             (membros.length ? '<div class="sl-eq-trilh"><span class="sl-eq-rot">Trilheiros</span><p>' + membros.map(function (m) { return '<span>' + esc(m) + '</span>'; }).join('') + '</p></div>' : '') +
           '</div>' +
-          '<div class="sl-eq-figs n' + hs.length + '">' + '<span class="sl-eq-flor" aria-hidden="true"></span>' + hs.map(function (h2) { return '<figure><img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt=""></figure>'; }).join('') + '</div>' +
+          '<div class="sl-eq-figs sl-eq-gigante n' + hs.length + '" aria-hidden="true">' + hs.map(function (h2) { return '<img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt="">'; }).join('') + '</div>' +
         '</div>';
         break;
       case 'fotos':
@@ -5058,6 +5176,10 @@
       var k = Math.floor(Date.now() / 6000) % figs.length;
       Array.prototype.forEach.call(figs, function (f, j) { f.classList.toggle('on', j === k); });
     }, 1000);
+    if (s.tipo === 'parceiros' && s.key === 'parceiros' && !telao.muralTimer) telao.muralTimer = setInterval(function () {
+      if (route.name !== 'telao' || remote.slide !== 'parceiros' || remote.pausa) { clearInterval(telao.muralTimer); telao.muralTimer = null; return; }
+      muralTrocar();
+    }, 1800);
     var limpo = /^(video|videoHeroi|fotos|apresPag|apresCanva)$/.test(s.tipo);   // apresentação da equipe ocupa a tela inteira
     return '<div class="telao tl-slide sl-' + s.tipo + (entra ? ' sl-entra' : '') + '">' + (/^apres/.test(s.tipo) ? '' : slideFundoIdl()) + slideHtml(s, false) +
       (limpo ? '' : slideRodape()) + '</div>';
@@ -5517,9 +5639,14 @@
         : it.tipo === 'equipes' ? 'Automático: 1 slide por equipe do ' + (it.bloco || 'evento') + ', na ordem da programação (marca a equipe No palco)'
         : it.tipo === 'candidatos' ? 'Automático: 1 vídeo por Herói candidato com vídeo' : it.tipo === 'votacao' ? 'Tela viva: QR da votação'
         : it.tipo === 'revelaHeroi' || it.tipo === 'revelaBanca' ? (SOM_REVELACAO ? 'Tela viva: revelação com animação e som' : 'Tela viva: revelação com animação (som desligado por enquanto)') : it.tipo === 'programacao' ? 'Automático: puxa a Programação'
-        : it.tipo === 'parceiros' ? 'Logos dos parceiros (definidos no código, img/parceiros/)'
+        : it.tipo === 'parceiros' ? (it.id === 'parceiros' ? 'Mural dos parceiros: os logos trocam sozinhos, um a um' : 'Logos dos parceiros (definidos no código, img/parceiros/)')
+        : it.tipo === 'jurado' ? 'Membro da banca: título = nome, texto = minibio, foto e logo da empresa'
+        : it.tipo === 'combinados' ? 'Celular, banheiros e uso de imagem'
+        : it.tipo === 'cfBanca' ? 'Como a banca avalia: critérios e decisão final'
+        : it.tipo === 'cfHeroi' ? 'Como votar no Herói: pelo aplicativo, com os Heróis passando'
+        : it.tipo === 'cafe' ? 'Fotos da Trilha rolando por trás e o horário de volta'
         : it.tipo === 'numeros' ? 'Automático: números da Trilha' : it.tipo === 'fotos' ? 'Automático: fotos da aba Fotos' : '';
-      var temTexto = /^(abertura|instituto|texto|secao)$/.test(it.tipo);
+      var temTexto = /^(abertura|instituto|texto|secao|jurado|cafe)$/.test(it.tipo);
       return '<li class="ap-item' + (it.on ? '' : ' off') + '" data-i="' + i + '">' +
         '<div class="ap-cab"><span class="ap-alca" title="Arraste para mudar a ordem" aria-hidden="true">⠿</span>' +
           '<input class="ap-pos num" type="number" min="1" max="' + cfg.length + '" value="' + (i + 1) + '" aria-label="Posição do slide (digite o número para mover)" title="Digite a nova posição e aperte Enter">' +
@@ -5529,6 +5656,8 @@
         (auto ? '<p class="tiny ap-auto">' + esc(auto) + '</p>' : '') +
         (temTexto ? '<textarea data-ap="texto" rows="2" aria-label="Texto do slide">' + esc(it.texto || '') + '</textarea>' : '') +
         (it.tipo === 'secao' ? '<input data-ap="hora" value="' + esc(it.hora || '') + '" placeholder="Horário (ex.: 8h20)" aria-label="Horário da parte">' : '') +
+        (it.tipo === 'jurado' ? '<div class="ap-duo"><input data-ap="foto" value="' + esc(it.foto || '') + '" placeholder="Foto (ex.: img/banca/maria.webp)" aria-label="Foto do jurado"><input data-ap="logo" value="' + esc(it.logo || '') + '" placeholder="Logo da empresa (ex.: img/banca/empresa.webp)" aria-label="Logo da empresa"></div>' : '') +
+        (it.tipo === 'cafe' ? '<input data-ap="volta" value="' + esc(it.volta || '') + '" placeholder="Horário de volta (ex.: 10h09)" aria-label="Horário de volta">' : '') +
         (it.tipo === 'video' ? '<input data-ap="video" value="' + esc(it.video || '') + '" placeholder="Link do YouTube do vídeo" aria-label="Link do vídeo">' : '') +
         '</li>';
     }).join('');
