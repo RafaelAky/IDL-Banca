@@ -3332,3 +3332,17 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .ap-compacto .ap-item { padding: 6px 10px; gap: 0; }
 .ap-compacto .ap-item > :not(.ap-cab) { display: none; }
 .ap-compacto .ap-tit { padding: 5px 8px; }
+
+/* ---------- painel · aba Pulseiras (mesma base da aba Camisas) ---------- */
+.pul-grupo { flex: none; padding: 4px 10px; border-radius: 99px; background: var(--c-tint); color: var(--c-roxo-2); font-size: 12px; font-weight: 700; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pul-palavra { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: #fff3e8; border: 1.5px dashed #f6b47c; }
+.pul-palavra b { font-size: 1.6rem; letter-spacing: .08em; color: #c2410c; line-height: 1.1; }
+.pul-grupos button { border: 0; font: inherit; cursor: pointer; }
+.pul-grupos button.on { outline: 2.5px solid var(--c-acao); }
+.pul-importar textarea { width: 100%; font: inherit; border: 1.5px solid var(--c-linha-forte); border-radius: 12px; padding: 10px 12px; resize: vertical; background: var(--c-branco); color: var(--c-texto); }
+.pul-importar input { height: 42px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--c-linha-forte); background: var(--c-branco); color: var(--c-texto); }
+.pul-limpar { justify-self: start; color: var(--c-perigo); }
+.pul-grupos button { display: grid; justify-items: center; min-width: 58px; padding: 8px 10px; border-radius: 12px; background: var(--c-fundo); border: 1px solid var(--c-linha); }
+.pul-grupos button b { color: var(--c-roxo); font-size: .95rem; }
+.pul-grupos button span { font-size: 12.5px; color: var(--c-texto-2); }
+.pul-grupos button.feito { background: #ecfaf1; border-color: #9fd8b3; }

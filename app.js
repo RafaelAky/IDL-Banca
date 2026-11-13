@@ -78,7 +78,7 @@
       retro: JSON.parse(JSON.stringify(seed.retro || { title: '', lead: '', photos: [] })),
       trilhei: JSON.parse(JSON.stringify(seed.trilhei || null)),
       schedule: schedule, projects: projects,
-      voting: { keyword: 'TRILHA2026', results: {}, resultsPublic: false },
+      voting: { keyword: 'RAÍZES', results: {}, resultsPublic: false },
       clock: { simulated: false, baseReal: Date.now(), baseSim: Date.parse('2026-11-14T10:32:00-03:00') }
     };
   }
@@ -2016,7 +2016,7 @@
       // troca de slide feita neste aparelho e ainda não confirmada: mantém a nossa
       if (apres.pend) {
         if ((row.slide || '') === (apres.pend.key || '') || Date.now() - apres.pend.t > 5000) { if (!apres.voando) apres.pend = null; }
-        else { row = JSON.parse(JSON.stringify(row)); row.pausa = false; row.slide = apres.pend.key || null; row.revelar_telao = apres.pend.key === 'revelaHeroi'; row.revelar_banca = apres.pend.key === 'revelaBanca'; if (apres.pend.palco !== null) row.palco = apres.pend.palco || null; else row.palco = remote.palco; }
+        else { row = JSON.parse(JSON.stringify(row)); row.pausa = false; row.slide = apres.pend.key || null; row.revelar_telao = apres.pend.key === 'revelaHeroi'; row.revelar_banca = ehRevBanca(apres.pend.key); if (apres.pend.palco !== null) row.palco = apres.pend.palco || null; else row.palco = remote.palco; }
       }
       var total = parseInt(row.total_trilheiros, 10) > 0 ? parseInt(row.total_trilheiros, 10) : 0;
       var mudou = (remote.aberta !== row.votacao_aberta) || (remote.resultadoPublico !== row.resultado_publico) ||
@@ -2025,7 +2025,11 @@
       if (remote.visivel !== !!row.votacao_visivel) mudou = true;
       remote.visivel = !!row.votacao_visivel;
       if (row.pausa != null && remote.pausa !== !!row.pausa) { remote.pausa = !!row.pausa; mudou = true; }
-      if (row.slide !== undefined && remote.slide !== (row.slide || null)) { remote.slide = row.slide || null; mudou = true; }
+      if (row.slide !== undefined && remote.slide !== (row.slide || null)) {
+        // de um lugar do pódio para o outro (3º → 2º → 1º): recomeça o suspense
+        if (ehRevBanca(row.slide) && ehRevBanca(remote.slide)) { telao.revelInicio = Date.now(); telao.revelTimer = null; }
+        remote.slide = row.slide || null; mudou = true;
+      }
       if (row.revelar_banca != null && remote.revelarBanca !== !!row.revelar_banca) {
         remote.revelarBanca = !!row.revelar_banca; mudou = true;
         if (remote.revelarBanca) telao.revelInicio = Date.now(); telao.vencBanca = null;
@@ -2853,7 +2857,7 @@
   /* abas em dois grupos: o que se usa no DIA da formatura (na ordem da
      manhã) e a CONFIGURAÇÃO do site no dia a dia                          */
   var ADMIN_GRUPOS = [
-    { id: 'dia', rot: 'Dia da formatura', abas: [['check', 'Checklist'], ['camisas', 'Camisas'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['votacao', 'Votação'], ['banca', 'Banca']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []) },
+    { id: 'dia', rot: 'Dia da formatura', abas: [['check', 'Checklist'], ['camisas', 'Camisas'], ['pulseiras', 'Pulseiras'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['votacao', 'Votação'], ['banca', 'Banca']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []) },
     { id: 'site', rot: 'Configuração do site', abas: [['geral', 'Visão geral'], ['evento', 'Evento'], ['programacao', 'Programação'], ['projetos', 'Projetos'], ['herois', 'Heróis'], ['retro', 'Fotos'], ['dados', 'Dados e backup']] }
   ];
   var ADMIN_TABS = ADMIN_GRUPOS.reduce(function (a, g) { return a.concat(g.abas); }, []);
@@ -2888,6 +2892,7 @@
     admin.tab = abaDaRota(admin.tab);   // aba que não existe mais (ex.: Leilão desligado) cai na Visão geral
     if (admin.tab === 'check') return adminChecklist();
     if (admin.tab === 'camisas') return adminCamisas();
+    if (admin.tab === 'pulseiras') return adminPulseiras();
     if (admin.tab === 'aovivo') return adminAoVivo();
     if (admin.tab === 'apres') return adminApresentacao();
     if (admin.tab === 'leilao' && LEILAO_ATIVO) return adminLeilao();
@@ -2990,6 +2995,7 @@
     var dia = [
       ['check', 'i-vote', 'Checklist', 'Confere banco, internet, votação, banca e telão antes de começar.'],
       ['camisas', 'i-users', 'Camisas', camOk == null ? 'Entrega das camisas aos trilheiros.' : '<b>' + camOk + ' de ' + cam.itens.length + '</b> entregues.'],
+      ['pulseiras', 'i-users', 'Pulseiras', pul.itens == null ? 'Pulseira com a palavra-chave para todos que chegam.' : (pul.itens.length ? '<b>' + pul.itens.filter(function (x) { return x.entregue; }).length + ' de ' + pul.itens.length + '</b> entregues.' : 'Lista ainda vazia: cole os nomes.')],
       ['aovivo', 'i-spark', 'Ao vivo', 'Palco, votação, banca e telão numa tela só, para o celular.', 'aovivo'],
       ['apres', 'i-play', 'Apresentação', (remote.on && iSl >= 0 ? 'No telão: <b>slide ' + (iSl + 1) + ' de ' + nSl + '</b>.' : nSl + ' slides no roteiro.') + ' Roteiro e textos dos slides.'],
       ['votacao', 'i-vote', 'Votação do público', (remote.on ? '<b>' + (aberta ? 'Aberta' : 'Fechada') + '</b>' + (totalVotos != null ? ' · ' + totalVotos + (totalVotos === 1 ? ' voto' : ' votos') : '') + '. ' : '') + 'Candidatos, apuração e vencedores no site.'],
@@ -4057,8 +4063,8 @@
       g: ['Proposta confusa ou genérica; não fica claro o que o projeto quer fazer.', 'Proposta compreensível, mas com pontos vagos ou pouco definidos.', 'Proposta clara, bem definida e com identidade própria.'] },
     { k: 'problema',     t: 'Problema real',              d: 'O grupo identificou bem uma necessidade concreta da comunidade.',
       g: ['Problema pouco claro ou sem ligação com a comunidade.', 'Problema real, mas pouco investigado ou explicado.', 'Necessidade concreta, bem investigada e explicada com exemplos.'] },
-    { k: 'impacto',      t: 'Impacto',                    d: 'O quanto o projeto transforma a vida das pessoas atendidas.',
-      g: ['Pouca mudança para quem é atendido.', 'Benefício perceptível, mas pontual ou limitado.', 'Transforma de forma clara a vida de quem é atendido.'] },
+    { k: 'impacto',      t: 'Solução/Impacto',            d: 'A solução proposta responde ao problema e transforma a vida das pessoas atendidas.',
+      g: ['Solução pouco ligada ao problema; pouca mudança para quem é atendido.', 'Solução coerente, com benefício perceptível, mas pontual ou limitado.', 'Solução clara e bem pensada, que transforma de forma visível a vida de quem é atendido.'] },
     { k: 'viabilidade',  t: 'Viabilidade e continuidade', d: 'Dá para executar e manter depois da trilha.',
       g: ['Difícil de executar ou sem plano para continuar.', 'Executável, mas a continuidade é incerta.', 'Plano realista, com recursos e caminho para seguir depois da trilha.'] },
     { k: 'protagonismo', t: 'Protagonismo e equipe',      d: 'Os trilheiros conduziram o projeto juntos.',
@@ -4706,9 +4712,9 @@
     patrocinadores: ['akiyama', 'topo', 'sebrae', 'pimpao', 'brenex'],
     institucionais: ['abasc', 'abcvida', 'senhorinha', 'novas'],
     parceiros1: ['daju', 'gisele', 'castro', 'cia', 'ceraflame', 'studiodoc', 'faceart', 'bethcastro', 'teia', 'camilo', 'lc', 'thais', 'nc', 'manu'],
-    parceiros2: ['secret', 'adeildo', 'mw7', 'moka', 'bruna', 'mariadolores', 'hwakuo', 'lume', 'gabriel', 'priscila', 'avenna', 'stephanie', 'vita', 'marina', 'obrigado']
+    parceiros2: ['secret', 'adeildo', 'mw7', 'moka', 'bruna', 'mariadolores', 'hwakuo', 'lume', 'gabriel', 'priscila', 'avenna', 'stephanie', 'vita', 'marina']
   };
-  var DECK_V = 6;
+  var DECK_V = 7;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4755,17 +4761,21 @@
   /* Roteiro da apresentação pelo roteiro operacional da MC (12/11/2026,
      "Programação IDL Tech 2026"). A programação do SITE continua a versão
      simples para os visitantes; aqui vale a ordem fina do palco.          */
+  // ordem do roteiro enviada em 13/11/2026 (o slide do Instituto, desligado, saiu)
   var DECK_PADRAO = [
-    { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
-    { id: 'sec_abertura',   tipo: 'secao',        on: true, titulo: 'Abertura oficial', texto: '', hora: '8h' },
     { id: 'abertura',       tipo: 'abertura',     on: true, titulo: 'Banca Final IDL Tech', texto: 'Trilhei: de sementes para raízes' },
-    { id: 'instituto',      tipo: 'instituto',    on: true, titulo: 'Instituto Dente de Leão', texto: 'Fortalecendo pessoas, semeando consciência e transformando realidades.' },
+    { id: 'sec_abertura',   tipo: 'secao',        on: true, titulo: 'Thais Akiyama', texto: 'Abertura oficial', hora: '8h' },
+    { id: 'boasvindas',     tipo: 'secao',        on: true, titulo: 'Seja bem-vindo', texto: 'Banca Final e Formatura · Trilhei: de sementes para raízes', hora: 'Chegada e credenciamento até as 8h' },
     { id: 'programacao',    tipo: 'programacao',  on: true, titulo: 'Programação do dia' },
-    { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
-    { id: 'comofunciona',   tipo: 'comofunciona', on: true, titulo: 'Como funciona a Banca Final' },
+    { id: 'patrocinadores', tipo: 'parceiros',    on: true, titulo: 'Mantenedores e Apoiadores' },
+    { id: 'institucionais', tipo: 'parceiros',    on: true, titulo: 'Parceiros Institucionais' },
+    { id: 'parceiros1',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
+    { id: 'parceiros2',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
     { id: 'sebrae',         tipo: 'secao',        on: true, titulo: 'SEBRAE', texto: '', hora: '8h10', logo: 'img/sebrae.png' },
+    { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
     { id: 'sec_retro',      tipo: 'secao',        on: true, titulo: 'Retrospectiva da Trilha', texto: '', hora: '8h15' },
     { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
+    { id: 'comofunciona',   tipo: 'comofunciona', on: true, titulo: 'Como funcionarão as avaliações' },
     { id: 'sec_bloco1',     tipo: 'secao',        on: true, titulo: 'Apresentação dos projetos', texto: 'Primeiro bloco', hora: '8h19' },
     { id: 'equipes1',       tipo: 'equipes',      on: true, titulo: 'Primeiro bloco', bloco: '1º bloco' },
     { id: 'cafe',           tipo: 'secao',        on: true, titulo: 'Pausa para o café', texto: 'Voltamos às 10h09 com o segundo bloco de apresentações.', hora: '9h39' },
@@ -4776,15 +4786,13 @@
     { id: 'sec_votacao',    tipo: 'secao',        on: true, titulo: 'Votação dos Heróis', texto: 'Aponte a câmera do celular para o QR Code. A votação encerra às 12h04.', hora: '11h54' },
     { id: 'votacao',        tipo: 'votacao',      on: true, titulo: 'Votação do público' },
     { id: 'homenagens',     tipo: 'secao',        on: true, titulo: 'Homenagens', texto: 'Coordenadores, instrutores, time IDL Tech, voluntários e convidados especiais.', hora: '12h04' },
-    { id: 'patrocinadores', tipo: 'parceiros',    on: true, titulo: 'Patrocinadores' },
-    { id: 'institucionais', tipo: 'parceiros',    on: true, titulo: 'Parceiros Institucionais' },
-    { id: 'parceiros1',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
-    { id: 'parceiros2',     tipo: 'parceiros',    on: true, titulo: 'Parceiros' },
     { id: 'sec_heroi',      tipo: 'secao',        on: true, titulo: 'O Herói da Trilha 2026', texto: 'Escolhido pelo público', hora: '12h24' },
     { id: 'revelaHeroi',    tipo: 'revelaHeroi',  on: true, titulo: 'Revelação · Herói da Trilha' },
     { id: 'destaques',      tipo: 'secao',        on: true, titulo: 'Alunos destaques', texto: 'Premiação e entrega', hora: '12h28' },
     { id: 'sec_banca',      tipo: 'secao',        on: true, titulo: 'A banca no palco', texto: 'Homenagem, devolutiva e resultados dos projetos', hora: '12h38' },
-    { id: 'revelaBanca',    tipo: 'revelaBanca',  on: true, titulo: 'Revelação · Projetos destaque' },
+    { id: 'revelaBanca3',   tipo: 'revelaBanca',  on: true, titulo: 'Revelação · 3º lugar', pos: 3 },
+    { id: 'revelaBanca2',   tipo: 'revelaBanca',  on: true, titulo: 'Revelação · 2º lugar', pos: 2 },
+    { id: 'revelaBanca1',   tipo: 'revelaBanca',  on: true, titulo: 'Revelação · 1º lugar', pos: 1 },
     { id: 'formatura',      tipo: 'secao',        on: true, titulo: 'Formatura', texto: 'Certificados, brindes e medalhas', hora: '12h46' },
     { id: 'foto',           tipo: 'secao',        on: true, titulo: 'Foto oficial dos formandos', texto: 'Trilha 2026', hora: '13h06' },
     { id: 'sec_fim',        tipo: 'secao',        on: true, titulo: 'Encerramento', texto: '', hora: '13h09' },
@@ -4804,10 +4812,14 @@
     // roteiro salvo antes do cronograma novo: vale a ordem nova, mantendo
     // o que a organização já tinha editado (textos, link do vídeo, ligado/desligado)
     var porId = {}; salvo.forEach(function (x) { porId[x.id] = x; });
+    // roteiro da versão anterior (6): vale a ordem nova, mas os títulos e textos editados no painel ficam
+    var manterTextos = ap.v === 6;
+    if (porId.revelaBanca) ['revelaBanca3', 'revelaBanca2', 'revelaBanca1'].forEach(function (k) { if (!porId[k]) porId[k] = { on: porId.revelaBanca.on }; });
     return DECK_PADRAO.map(function (d) {
       var n = JSON.parse(JSON.stringify(d)), o = porId[d.id];
       // horários e textos mudaram com o roteiro novo: aproveita só o link de vídeo e o liga/desliga
       if (o) ['video', 'on'].forEach(function (k) { if (o[k] !== undefined && o[k] !== '') n[k] = o[k]; });
+      if (o && manterTextos) ['titulo', 'texto', 'hora'].forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
       return n;
     });
   }
@@ -4979,7 +4991,8 @@
         break;
       case 'revelaHeroi':
       case 'revelaBanca':
-        h = '<div class="sl-centro"><span class="sl-eyebrow">Tela viva</span><h1 class="sl-mega sl-mega-m">' + (s.tipo === 'revelaHeroi' ? 'Revelação do Herói' : 'Revelação dos Projetos destaque') + '</h1><p class="sl-lead">' + (s.tipo === 'revelaHeroi' ? 'Suspense, contagem e o vencedor' : 'Suspense, contagem e o pódio: 1º, 2º e 3º lugar') + '</p></div>';
+        var posR = s.tipo === 'revelaBanca' ? posRevBanca(s.key) : 0;
+        h = '<div class="sl-centro"><span class="sl-eyebrow">Tela viva</span><h1 class="sl-mega sl-mega-m">' + (s.tipo === 'revelaHeroi' ? 'Revelação do Herói' : posR ? 'Projeto destaque · ' + posR + 'º lugar' : 'Revelação dos Projetos destaque') + '</h1><p class="sl-lead">' + (s.tipo === 'revelaHeroi' ? 'Suspense, contagem e o vencedor' : posR ? 'Suspense, contagem e o ' + posR + 'º lugar da banca' : 'Suspense, contagem e o pódio: 1º, 2º e 3º lugar') + '</p></div>';
         break;
     }
     return h;
@@ -5264,7 +5277,8 @@
     remote.slide = key || null; remote.pausa = false;
     if (palco !== null) remote.palco = palco || null;
     if ((key === 'revelaHeroi') !== remote.revelar) { remote.revelar = key === 'revelaHeroi'; if (remote.revelar) telao.revelInicio = Date.now(); telao.vencedores = null; }
-    if ((key === 'revelaBanca') !== remote.revelarBanca) { remote.revelarBanca = key === 'revelaBanca'; if (remote.revelarBanca) telao.revelInicio = Date.now(); telao.vencBanca = null; }
+    if (ehRevBanca(key) && ehRevBanca(antes.slide) && key !== antes.slide) { telao.revelInicio = Date.now(); telao.revelTimer = null; }
+    if (ehRevBanca(key) !== remote.revelarBanca) { remote.revelarBanca = ehRevBanca(key); if (remote.revelarBanca) telao.revelInicio = Date.now(); telao.vencBanca = null; }
     apres.pend = { key: key || '', palco: palco, t: Date.now() };
     render();
     preCarregarVizinho();
@@ -5423,7 +5437,7 @@
           '</div>' +
           '<div class="ctlA-card ctlA-revela"><span class="ctlA-tit">' + ico('i-spark') + ' Revelações</span>' +
             '<div class="ctlA-par">' +
-              '<button class="btn ctlA-rv banca' + (remote.revelarBanca ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaBanca"><b>Projetos destaque</b><span>banca · 3</span></button>' +
+              '<button class="btn ctlA-rv banca' + (remote.revelarBanca ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaBanca3"><b>Projetos destaque</b><span>banca · 3º → 1º</span></button>' +
               '<button class="btn ctlA-rv heroi' + (remote.revelar ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaHeroi"><b>Herói da Trilha</b><span>público</span></button>' +
             '</div><p class="tiny" style="margin:0">Pede confirmação antes de revelar. Encerre a votação/decisão antes.</p></div>' +
           '<div class="ctlA-card ctlA-roteiro"><span class="ctlA-tit">' + ico('i-grid') + ' Roteiro <span class="tiny">· toque para ir direto</span></span>' +
@@ -5700,7 +5714,7 @@
     var filtros = [['faltam', 'Faltam', tot - ok], ['entregues', 'Entregues', ok], ['todos', 'Todos', tot]];
     return '<div class="stack-lg cam">' +
       '<section class="stack"><div class="row-between"><h2 class="h2">Camisas</h2><button class="btn btn-outline btn-sm" data-act="camAtualizar">Atualizar</button></div>' +
-      '<p class="small">Confira antes da programação começar: toque no ✓ quando o trilheiro receber a camisa. Várias pessoas podem marcar ao mesmo tempo; a lista atualiza sozinha.</p></section>' +
+      '<p class="small">Confira antes da programação começar: toque no ✓ quando o trilheiro receber a camisa (a pulseira vai junto e fica marcada na aba Pulseiras). Várias pessoas podem marcar ao mesmo tempo; a lista atualiza sozinha.</p></section>' +
       '<section class="painelinho cam-resumo"><div class="cam-total"><b class="num">' + ok + '<small> de ' + tot + '</small></b><span>camisas entregues</span>' +
         '<div class="cam-barra"><i style="width:' + (tot ? (ok / tot * 100).toFixed(1) : 0) + '%"></i></div></div>' +
         '<div class="cam-tams">' + ordemT.map(function (t) { var v = porTam[t]; return '<div class="' + (v.ok === v.t ? 'feito' : '') + '"><b>' + esc(t) + '</b><span class="num">' + v.ok + '/' + v.t + '</span></div>'; }).join('') + '</div></section>' +
@@ -5722,6 +5736,9 @@
     render();
     sbRpc('camisa_marcar', { p_chave: localState.adminKey, p_id: id, p_entregue: x.entregue, p_por: firstName(localState.name) || '' }).then(function (r) {
       if (!r || !r.ok) throw new Error('falhou');
+      // a pulseira do mesmo nome vai junto (o banco marca as duas)
+      if (r.pulseira) { toast(x.entregue ? 'Camisa e pulseira marcadas para ' + x.nome + '.' : 'Camisa e pulseira desmarcadas.'); if (pul.itens) pulCarregar(true); }
+      else if (r.pulseira_repetida) toast('Há mais de um ' + x.nome + ' na lista de pulseiras: marque a pulseira na aba Pulseiras.');
     }).catch(function () { x.entregue = antes.e; x.em = antes.em; x.por = antes.por; render(); toast('Não consegui salvar. Confira a internet e tente de novo.'); });
   }
   function camSalvar(f) {
@@ -5732,6 +5749,143 @@
       toast(id ? 'Corrigido.' : nome + ' entrou na lista.'); cam.editando = null; camCarregar(true);
       if (!id) { f.reset(); }
     }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Não consegui salvar agora.'); });
+  }
+
+  /* =========================== PULSEIRAS DO EVENTO ===========================
+     Aba "Pulseiras" do painel: todos que chegam ao evento recebem a pulseira
+     (com a palavra-chave que destrava a votação). Igual às camisas: marca
+     quem já recebeu, várias pessoas ao mesmo tempo, atualiza a cada 5 s.
+     A lista começa vazia: cole os nomes de uma vez (um por linha).          */
+  var pul = { itens: null, erro: '', carregando: false, filtro: 'faltam', grupo: '', busca: '', editando: null, em: 0, palavra: null, importando: false };
+  var PUL_GRUPOS = ['Trilheiro', 'Família', 'Convidado', 'Equipe IDL', 'Jurado', 'Parceiro', 'Voluntário'];
+  function pulCarregar(silencioso) {
+    if (!remote.on || !localState.adminKey || pul.carregando) return;
+    pul.carregando = true; if (!silencioso) render();
+    if (pul.palavra == null) sbRpc('ler_chave_evento', { p_chave: localState.adminKey }).then(function (r) { pul.palavra = r && r.ok ? (r.palavra || '') : ''; if (admin.tab === 'pulseiras') render(); }).catch(function () {});
+    sbRpc('pulseiras_listar', { p_chave: localState.adminKey }).then(function (r) {
+      pul.carregando = false;
+      if (!r || !r.ok) { pul.erro = r && r.erro === 'chave_invalida' ? 'A senha deste aparelho não confere. Saia e entre de novo.' : 'Não consegui buscar a lista.'; render(); return; }
+      var antes = JSON.stringify(pul.itens), novo = r.itens || [];
+      pul.itens = novo; pul.erro = ''; pul.em = Date.now();
+      var ativo = document.activeElement, digitando = ativo && /^(INPUT|SELECT|TEXTAREA)$/.test(ativo.tagName) && ativo.closest && ativo.closest('.pul');
+      if ((!silencioso || antes !== JSON.stringify(novo)) && route.name === 'admin' && admin.tab === 'pulseiras' && !digitando) render();
+    }).catch(function (e) {
+      pul.carregando = false;
+      pul.erro = String(e && e.message) === 'http 404' ? 'O banco ainda não tem a lista de pulseiras: rode o supabase.sql mais recente no Supabase.' : 'Sem conexão com o servidor.';
+      render();
+    });
+  }
+  setInterval(function () { if (route.name === 'admin' && admin.tab === 'pulseiras' && localState.admin && document.visibilityState !== 'hidden') pulCarregar(true); }, 5000);
+  // "Nome ; Grupo" (ou tab, vindo de planilha) → { nome, grupo }
+  function pulLerLista(txt, grupoPadrao) {
+    return String(txt || '').split(/\r?\n/).map(function (l) {
+      var partes = l.split(/\t|;/), nome = (partes[0] || '').replace(/^\s*\d+[\.\)\-]\s+/, '').trim(), g = (partes[1] || '').trim();
+      return nome ? { nome: nome.slice(0, 80), grupo: (g || grupoPadrao || '').slice(0, 40) } : null;
+    }).filter(Boolean);
+  }
+  function adminPulseiras() {
+    if (!remote.on) return '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">A lista de pulseiras funciona na versão publicada, com o banco ligado.</p></div>';
+    if (!pul.itens && !pul.carregando && !pul.erro) setTimeout(function () { pulCarregar(); }, 0);
+    if (pul.erro && !pul.itens) return '<div class="stack"><h2 class="h2">Pulseiras</h2><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">' + esc(pul.erro) + '</p></div>' +
+      '<button class="btn btn-outline" data-act="pulAtualizar">Tentar de novo</button></div>';
+    if (!pul.itens) return '<div class="stack"><h2 class="h2">Pulseiras</h2><p class="small">Buscando a lista…</p></div>';
+    var L = pul.itens, tot = L.length, ok = L.filter(function (x) { return x.entregue; }).length;
+    var porG = {}; L.forEach(function (x) { var g = x.grupo || 'Sem grupo'; porG[g] = porG[g] || { t: 0, ok: 0 }; porG[g].t++; if (x.entregue) porG[g].ok++; });
+    var grupos = Object.keys(porG).sort(function (a, b) { return porG[b].t - porG[a].t; });
+    var cont = {}; L.forEach(function (x) { var k = camNorm(x.nome); cont[k] = (cont[k] || 0) + 1; });
+    var b = camNorm(pul.busca);
+    var vis = L.filter(function (x) {
+      if (pul.filtro === 'faltam' && x.entregue) return false;
+      if (pul.filtro === 'entregues' && !x.entregue) return false;
+      if (pul.grupo && (x.grupo || 'Sem grupo') !== pul.grupo) return false;
+      return !b || camNorm(x.nome).indexOf(b) >= 0;
+    }).slice().sort(function (a, c) { return camNorm(a.nome).localeCompare(camNorm(c.nome)); });
+    var listaGr = PUL_GRUPOS.concat(Object.keys(porG).filter(function (g) { return g !== 'Sem grupo' && PUL_GRUPOS.indexOf(g) < 0; }));
+    var dl = '<datalist id="pulGrupos">' + listaGr.map(function (g) { return '<option value="' + esc(g) + '">'; }).join('') + '</datalist>';
+    function linha(x) {
+      if (pul.editando === x.id) {
+        return '<li class="cam-item editando"><form class="pul-form cam-form" data-id="' + esc(x.id) + '">' +
+          '<input name="nome" value="' + esc(x.nome) + '" aria-label="Nome" required maxlength="80">' +
+          '<input name="grupo" value="' + esc(x.grupo || '') + '" list="pulGrupos" placeholder="Grupo" aria-label="Grupo" maxlength="40">' +
+          '<button class="btn btn-primary btn-sm" type="submit">Salvar</button>' +
+          '<button class="btn btn-ghost btn-sm" type="button" data-act="pulCancelar">Cancelar</button>' +
+          '<button class="iconbtn iconbtn-danger" type="button" data-act="pulApagar" data-id="' + esc(x.id) + '" aria-label="Tirar da lista">' + ico('i-trash') + '</button></form></li>';
+      }
+      return '<li class="cam-item' + (x.entregue ? ' ok' : '') + '">' +
+        '<button type="button" class="cam-check" data-act="pulMarcar" data-id="' + esc(x.id) + '" aria-pressed="' + !!x.entregue + '" aria-label="' + (x.entregue ? 'Desmarcar ' : 'Marcar entregue: ') + esc(x.nome) + '"><span aria-hidden="true">✓</span></button>' +
+        '<div class="cam-txt"><b>' + esc(x.nome) + (cont[camNorm(x.nome)] > 1 ? ' <span class="cam-rep" title="Há outra pessoa com este mesmo nome na lista">nome repetido</span>' : '') + '</b>' +
+          '<span class="tiny">' + (x.entregue ? 'Recebeu' + (x.em ? ' às ' + new Date(x.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + (x.por ? ' · ' + esc(x.por) : '') : 'Ainda não recebeu') + '</span></div>' +
+        (x.grupo ? '<span class="pul-grupo">' + esc(x.grupo) + '</span>' : '') +
+        '<button type="button" class="iconbtn" data-act="pulEditar" data-id="' + esc(x.id) + '" aria-label="Corrigir nome ou grupo">' + ico('i-pencil') + '</button></li>';
+    }
+    var filtros = [['faltam', 'Faltam', tot - ok], ['entregues', 'Receberam', ok], ['todos', 'Todos', tot]];
+    var palavra = pul.palavra ? '<div class="pul-palavra"><span class="eyebrow">Palavra-chave da pulseira</span><b>' + esc(pul.palavra) + '</b><span class="tiny">É a que destrava a votação no celular (vale com ou sem acento). Troque na aba Votação.</span></div>' : '';
+    var importar = '<section class="painelinho stack pul-importar"><span class="eyebrow">' + (tot ? 'Acrescentar vários nomes' : 'Colar a lista de nomes') + '</span>' +
+      '<p class="small">Um nome por linha. Para o grupo, use <b>Nome ; Grupo</b> (ou copie duas colunas de uma planilha). Se não informar, vale o grupo escolhido ao lado.</p>' +
+      '<form class="pul-import stack"><textarea name="lista" rows="' + (tot ? 4 : 9) + '" placeholder="Maria Silva ; Família&#10;João Souza ; Trilheiro&#10;Ana Lima"></textarea>' +
+      '<div class="row wrap" style="gap:8px"><input name="grupo" list="pulGrupos" placeholder="Grupo padrão (opcional)" maxlength="40" style="flex:1 1 200px">' +
+      '<button class="btn btn-primary" type="submit"' + (pul.importando ? ' disabled' : '') + '>' + ico('i-plus') + (pul.importando ? ' Importando…' : ' Importar nomes') + '</button></div></form></section>';
+    return '<div class="stack-lg cam pul">' + dl +
+      '<section class="stack"><div class="row-between"><h2 class="h2">Pulseiras</h2><button class="btn btn-outline btn-sm" data-act="pulAtualizar">Atualizar</button></div>' +
+      '<p class="small">Na chegada, todo mundo recebe a pulseira com a palavra-chave da votação. Toque no ✓ quando a pessoa receber. Quem também está na lista de camisas tem a camisa marcada junto (e vice-versa). Várias pessoas podem marcar ao mesmo tempo; a lista atualiza sozinha.</p></section>' +
+      '<section class="painelinho cam-resumo"><div class="cam-total"><b class="num">' + ok + '<small> de ' + tot + '</small></b><span>pulseiras entregues</span>' +
+        '<div class="cam-barra"><i style="width:' + (tot ? (ok / tot * 100).toFixed(1) : 0) + '%"></i></div></div>' + palavra +
+        (grupos.length > 1 || (grupos.length === 1 && grupos[0] !== 'Sem grupo') ? '<div class="cam-tams pul-grupos">' + grupos.map(function (g) { var v = porG[g]; return '<button type="button" data-act="pulGrupo" data-g="' + esc(g) + '" class="' + (v.ok === v.t ? 'feito' : '') + (pul.grupo === g ? ' on' : '') + '"><b>' + esc(g) + '</b><span class="num">' + v.ok + '/' + v.t + '</span></button>'; }).join('') + '</div>' : '') +
+      '</section>' +
+      (tot ? '<div class="cam-ferr"><input type="search" class="cam-busca pul-busca" data-act="pulBusca" placeholder="Buscar pelo nome" value="' + esc(pul.busca) + '" aria-label="Buscar pessoa">' +
+          '<div class="segmento cam-filtro">' + filtros.map(function (f) { return '<button type="button" data-act="pulFiltro" data-f="' + f[0] + '" aria-pressed="' + (pul.filtro === f[0]) + '">' + f[1] + ' <span class="num">' + f[2] + '</span></button>'; }).join('') + '</div></div>' +
+        (pul.grupo ? '<p class="small">Mostrando só <b>' + esc(pul.grupo) + '</b>  <button class="btn btn-ghost btn-sm" data-act="pulGrupo" data-g="' + esc(pul.grupo) + '">ver todos os grupos</button></p>' : '') +
+        (vis.length ? '<ul class="cam-lista">' + vis.map(linha).join('') + '</ul>'
+          : '<p class="small cam-vazio">' + (pul.filtro === 'faltam' && !b && !pul.grupo ? 'Todo mundo já recebeu a pulseira. 🎉' : 'Ninguém encontrado.') + '</p>')
+        : '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow"><b>A lista ainda está vazia.</b> Cole abaixo os nomes de todos que vão ao evento (trilheiros, famílias, convidados, equipe) e clique em Importar.</p></div>') +
+      importar +
+      (tot ? '<section class="painelinho stack"><span class="eyebrow">Faltou alguém?</span>' +
+        '<form class="pul-form cam-form" data-id=""><input name="nome" placeholder="Nome e sobrenome" aria-label="Nome" required maxlength="80">' +
+        '<input name="grupo" list="pulGrupos" placeholder="Grupo" aria-label="Grupo" maxlength="40">' +
+        '<button class="btn btn-primary btn-sm" type="submit">' + ico('i-plus') + ' Adicionar</button></form>' +
+        '<button type="button" class="btn btn-ghost btn-sm pul-limpar" data-act="pulLimpar">' + ico('i-trash') + ' Apagar a lista inteira</button></section>' : '') +
+      '</div>';
+  }
+  function pulMarcar(id) {
+    var x = (pul.itens || []).filter(function (i) { return i.id === id; })[0]; if (!x) return;
+    var antes = { e: x.entregue, em: x.em, por: x.por };
+    x.entregue = !x.entregue; x.em = x.entregue ? new Date().toISOString() : null; x.por = x.entregue ? firstName(localState.name) || '' : null;
+    render();
+    sbRpc('pulseira_marcar', { p_chave: localState.adminKey, p_id: id, p_entregue: x.entregue, p_por: firstName(localState.name) || '' }).then(function (r) {
+      if (!r || !r.ok) throw new Error('falhou');
+      // a camisa do mesmo nome vai junto (o banco marca as duas)
+      if (r.camisa) { toast(x.entregue ? 'Pulseira e camisa marcadas para ' + x.nome + '.' : 'Pulseira e camisa desmarcadas.'); if (cam.itens) camCarregar(true); }
+      else if (r.camisa_repetida) toast('Há mais de um ' + x.nome + ' na lista de camisas: marque a camisa na aba Camisas.');
+    }).catch(function () { x.entregue = antes.e; x.em = antes.em; x.por = antes.por; render(); toast('Não consegui salvar. Confira a internet e tente de novo.'); });
+  }
+  function pulSalvar(f) {
+    var id = f.getAttribute('data-id') || '', nome = String(f.nome.value || '').trim(), g = String(f.grupo.value || '').trim();
+    if (!nome) { toast('Informe o nome.'); return; }
+    sbRpc('pulseira_salvar', { p_chave: localState.adminKey, p_id: id, p_nome: nome, p_grupo: g }).then(function (r) {
+      if (!r || !r.ok) throw new Error('falhou');
+      toast(id ? 'Corrigido.' : nome + ' entrou na lista.'); pul.editando = null; pulCarregar(true);
+      if (!id) f.reset();
+    }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Não consegui salvar agora.'); });
+  }
+  function pulImportar(f) {
+    var itens = pulLerLista(f.lista.value, String(f.grupo.value || '').trim());
+    if (!itens.length) { toast('Cole pelo menos um nome.'); return; }
+    var ja = {}; (pul.itens || []).forEach(function (x) { ja[camNorm(x.nome)] = true; });
+    var rep = itens.filter(function (x) { return ja[camNorm(x.nome)]; }).length;
+    function vai() {
+      pul.importando = true; render();
+      sbRpc('pulseiras_importar', { p_chave: localState.adminKey, p_itens: itens }).then(function (r) {
+        pul.importando = false;
+        if (!r || !r.ok) throw new Error('falhou');
+        toast(r.importados + (r.importados === 1 ? ' nome importado.' : ' nomes importados.'));
+        var tf = document.querySelector('.pul-import textarea'); if (tf) tf.value = '';
+        pulCarregar(true);
+      }).catch(function (e) { pul.importando = false; render(); toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Não consegui importar agora.'); });
+    }
+    admin.confirm = { title: 'Importar ' + itens.length + (itens.length === 1 ? ' nome?' : ' nomes?'), yes: 'Importar',
+      body: 'Primeiros: ' + itens.slice(0, 4).map(function (x) { return x.nome + (x.grupo ? ' (' + x.grupo + ')' : ''); }).join(', ') + (itens.length > 4 ? '…' : '.') +
+        (rep ? ' Atenção: ' + rep + (rep === 1 ? ' nome já está' : ' nomes já estão') + ' na lista e vão ficar repetidos.' : ''), run: vai };
+    renderOverlay();
   }
 
   /* ======================= CHECKLIST PRÉ-EVENTO =======================
@@ -6577,7 +6731,11 @@
     }).catch(function () { telao.buscandoBanca = false; });
   }
   // revelação do Projeto destaque (prêmio da banca), no laranja da decisão final
+  // slides da revelação da banca: revelaBanca3, revelaBanca2, revelaBanca1 (um lugar por vez)
+  function ehRevBanca(k) { return /^revelaBanca/.test(k || ''); }
+  function posRevBanca(k) { var m = /^revelaBanca([123])$/.exec(k || ''); return m ? +m[1] : 0; }
   function viewTelaoRevelacaoBanca() {
+    var posA = posRevBanca(remote.slide);
     if (!localState.adminKey) {
       return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">Projetos destaque</h1>' +
         '<p class="tr-nota">Para revelar aqui, entre como organização neste computador (4 toques na logo, ou #/entrar) e volte para o telão.</p></div></div>';
@@ -6585,9 +6743,9 @@
     if (telao.vencBanca == null) telaoBuscarVencBanca();
     var itens = null;
     if (telao.vencBanca != null) {
-      // pódio: 2º à esquerda, 1º no meio (maior), 3º à direita
+      // pódio: 2º à esquerda, 1º no meio (maior), 3º à direita; num slide de um lugar só, só ele
       var ordem = { 2: 0, 1: 1, 3: 2 };
-      itens = telao.vencBanca.slice().sort(function (a, b) { return (ordem[a.pos] != null ? ordem[a.pos] : 9) - (ordem[b.pos] != null ? ordem[b.pos] : 9); }).map(function (v) {
+      itens = telao.vencBanca.filter(function (v) { return !posA || v.pos === posA; }).slice().sort(function (a, b) { return (ordem[a.pos] != null ? ordem[a.pos] : 9) - (ordem[b.pos] != null ? ordem[b.pos] : 9); }).map(function (v) {
         var p = byId(v.id); if (!p) return null;
         return { pos: v.pos, imgs: (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return h.image; }), nome: p.name,
                  sub: [p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ') };
@@ -6595,6 +6753,14 @@
       if (!itens.length && Date.now() - (telao.revelInicio || 0) >= REVELA_MS) {
         return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">A banca ainda não votou</h1><p class="tr-nota">A revelação aparece quando houver votos na decisão final.</p></div></div>';
       }
+    }
+    if (posA && itens && !itens.length && Date.now() - (telao.revelInicio || 0) >= REVELA_MS) {
+      return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">Sem ' + posA + 'º lugar</h1><p class="tr-nota">A decisão da banca ainda não tem projeto nessa posição.</p></div></div>';
+    }
+    if (posA) {
+      return cenaRevelacao({ tema: 'banca', itens: itens,
+        eyebrowS: 'Trilhei · Banca Final IDL Tech · Escolha da banca', chamada: 'E o ' + posA + 'º lugar é…',
+        eyebrowR: posA + 'º lugar · Projeto destaque da banca', eyebrowEmpate: posA + 'º lugar · Projeto destaque da banca' });
     }
     return cenaRevelacao({ tema: 'banca', itens: itens, podio: true,
       eyebrowS: 'Trilhei · Banca Final IDL Tech · Escolha da banca', chamada: 'E os Projetos destaque são…',
@@ -7488,9 +7654,9 @@
     else if (act === 'slideIr') irSlide(el.getAttribute('data-k'));
     else if (act === 'slideSair') irSlide('');
     else if (act === 'askSlideRevela') {
-      var kR = el.getAttribute('data-k'), ehB = kR === 'revelaBanca';
+      var kR = el.getAttribute('data-k'), ehB = ehRevBanca(kR);
       admin.confirm = { title: ehB ? 'Revelar os Projetos destaque?' : 'Revelar o Herói da Trilha?',
-        body: ehB ? 'O telão começa a revelação dos 3 projetos escolhidos pela banca (suspense, contagem e o pódio com 1º, 2º e 3º).' : 'O telão começa a revelação do Herói escolhido pelo público (suspense, contagem e o vencedor).',
+        body: ehB ? 'O telão começa pelo 3º lugar da banca (suspense, contagem e o projeto). Avance no controle para o 2º e depois o 1º.' : 'O telão começa a revelação do Herói escolhido pelo público (suspense, contagem e o vencedor).',
         yes: 'Sim, revelar agora', run: function () { irSlide(kR); } };
       renderOverlay();
     }
@@ -7577,11 +7743,35 @@
       var idM = el.getAttribute('data-id'), xm = (cam.itens || []).filter(function (i) { return i.id === idM; })[0];
       if (!xm) return;
       admin.confirm = xm.entregue
-        ? { title: 'Desfazer a entrega de ' + xm.nome + '?', danger: true, yes: 'Sim, desfazer', body: 'A camisa volta para a lista de quem ainda não recebeu.', run: function () { camMarcar(idM); } }
-        : { title: 'Entregar a camisa ' + (xm.tamanho || '(sem tamanho)') + ' para ' + xm.nome + '?', yes: 'Confirmar entrega', body: 'Confira o nome e o tamanho antes de confirmar.', run: function () { camMarcar(idM); } };
+        ? { title: 'Desfazer a entrega de ' + xm.nome + '?', danger: true, yes: 'Sim, desfazer', body: 'A camisa volta para a lista de quem ainda não recebeu (e a pulseira do mesmo nome também).', run: function () { camMarcar(idM); } }
+        : { title: 'Entregar a camisa ' + (xm.tamanho || '(sem tamanho)') + ' para ' + xm.nome + '?', yes: 'Confirmar entrega', body: 'Confira o nome e o tamanho antes de confirmar. A pulseira (com a palavra-chave) vai junto e fica marcada também.', run: function () { camMarcar(idM); } };
       renderOverlay();
     }
     else if (act === 'camAtualizar') { cam.erro = ''; camCarregar(); }
+    else if (act === 'pulMarcar') {
+      var idP = el.getAttribute('data-id'), xp = (pul.itens || []).filter(function (i) { return i.id === idP; })[0];
+      if (!xp) return;
+      admin.confirm = xp.entregue
+        ? { title: 'Desfazer a entrega de ' + xp.nome + '?', danger: true, yes: 'Sim, desfazer', body: 'A pessoa volta para a lista de quem ainda não recebeu a pulseira (e a camisa do mesmo nome também).', run: function () { pulMarcar(idP); } }
+        : { title: 'Entregar a pulseira para ' + xp.nome + '?', yes: 'Confirmar entrega', body: (xp.grupo ? xp.grupo + '. ' : '') + 'Confira o nome antes de confirmar. Se a pessoa está na lista de camisas, a camisa fica marcada junto.', run: function () { pulMarcar(idP); } };
+      renderOverlay();
+    }
+    else if (act === 'pulAtualizar') { pul.erro = ''; pul.palavra = null; pulCarregar(); }
+    else if (act === 'pulFiltro') { pul.filtro = el.getAttribute('data-f'); render(); }
+    else if (act === 'pulGrupo') { var gP = el.getAttribute('data-g'); pul.grupo = pul.grupo === gP ? '' : gP; render(); }
+    else if (act === 'pulEditar') { pul.editando = el.getAttribute('data-id'); render(); var fp = document.querySelector('.pul .cam-item.editando input'); if (fp) fp.focus(); }
+    else if (act === 'pulCancelar') { pul.editando = null; render(); }
+    else if (act === 'pulApagar') {
+      var idX = el.getAttribute('data-id'), xx = (pul.itens || []).filter(function (i) { return i.id === idX; })[0];
+      admin.confirm = { title: 'Tirar ' + (xx ? xx.nome : 'este nome') + ' da lista?', danger: true, yes: 'Sim, tirar', body: 'A pessoa sai da lista de pulseiras.',
+        run: function () { sbRpc('pulseira_apagar', { p_chave: localState.adminKey, p_id: idX }).then(function () { pul.editando = null; toast('Tirado da lista.'); pulCarregar(true); }).catch(function () { toast('Não consegui agora.'); }); } };
+      renderOverlay();
+    }
+    else if (act === 'pulLimpar') {
+      admin.confirm = { title: 'Apagar a lista inteira de pulseiras?', danger: true, yes: 'Sim, apagar tudo', body: 'Todos os ' + ((pul.itens || []).length) + ' nomes e as marcações de entrega saem da lista. Use só para colar uma lista nova do zero.',
+        run: function () { sbRpc('pulseira_apagar', { p_chave: localState.adminKey, p_id: '*' }).then(function () { toast('Lista apagada.'); pulCarregar(true); }).catch(function () { toast('Não consegui agora.'); }); } };
+      renderOverlay();
+    }
     else if (act === 'camFiltro') { cam.filtro = el.getAttribute('data-f'); render(); }
     else if (act === 'camEditar') { cam.editando = el.getAttribute('data-id'); render(); var fe = document.querySelector('.cam-item.editando input'); if (fe) fe.focus(); }
     else if (act === 'camCancelar') { cam.editando = null; render(); }
@@ -7834,6 +8024,11 @@
 
   var searchTimer = null;
   document.addEventListener('input', function (ev) {
+    if (ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act') === 'pulBusca') {
+      pul.busca = ev.target.value; render();
+      var pb = document.querySelector('.pul-busca'); if (pb) { pb.focus(); var np = pb.value.length; try { pb.setSelectionRange(np, np); } catch (x) {} }
+      return;
+    }
     if (ev.target && ev.target.getAttribute && ev.target.getAttribute('data-act') === 'camBusca') {
       cam.busca = ev.target.value; render();
       var cb = document.querySelector('.cam-busca'); if (cb) { cb.focus(); var n = cb.value.length; try { cb.setSelectionRange(n, n); } catch (x) {} }
@@ -7862,7 +8057,9 @@
 
     if (f.matches && f.matches('form.bp-form')) return;
     if (f.id === 'entrarForm') { entrarSubmit(); return; }
+    if (f.classList && f.classList.contains('pul-form')) { pulSalvar(f); return; }
     if (f.classList && f.classList.contains('cam-form')) { camSalvar(f); return; }
+    if (f.classList && f.classList.contains('pul-import')) { pulImportar(f); return; }
     if (f.id === 'apForm') { db.apresentacao = { v: DECK_V, slides: apLerForm() }; apOrdemMudou = false; save(); toast('Apresentação salva. O telão e o controle já usam o roteiro novo.'); return; }
     if (f.id === 'senhaAdminForm') {
       var novaA = normSenha($('#novaSenhaAdmin').value);
@@ -7933,8 +8130,8 @@
       return;
     }
     if (f.id === 'kwForm') {
-      var typed = String($('#kw').value || '').trim().toUpperCase().replace(/\s+/g, '');
-      var want = String(db.voting.keyword || '').trim().toUpperCase().replace(/\s+/g, '');
+      var semAc = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase().replace(/\s+/g, ''); };
+      var typed = semAc($('#kw').value), want = semAc(db.voting.keyword);
       if (!want) { flow.error = 'A organização ainda não definiu a palavra-chave.'; render(); return; }
       if (typed !== want) { flow.error = 'Palavra-chave incorreta. Confira o que foi anunciado e tente de novo.'; render(); return; }
       flow.error = ''; localState.unlocked = true; saveLocal(); render(); toast('Votação destravada.');
