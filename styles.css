@@ -3305,3 +3305,13 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .tl-slide .sl-eq2 .sl-eq-insp, .tl-slide .sl-eq2 .sl-eq-trilh p { font-size: clamp(13px, 2.3cqh, 32px); }
 .tl-slide .sl-eq2 .sl-eq-rot { font-size: clamp(11px, 1.7cqh, 22px); }
 .rv-w { display: inline-block; white-space: nowrap; }
+
+/* Canva incorporado sem a barra de controles do Canva (página, zoom, tela cheia).
+   A barra fica por cima da parte de baixo do iframe e não dá para desligar
+   pelo link. Truque: o iframe fica mais alto que a área visível; o Canva
+   centraliza o slide (16:9) e sobra uma faixa vazia em cima e embaixo; a
+   barra cai na faixa de baixo, que fica escondida (overflow). O slide
+   aparece inteiro, do mesmo tamanho. --canva-corte = altura escondida.   */
+.sl-canva { background: #000; display: grid; place-items: center; overflow: hidden; --canva-corte: 110px; container-type: size; }
+.sl-canva-quadro { position: relative; width: min(100cqw, calc(100cqh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; }
+.sl-canva .sl-canva-quadro iframe { position: absolute; left: 0; width: 100%; top: calc(-1 * var(--canva-corte)); height: calc(100% + 2 * var(--canva-corte)); border: 0; display: block; }

@@ -4933,7 +4933,7 @@
         // a apresentação roda no próprio Canva, com as animações; o passador passa as páginas dentro dela
         h = previa
           ? '<div class="sl-centro"><span class="sl-eyebrow">Apresentação da equipe · Canva</span><h1 class="sl-mega sl-mega-m">' + esc((byId(s.pid) || {}).name || '') + '</h1><p class="sl-lead">Com animações. Para sair, use Próximo aqui no controle.</p></div>'
-          : '<div class="sl-canva"><iframe src="' + esc(s.url) + '" title="Apresentação da equipe" allow="fullscreen; autoplay" allowfullscreen onload="try{this.focus()}catch(e){}"></iframe></div>';
+          : '<div class="sl-canva"><div class="sl-canva-quadro"><iframe src="' + esc(s.url) + '" title="Apresentação da equipe" allow="fullscreen; autoplay" allowfullscreen onload="try{this.focus()}catch(e){}"></iframe></div></div>';
         break;
       case 'apresPag':
         h = '<div class="sl-pag"><img src="' + esc(s.src) + '" alt="' + esc((byId(s.pid) || {}).name || '') + ' · página ' + s.pag + '"></div>';
