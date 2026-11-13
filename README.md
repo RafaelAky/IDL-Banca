@@ -40,7 +40,7 @@ As duas são trocadas no painel → aba **Banca** → *Senhas de acesso*. O voto
 
 ## Dois prêmios
 - **Herói da Trilha** (voto do público, por CPF) → revelação no telão.
-- **Projeto destaque** (banca: notas de 1 a 5 em 6 critérios + decisão final) → revelação no telão (laranja).
+- **Projetos destaque** (banca: notas de 1 a 5 em 6 critérios + decisão final em que cada jurado escolhe 1º, 2º e 3º; 3, 2 e 1 pontos) → revelação do pódio no telão.
 Os dois botões ficam no painel → aba **Ao vivo** → card *Telão*.
 
 ## Conteúdo editado no painel

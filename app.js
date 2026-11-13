@@ -2732,18 +2732,19 @@
       go: 'projeto/' + id };
   }
   function vencedoresHtml(publico, banca) {
-    var bs = (banca || []).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
+    var bs = (banca || []).slice().sort(function (a, b) { return (a.pos || 9) - (b.pos || 9); }).map(function (v, k) {
+      var o = vencBancaOpcao(v.id); if (o) o.pos = v.pos || k + 1; return o; }).filter(Boolean);
     function card(cls, tag, titulo, lista, vazio) {
       return '<section class="venc-card ' + cls + '"><span class="venc-tag">' + esc(tag) + '</span><h3 class="venc-premio">' + esc(titulo) + '</h3>' +
         (lista.length ? lista.map(function (o) {
-          return '<div class="venc-item">' + (o.image ? '<figure class="venc-fig"><img src="' + esc(mini(o.image)) + '" alt="" loading="lazy"></figure>' : '') +
+          return '<div class="venc-item">' + (o.pos ? '<span class="venc-pos p' + o.pos + '">' + o.pos + 'º lugar</span>' : '') + (o.image ? '<figure class="venc-fig"><img src="' + esc(mini(o.image)) + '" alt="" loading="lazy"></figure>' : '') +
             '<h2 class="h2">' + esc(o.name) + '</h2>' + (o.sub ? '<p class="small">' + esc(o.sub) + '</p>' : '') +
             (o.go ? '<button class="btn btn-outline btn-sm" data-go="' + esc(o.go) + '">Conheça a história</button>' : '') + '</div>';
         }).join('') : '<p class="venc-vazio">' + esc(vazio) + '</p>') + '</section>';
     }
     return '<div class="venc-grade">' +
       card('venc-pub', 'Prêmio do público', 'Herói da Trilha', publico || [], 'Ainda sem votos.') +
-      card('venc-banca', 'Prêmio da banca', 'Projeto destaque', bs, 'A banca ainda não decidiu.') +
+      card('venc-banca', 'Prêmio da banca', bs.length > 1 ? 'Projetos destaque' : 'Projeto destaque', bs, 'A banca ainda não decidiu.') +
       '</div>';
   }
   function viewResultado(isAdmin) {
@@ -2760,7 +2761,7 @@
     if (remote.on) {
       if (!remote.resultadoPublico && !isAdmin) {
         return espera('Os vencedores são revelados no palco',
-          'Acompanhe pelo telão: os resultados são anunciados na cerimônia. Depois, o Herói escolhido pelo público e o Projeto destaque da banca aparecem aqui no site.');
+          'Acompanhe pelo telão: os resultados são anunciados na cerimônia. Depois, o Herói escolhido pelo público e os 3 Projetos destaque da banca aparecem aqui no site.');
       }
       if (!pubRes.dados && !pubRes.erro) {
         if (!pubRes.pediu) { pubRes.pediu = true; setTimeout(loadPublicResult, 0); }
@@ -4130,7 +4131,7 @@
       '</div></section>' +
       '<div class="cont banca-corpo">' +
         (!remote.avaliacoes ? '<div class="banca-fechada">' + ico('i-lock') + '<span><b>As avaliações ainda estão fechadas</b><span class="tiny">Você já pode ler os projetos. As notas abrem quando a organização liberar; esta tela atualiza sozinha.</span></span></div>' : '') +
-        (remote.decisao ? '<a class="banca-aviso dec" href="#/decisao"><span><b>A decisão final está aberta</b><span class="tiny">Veja as médias de todos e escolha o vencedor.</span></span>' + ico('i-chev') + '</a>' : '') +
+        (remote.decisao ? '<a class="banca-aviso dec" href="#/decisao"><span><b>A decisão final está aberta</b><span class="tiny">Veja as médias de todos e escolha seus 3 projetos (1º, 2º e 3º).</span></span>' + ico('i-chev') + '</a>' : '') +
         (p ? '<button class="banca-aviso" data-go="banca/' + esc(p.id) + '"><span class="bc-noar"><i></i>NO AR</span><span class="grow"><b>' + esc(p.name) + '</b><span class="tiny">Apresentando agora · toque para avaliar</span></span>' + ico('i-chev') + '</button>' : '') +
         '<div class="bcards">' + cards + '</div>' +
       '</div></div>';
@@ -4286,7 +4287,7 @@
       if (!r || !r.ok) { if (r && r.erro === 'senha_banca_invalida') bancaSenhaMudou(); render(); return; }
       var antes = JSON.stringify(banca.dec.dados);
       banca.dec.dados = r; banca.dec.erro = '';
-      if (banca.dec.escolha == null && r.meu_voto) banca.dec.escolha = r.meu_voto;
+      if (banca.dec.escolha == null && r.meus_votos && r.meus_votos.length) banca.dec.escolha = r.meus_votos.slice(0, 3);
       if (JSON.stringify(r) !== antes && route.name === 'decisao') render();
     }).catch(function (e) {
       banca.dec.buscando = false;
@@ -4302,12 +4303,17 @@
       return { p: p, media: m ? +m.media : null, jurados: m ? m.jurados : 0, crit: (m && m.criterios) || {} };
     }).sort(function (a, b) { return (b.media == null ? -1 : b.media) - (a.media == null ? -1 : a.media); });
   }
-  // mais votado; empate desempata pela média das notas
-  function vencedorDecisao(rank, votos) {
-    var max = 0; rank.forEach(function (l) { max = Math.max(max, votos[l.p.id] || 0); });
-    if (!max) return null;
-    var emp = rank.filter(function (l) { return (votos[l.p.id] || 0) === max; });
-    return { lider: emp[0], votos: max, empate: emp.length > 1 ? emp : null };
+  // os 3 Projetos destaque: mais pontos (1º do jurado = 3, 2º = 2, 3º = 1);
+  // empate desempata pela média das notas e depois por mais 1º lugares (igual ao banco)
+  function podioDecisao(rank, pontos, primeiros) {
+    var com = rank.filter(function (l) { return (pontos[l.p.id] || 0) > 0; }).slice().sort(function (a, b) {
+      return (pontos[b.p.id] || 0) - (pontos[a.p.id] || 0) || (b.media || 0) - (a.media || 0) ||
+        ((primeiros || {})[b.p.id] || 0) - ((primeiros || {})[a.p.id] || 0) || (a.p.id < b.p.id ? -1 : 1);
+    });
+    var top = com.slice(0, 3);
+    // empate de pontos na fronteira do 3º lugar (ou entre colocações): avisa
+    var empate = top.some(function (l, i) { var nx = com[i + 1]; return nx && (pontos[nx.p.id] || 0) === (pontos[l.p.id] || 0); });
+    return { top: top, empate: empate };
   }
   function critBarras(crit) {
     return '<div class="dc-crit">' + CRITERIOS.map(function (c) {
@@ -4317,12 +4323,12 @@
   }
   function viewDecisao() {
     if (!remote.on) return bancaSemBanco();
-    if (!bancaLogada()) return bancaLogin('Decisão final: veja as médias de todos os jurados e escolha o projeto vencedor.');
+    if (!bancaLogada()) return bancaLogin('Decisão final: veja as médias de todos os jurados e escolha os 3 Projetos destaque, em ordem.');
     var d = banca.dec.dados;
     if (!d && !banca.dec.erro) setTimeout(carregarDecisao, 0);
     var topo = '<section class="banca-topo"><div class="cont">' +
       '<div><span class="eyebrow">Banca · ' + esc(localState.banca.nome) + '</span><h1 class="titulo-pag">Decisão final</h1>' +
-      '<p class="small">Prêmio da banca: o Projeto destaque. Veja as médias e as notas de todos os jurados (e, como informação, o voto do público) e escolha o vencedor.</p></div>' +
+      '<p class="small">Prêmio da banca: os 3 Projetos destaque (1º, 2º e 3º lugar). Veja as médias e as notas de todos os jurados (e, como informação, o voto do público) e escolha os seus 3, em ordem.</p></div>' +
       '<a class="btn btn-ghost btn-sm" href="#/banca">Avaliações</a></div></section>';
     if (banca.dec.erro && !d) return '<div class="view banca-view">' + topo + '<div class="cont banca-corpo"><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">' + esc(banca.dec.erro) + '</p></div></div></div>';
     if (!d) return '<div class="view banca-view">' + topo + '<div class="cont banca-corpo"><p class="small">Carregando…</p></div></div>';
@@ -4333,7 +4339,9 @@
         '<p class="small">Quando a organização liberar, esta tela atualiza sozinha. Enquanto isso, confira se todos os projetos estão avaliados.</p>' +
         '<a class="btn btn-outline" href="#/banca">Ver minhas avaliações</a></div></div></div>';
     }
-    var rank = rankingMedias(d.medias), votos = d.votos || {}, meu = d.meu_voto, esc1 = banca.dec.escolha;
+    var rank = rankingMedias(d.medias), pontos = d.pontos || {}, meus = d.meus_votos || [], meu = meus.length === 3, esc1 = banca.dec.escolha || [];
+    function posDe(lista, id) { var k = lista.indexOf(id); return k < 0 ? 0 : k + 1; }
+    var mesmaEscolha = meu && esc1.length === 3 && esc1.join('|') === meus.join('|');
     var pub = d.publico || {}, pubTot = d.publico_total || 0;
     var porProj = {}; (d.avaliacoes || []).forEach(function (a) { (porProj[a.projeto] = porProj[a.projeto] || []).push(a); });
     // jurados chegam do banco sem nome ("Você", "Jurado 1, 2…"); se vier nome (banco antigo), esconde aqui
@@ -4356,47 +4364,52 @@
           (a.comentario ? '<p>' + esc(a.comentario) + '</p>' : '') + '</div>';
       }).join('') + '</div>';
     }
-    var venc = vencedorDecisao(rank, votos), todos = d.jurados && d.votaram >= d.jurados;
+    var pod = podioDecisao(rank, pontos, d.primeiros), todos = d.jurados && d.votaram >= d.jurados;
     var lista = rank.map(function (l, i) {
-      var sel = esc1 === l.p.id, nv = votos[l.p.id] || 0;
-      return '<div class="dcard' + (sel ? ' sel' : '') + (meu === l.p.id ? ' meu' : '') + '">' +
-        '<button class="dc-main" data-act="decEscolher" data-id="' + esc(l.p.id) + '" aria-pressed="' + sel + '">' +
+      var ps = posDe(esc1, l.p.id), np = pontos[l.p.id] || 0;
+      return '<div class="dcard' + (ps ? ' sel' : '') + (posDe(meus, l.p.id) ? ' meu' : '') + '">' +
+        '<button class="dc-main" data-act="decEscolher" data-id="' + esc(l.p.id) + '" aria-pressed="' + !!ps + '">' +
           '<span class="dc-pos num">' + (l.media == null ? '–' : (i + 1) + 'º') + '</span>' +
           bancaFig(l.p, 'bc-fig') +
           '<span class="bc-txt"><span class="bc-nome">' + esc(l.p.name) + '</span><span class="tiny">' + esc(nomesHerois(l.p)) + ' · ' + l.jurados + (l.jurados === 1 ? ' jurado' : ' jurados') + '</span>' +
           '<span class="dc-pubchip">Público: <b class="num">' + votosPublico(l.p) + '</b>' + (pubTot ? ' · ' + Math.round(votosPublico(l.p) / pubTot * 100) + '%' : '') + '</span>' +
-          (meu ? '<span class="dc-votos">' + nv + (nv === 1 ? ' voto' : ' votos') + '</span>' : '') + '</span>' +
+          (meu ? '<span class="dc-votos">' + np + (np === 1 ? ' ponto' : ' pontos') + '</span>' : '') + '</span>' +
           '<span class="dc-media"><b class="num">' + fmt1(l.media) + '</b><span class="tiny">média</span></span>' +
-          '<span class="dc-radio" aria-hidden="true"></span>' +
+          '<span class="dc-escolha' + (ps ? ' p' + ps : '') + '" aria-hidden="true">' + (ps ? ps + 'º' : '') + '</span>' +
         '</button>' +
         '<details class="dc-det"><summary>Ver notas, jurados e público</summary>' + critBarras(l.crit) + detalheJurados(l.p) + detalhePublico(l.p) + '</details>' +
         '</div>';
     }).join('');
+    var podTxt = pod.top.map(function (l, k) { return (k + 1) + 'º <b>' + esc(l.p.name) + '</b> (' + (pontos[l.p.id] || 0) + ' pts)'; }).join(' · ');
     var placar = '<div class="dec-placar"><b class="num">' + (d.votaram || 0) + ' de ' + (d.jurados || 0) + '</b> jurados já votaram' + (pubTot ? ' · público: <b class="num">' + pubTot + '</b> votos no Herói da Trilha' : '') +
-      (meu && venc ? (venc.empate
-        ? ' · <span>Empate em ' + venc.votos + (venc.votos === 1 ? ' voto' : ' votos') + ' — pela média, à frente: <b>' + esc(venc.lider.p.name) + '</b></span>'
-        : ' · <span>' + (todos ? 'Vencedor' : 'Mais votado até agora') + ': <b>' + esc(venc.lider.p.name) + '</b> (' + venc.votos + (venc.votos === 1 ? ' voto' : ' votos') + ')</span>') : '') +
+      (meu && pod.top.length ? ' · <span>' + (todos ? 'Pódio' : 'Pódio até agora') + ': ' + podTxt + '</span>' +
+        (pod.empate ? ' · <span>há empate de pontos: vale a média das notas</span>' : '') : '') +
       (meu ? '' : ' · <span>a apuração aparece depois do seu voto</span>') + '</div>';
-    var pe = esc1 ? (byId(esc1) || {}).name : null;
+    var regra = '<p class="small dec-regra">Escolha <b>3 projetos, em ordem</b>: toque no seu 1º lugar, depois no 2º e no 3º (toque de novo para tirar). O 1º vale 3 pontos, o 2º vale 2 e o 3º vale 1. Os 3 com mais pontos são os Projetos destaque da banca.</p>';
+    var slots = [0, 1, 2].map(function (k) {
+      var p = esc1[k] ? byId(esc1[k]) : null;
+      return '<span class="dec-slot' + (p ? ' on' : '') + '"><b>' + (k + 1) + 'º</b>' + (p ? esc(p.name) : '<i>escolha</i>') + '</span>';
+    }).join('');
     return '<div class="view banca-view banca-dec">' + topo +
-      '<div class="cont banca-corpo">' + placar + '<div class="dcards">' + lista + '</div></div>' +
+      '<div class="cont banca-corpo">' + regra + placar + '<div class="dcards">' + lista + '</div></div>' +
       '<div class="bp-pe"><div class="cont">' +
-        '<span class="bp-resumo"><span class="tiny">' + (meu ? 'Seu voto: <b>' + esc((byId(meu) || {}).name || '') + '</b> · dá para trocar enquanto estiver aberta' : 'Escolha um projeto na lista') + '</span></span>' +
-        '<button class="btn btn-laranja btn-lg" data-act="decVotar"' + (!esc1 || banca.dec.enviando || esc1 === meu ? ' disabled' : '') + '>' +
-          (banca.dec.enviando ? 'Enviando…' : esc1 === meu && meu ? '✓ Voto confirmado' : pe ? 'Confirmar voto em ' + esc(pe) : 'Confirmar voto') + '</button>' +
+        '<span class="bp-resumo dec-slots">' + slots + (meu ? '<span class="tiny">' + (mesmaEscolha ? 'Voto confirmado · dá para trocar enquanto estiver aberta' : 'Você mudou a escolha: confirme de novo') + '</span>' : '') + '</span>' +
+        '<button class="btn btn-laranja btn-lg" data-act="decVotar"' + (esc1.length !== 3 || banca.dec.enviando || mesmaEscolha ? ' disabled' : '') + '>' +
+          (banca.dec.enviando ? 'Enviando…' : mesmaEscolha ? '✓ Voto confirmado' : esc1.length === 3 ? 'Confirmar meus 3 projetos' : 'Escolha ' + (3 - esc1.length) + (3 - esc1.length === 1 ? ' projeto' : ' projetos')) + '</button>' +
       '</div></div></div>';
   }
   function decVotar() {
-    var id = banca.dec.escolha; if (!id) return;
+    var ids = (banca.dec.escolha || []).slice(0, 3); if (ids.length !== 3) return;
     banca.dec.enviando = true; render();
-    sbRpc('votar_decisao', { p_senha: localState.banca.senha, p_jurado: localState.banca.nome, p_projeto: id }).then(function (r) {
+    sbRpc('votar_decisao', { p_senha: localState.banca.senha, p_jurado: localState.banca.nome, p_projetos: ids }).then(function (r) {
       banca.dec.enviando = false;
-      if (r && r.ok) { toast('Voto confirmado.'); if (banca.dec.dados) banca.dec.dados.meu_voto = id; carregarDecisao(); }
+      if (r && r.ok) { toast('Voto confirmado: 1º ' + ((byId(ids[0]) || {}).name || '') + '.'); if (banca.dec.dados) banca.dec.dados.meus_votos = ids; carregarDecisao(); }
       else if (r && r.erro === 'decisao_fechada') { toast('A organização encerrou a decisão.'); banca.dec.dados = null; carregarDecisao(); }
       else if (r && r.erro === 'senha_banca_invalida') bancaSenhaMudou();
+      else if (r && r.erro === 'escolha_3') toast('Escolha 3 projetos diferentes.');
       else toast('Não consegui registrar. Tente de novo.');
       render();
-    }).catch(function () { banca.dec.enviando = false; render(); toast('Sem conexão. Tente de novo.'); });
+    }).catch(function (e) { banca.dec.enviando = false; render(); toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente (decisão com 3 projetos).' : 'Sem conexão. Tente de novo.'); });
   }
 
   /* ------------------- telas com QR Code para a mesa da banca ------------------- */
@@ -4419,7 +4432,7 @@
     var url = siteBase() + (dec ? '/#/decisao' : '/#/banca');
     var svg = qrPara(url, dec ? '#7a2c06' : '#2e006a');
     var passos = dec
-      ? ['Entre com seu nome e sobrenome e a senha da banca', 'Veja a média de cada projeto, dada por todos os jurados', 'Escolha o projeto vencedor e confirme o seu voto']
+      ? ['Entre com seu nome e sobrenome e a senha da banca', 'Veja a média de cada projeto, dada por todos os jurados', 'Escolha 3 projetos em ordem (1º, 2º e 3º) e confirme']
       : ['Entre com seu nome e sobrenome e a senha da banca', 'Toque no card do projeto — o que está no palco aparece como NO AR', 'Dê uma nota de 1 a 5 em cada um dos 6 critérios e confirme'];
     return '<div class="mesa' + (dec ? ' mesa-dec' : '') + '">' + telaoFundo() +
       '<div class="mesa-in">' +
@@ -4475,11 +4488,24 @@
       render();
     });
   }
+  // decisão final agrupada por jurado: [{ jurado, lista: [1º, 2º, 3º] }]
+  function juradosDecisao() {
+    var por = {}, ordem = [];
+    (adminBancaDados.decisao || []).forEach(function (v) {
+      if (!por[v.jurado]) { por[v.jurado] = []; ordem.push(v.jurado); }
+      por[v.jurado][(+v.posicao || 1) - 1] = v.projeto;
+    });
+    return ordem.map(function (j) { return { jurado: j, lista: por[j].filter(Boolean) }; });
+  }
+  function primeirosDecisao() {
+    var o = {}; (adminBancaDados.decisao || []).forEach(function (v) { if ((+v.posicao || 1) === 1) o[v.projeto] = (o[v.projeto] || 0) + 1; }); return o;
+  }
   function consolidadoBanca() {
     var por = {};
     (adminBancaDados.itens || []).filter(function (it) { return it.notas && notasQtd(it.notas); })
       .forEach(function (it) { (por[it.projeto] = por[it.projeto] || []).push(it); });
-    var votos = {}; (adminBancaDados.decisao || []).forEach(function (v) { votos[v.projeto] = (votos[v.projeto] || 0) + 1; });
+    // pontos da decisão final: 1º do jurado = 3, 2º = 2, 3º = 1 (banco antigo sem posição conta como 1º)
+    var votos = {}; (adminBancaDados.decisao || []).forEach(function (v) { votos[v.projeto] = (votos[v.projeto] || 0) + (4 - (+v.posicao || 1)); });
     return projetosEmOrdem().map(function (p) {
       var its = por[p.id] || [], crit = {};
       CRITERIOS.forEach(function (c) {
@@ -4521,13 +4547,13 @@
     var base = siteBase();
     var linhas = consolidadoBanca();
     var jurados = {}; (adminBancaDados.itens || []).forEach(function (i) { jurados[i.jurado] = true; });
-    var nJur = Object.keys(jurados).length, nVot = (adminBancaDados.decisao || []).length;
-    var venc = vencedorDecisao(linhas, linhas.reduce(function (o, l) { o[l.p.id] = l.votos; return o; }, {}));
+    var nJur = Object.keys(jurados).length, nVot = juradosDecisao().length;
+    var pod = podioDecisao(linhas, linhas.reduce(function (o, l) { o[l.p.id] = l.votos; return o; }, {}), primeirosDecisao());
     var tabela = adminBancaDados.itens == null ? '<p class="small">' + (adminBancaDados.erro ? esc(adminBancaDados.erro) : 'Buscando as avaliações…') + '</p>' :
       '<div class="banca-tab">' + linhas.map(function (l, i) {
         return '<details class="sanfona banca-linha" data-pid="' + esc(l.p.id) + '"' + (rankAberto[l.p.id] ? ' open' : '') + '>' +
           '<summary><span class="bl-pos num">' + (l.media == null ? '–' : (i + 1) + 'º') + '</span><span class="sf-cab"><span class="sf-tit">' + esc(l.p.name) + '</span>' +
-          '<span class="sf-res">' + esc([l.p.group ? 'Grupo ' + l.p.group : '', l.n + (l.n === 1 ? ' jurado' : ' jurados'), remote.decisao || nVot ? l.votos + (l.votos === 1 ? ' voto na decisão' : ' votos na decisão') : ''].filter(Boolean).join(' · ')) + '</span></span>' +
+          '<span class="sf-res">' + esc([l.p.group ? 'Grupo ' + l.p.group : '', l.n + (l.n === 1 ? ' jurado' : ' jurados'), remote.decisao || nVot ? l.votos + (l.votos === 1 ? ' ponto na decisão' : ' pontos na decisão') : ''].filter(Boolean).join(' · ')) + '</span></span>' +
           '<span class="bl-media num">' + fmt1(l.media) + '</span>' +
           '<span class="sf-ico" aria-hidden="true">' + ico('i-down') + '</span></summary>' +
           '<div class="sf-corpo">' + critBarras(l.crit) + (l.itens.length ? l.itens.map(function (it) {
@@ -4549,12 +4575,12 @@
       '<section class="stack"><h3 class="h3">Decisão final</h3>' +
       '<div class="revelar-box' + (remote.decisao ? ' on' : '') + '"><div class="grow"><b>' + (remote.decisao ? 'A decisão está aberta' : 'A decisão está fechada') + '</b>' +
         '<p class="small">' + (remote.decisao
-          ? nVot + ' de ' + nJur + ' jurados já votaram' + (venc ? ' · ' + (venc.empate ? 'empate em ' + venc.votos + (venc.votos === 1 ? ' voto' : ' votos') + '; pela média, à frente: ' : 'mais votado: ') + esc(venc.lider.p.name) : '') + '.'
-          : 'Quando a banca sair do palco para decidir, abra aqui. Cada jurado vê as médias de todos e vota em 1 projeto; empate desempata pela média.') + '</p></div>' +
+          ? nVot + ' de ' + nJur + ' jurados já votaram' + (pod.top.length ? ' · pódio: ' + pod.top.map(function (l, k) { return (k + 1) + 'º ' + esc(l.p.name) + ' (' + l.votos + ' pts)'; }).join(', ') + (pod.empate ? ' · há empate de pontos, vale a média' : '') : '') + '.'
+          : 'Quando a banca sair do palco para decidir, abra aqui. Cada jurado vê as médias de todos e escolhe 3 projetos em ordem (1º = 3 pontos, 2º = 2, 3º = 1); empate desempata pela média.') + '</p></div>' +
         '<button class="btn ' + (remote.decisao ? 'btn-outline' : 'btn-laranja') + '" data-act="decisaoAbrir" data-v="' + (remote.decisao ? '0' : '1') + '">' + (remote.decisao ? 'Encerrar a decisão' : 'Abrir a decisão final') + '</button></div>' +
-      (nVot ? '<p class="small">Votos: ' + (adminBancaDados.decisao || []).map(function (v) { var p = byId(v.projeto); return '<b>' + esc(v.jurado) + '</b> → ' + esc(p ? p.name : v.projeto); }).join(' · ') + '</p>' : '') +
+      (nVot ? '<p class="small">Votos: ' + juradosDecisao().map(function (j) { return '<b>' + esc(j.jurado) + '</b> → ' + j.lista.map(function (v, k) { var p = byId(v); return (k + 1) + 'º ' + esc(p ? p.name : v); }).join(', '); }).join(' · ') + '</p>' : '') +
       '<div class="revelar-box' + (remote.revelarBanca ? ' on' : '') + '"><div class="grow"><b>Revelação no telão</b><p class="small">' + (remote.revelarBanca
-          ? 'O telão está mostrando o Projeto destaque.' : 'Mostra o projeto vencedor da banca no telão, com animação. O telão precisa estar com a organização conectada.') + '</p></div>' +
+          ? 'O telão está mostrando os Projetos destaque.' : 'Mostra os 3 projetos vencedores da banca (1º, 2º e 3º) no telão, com animação. O telão precisa estar com a organização conectada.') + '</p></div>' +
         (remote.revelarBanca ? '<button class="btn btn-outline" data-act="desrevelar">Voltar o telão para a votação</button>'
           : '<button class="btn btn-laranja" data-act="askRevelarBanca">' + ico('i-spark') + ' Revelar no telão</button>') + '</div>' +
       '</section>' +
@@ -4591,7 +4617,7 @@
     var f1 = XL.folha('Ranking', 'Ranking da banca · notas de 1 a 5',
       'IDL · ' + nJ + (nJ === 1 ? ' jurado' : ' jurados') + ' · média de todos os jurados por critério · gerado em ' + quando,
       [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 50, tipo: 'forte' }, { t: 'Grupo', w: 14 }, { t: 'Heróis', w: 24 }, { t: 'Jurados', w: 10, tipo: 'int' }]
-        .concat(critCols, [{ t: 'Média geral', w: 13, tipo: 'n2' }, { t: 'Votos na decisão', w: 13, tipo: 'int' }]),
+        .concat(critCols, [{ t: 'Média geral', w: 13, tipo: 'n2' }, { t: 'Pontos na decisão', w: 13, tipo: 'int' }]),
       r1, { destacar: function (l, i) { return i === 0 && l[0] === 1; } });
     var r2 = [];
     linhas.forEach(function (l) { l.itens.forEach(function (it) {
@@ -4603,16 +4629,22 @@
       [{ t: 'Jurado', w: 24, tipo: 'forte' }, { t: 'Projeto', w: 48 }, { t: 'Grupo', w: 14 }]
         .concat(CRITERIOS.map(function (c) { return { t: c.t, w: 14, tipo: 'int' }; }), [{ t: 'Média', w: 10, tipo: 'n2' }, { t: 'Comentário', w: 60, tipo: 'longo' }]),
       r2);
+    var pr = primeirosDecisao(), pd = podioDecisao(linhas, linhas.reduce(function (o, l) { o[l.p.id] = l.votos; return o; }, {}), pr);
     var r3 = linhas.filter(function (l) { return l.votos > 0; })
-      .sort(function (a, b) { return b.votos - a.votos || (b.media || 0) - (a.media || 0); })
-      .map(function (l, i) { return [i + 1, l.p.name, l.p.group || '', l.votos, l.media == null ? '' : +l.media.toFixed(2)]; });
-    var f3 = XL.folha('Decisão final', 'Decisão final da banca',
-      'IDL · ' + dec.length + ' de ' + nJ + ' jurados votaram · empate desempata pela média · gerado em ' + quando,
-      [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 40, tipo: 'forte' }, { t: 'Grupo', w: 14 }, { t: 'Votos', w: 10, tipo: 'int' }, { t: 'Média das notas', w: 16, tipo: 'n2' }],
-      r3, { destacar: function (l, i) { return i === 0; } });
-    var r4 = dec.map(function (v) { var p = byId(v.projeto); return [v.jurado, p ? p.name : v.projeto, new Date(v.em).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })]; });
+      .sort(function (a, b) { return b.votos - a.votos || (b.media || 0) - (a.media || 0) || (pr[b.p.id] || 0) - (pr[a.p.id] || 0); })
+      .map(function (l, i) { return [i + 1, l.p.name, l.p.group || '', l.votos, pr[l.p.id] || 0, l.media == null ? '' : +l.media.toFixed(2)]; });
+    var nDec = juradosDecisao().length;
+    var f3 = XL.folha('Decisão final', 'Decisão final da banca · 3 Projetos destaque',
+      'IDL · ' + nDec + ' de ' + nJ + ' jurados votaram · 1º do jurado = 3 pontos, 2º = 2, 3º = 1 · empate desempata pela média' + (pd.empate ? ' · ATENÇÃO: há empate de pontos' : '') + ' · gerado em ' + quando,
+      [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Projeto', w: 40, tipo: 'forte' }, { t: 'Grupo', w: 14 }, { t: 'Pontos', w: 10, tipo: 'int' }, { t: 'Vezes em 1º', w: 12, tipo: 'int' }, { t: 'Média das notas', w: 16, tipo: 'n2' }],
+      r3, { destacar: function (l, i) { return i < 3; } });
+    var emDe = {}; dec.forEach(function (v) { emDe[v.jurado] = v.em; });
+    var r4 = juradosDecisao().map(function (j) {
+      return [j.jurado].concat([0, 1, 2].map(function (k) { var p = byId(j.lista[k]); return p ? p.name : (j.lista[k] || ''); }),
+        [new Date(emDe[j.jurado]).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })]);
+    });
     var f4 = XL.folha('Votos da decisão', 'Voto de cada jurado na decisão final', 'IDL · gerado em ' + quando,
-      [{ t: 'Jurado', w: 26, tipo: 'forte' }, { t: 'Projeto escolhido', w: 42 }, { t: 'Horário', w: 18 }], r4);
+      [{ t: 'Jurado', w: 26, tipo: 'forte' }, { t: '1º lugar (3 pts)', w: 38 }, { t: '2º lugar (2 pts)', w: 38 }, { t: '3º lugar (1 pt)', w: 38 }, { t: 'Horário', w: 18 }], r4);
     return [f1, f2, f3, f4];
   }
 
@@ -4752,7 +4784,7 @@
     { id: 'revelaHeroi',    tipo: 'revelaHeroi',  on: true, titulo: 'Revelação · Herói da Trilha' },
     { id: 'destaques',      tipo: 'secao',        on: true, titulo: 'Alunos destaques', texto: 'Premiação e entrega', hora: '12h28' },
     { id: 'sec_banca',      tipo: 'secao',        on: true, titulo: 'A banca no palco', texto: 'Homenagem, devolutiva e resultados dos projetos', hora: '12h38' },
-    { id: 'revelaBanca',    tipo: 'revelaBanca',  on: true, titulo: 'Revelação · Projeto destaque' },
+    { id: 'revelaBanca',    tipo: 'revelaBanca',  on: true, titulo: 'Revelação · Projetos destaque' },
     { id: 'formatura',      tipo: 'secao',        on: true, titulo: 'Formatura', texto: 'Certificados, brindes e medalhas', hora: '12h46' },
     { id: 'foto',           tipo: 'secao',        on: true, titulo: 'Foto oficial dos formandos', texto: 'Trilha 2026', hora: '13h06' },
     { id: 'sec_fim',        tipo: 'secao',        on: true, titulo: 'Encerramento', texto: '', hora: '13h09' },
@@ -4821,11 +4853,12 @@
   function slideMarca() { return '<span class="sl-marca"><img src="img/kv/trilhei.webp" alt=""><i></i><img src="img/kv/idltech.webp" alt=""></span>'; }
   function ytId(v) { var m = String(v || '').match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(String(v || '').trim()) ? String(v).trim() : ''); }
   // visual da apresentação: o do Instituto (fundo creme, flores douradas girando devagar, sementes de leve)
+  // visual do Trilhei / do site: roxo do KV, brilhos laranja e lilás, sementes subindo
   function slideFundoIdl() {
-    return telaoFundo() + '<div class="sl-flores" aria-hidden="true">' + idlFlorSvg('sl-flor sl-flor-a') + idlFlorSvg('sl-flor sl-flor-b') + '</div>';
+    return telaoFundo() + '<div class="sl-flores" aria-hidden="true"><i class="sl-luz sl-luz-a"></i><i class="sl-luz sl-luz-b"></i></div>';
   }
   function slideRodape() {
-    return '<span class="sl-rodape"><span class="sl-rodape-inst"><img src="img/logo-idl-telao.webp" alt="Instituto Dente de Leão"><img src="img/logo-idl-telao.webp" alt="" aria-hidden="true"></span><i></i>' + slideMarca() + '</span>';
+    return '<span class="sl-rodape">' + slideMarca() + '<i></i><span class="sl-rodape-inst"><img src="img/logo-idl-telao.webp" alt="Instituto Dente de Leão"></span></span>';
   }
   function slideHtml(s, previa) {
     var it = s.item || {}, h = '';
@@ -4845,13 +4878,13 @@
         h = '<div class="sl-centro sl-secao-in">' +
           (it.logo ? '<img class="sl-secao-logo" src="' + esc(it.logo) + '" alt="' + esc(it.titulo) + '">'
             : '<h1 class="sl-mega' + (String(it.titulo || '').length > 34 ? ' sl-mega-m' : '') + '">' + esc(it.titulo) + '</h1>') +
-          '<span class="sl-traco" aria-hidden="true"><i></i>' + idlFlorSvg('sl-traco-flor') + '<i></i></span>' +
+          '<span class="sl-traco" aria-hidden="true"><i></i>' + '<b class="sl-traco-ponto"></b>' + '<i></i></span>' +
           (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
         break;
       case 'parceiros':
         var lp = PARCEIROS_SLIDES[it.id] || [];
         h = '<div class="sl-parc"><h2 class="sl-tit">' + esc(it.titulo || 'Parceiros') + '</h2>' +
-          '<span class="sl-traco" aria-hidden="true"><i></i>' + idlFlorSvg('sl-traco-flor') + '<i></i></span>' +
+          '<span class="sl-traco" aria-hidden="true"><i></i>' + '<b class="sl-traco-ponto"></b>' + '<i></i></span>' +
           '<ul class="sl-parc-grade n' + lp.length + '">' + lp.map(function (k) {
             if (k === 'obrigado') return '<li class="sl-parc-card obrigado"><span>Obrigado</span></li>';
             var pc = PARCEIROS[k]; if (!pc) return '';
@@ -4860,27 +4893,27 @@
           }).join('') + '</ul></div>';
         break;
       case 'texto':
-        h = '<div class="sl-centro"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
+        h = '<div class="sl-centro"><span class="sl-eyebrow">Trilhei · Banca Final IDL Tech 2026</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
           (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
         break;
       case 'programacao':
-        h = '<div class="sl-col"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+        h = '<div class="sl-col"><span class="sl-eyebrow">Trilhei · Banca Final IDL Tech 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
           '<ol class="sl-prog">' + ordered().filter(function (x) { return x.start && x.start !== x.end; }).map(function (x) {
             return '<li><b class="num">' + esc(x.quando || x.start) + '</b><span>' + esc(x.name) + '</span></li>'; }).join('') + '</ol></div>';
         break;
       case 'numeros':
         var nEq = db.projects.reduce(function (a, p) { return a + Math.max(1, (p.teams || []).length); }, 0);
-        h = '<div class="sl-centro"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+        h = '<div class="sl-centro"><span class="sl-eyebrow">Trilhei · Banca Final IDL Tech 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
           '<div class="sl-nums">' + [[nTrilheiros(), 'trilheiros'], [db.projects.length, 'projetos'], [nEq, 'equipes'], [allHeroes().length, 'Heróis']].map(function (n, i) {
             return '<div style="--i:' + i + '"><b class="num">' + n[0] + '</b><span>' + n[1] + '</span></div>'; }).join('') + '</div></div>';
         break;
       case 'comofunciona':
-        h = '<div class="sl-col"><span class="sl-eyebrow">Instituto Dente de Leão · Trilha 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
+        h = '<div class="sl-col"><span class="sl-eyebrow">Trilhei · Banca Final IDL Tech 2026</span><h2 class="sl-tit">' + esc(it.titulo) + '</h2>' +
           '<div class="sl-dois">' +
             '<section class="sl-caixa sl-cx-pub"><span class="sl-tag">Prêmio do público</span><h3>Herói da Trilha</h3>' +
               '<ol><li>Aponte a câmera para o QR Code no telão</li><li>Informe o seu CPF</li><li>Escolha o seu Herói e confirme. Um voto por pessoa</li></ol></section>' +
-            '<section class="sl-caixa sl-cx-banca"><span class="sl-tag">Prêmio da banca</span><h3>Projeto destaque</h3>' +
-              '<p>Cada jurado dá uma nota de 1 a 5 em:</p><ul>' + CRITERIOS.map(function (c) { return '<li>' + esc(c.t) + '</li>'; }).join('') + '</ul></section>' +
+            '<section class="sl-caixa sl-cx-banca"><span class="sl-tag">Prêmio da banca</span><h3>Projetos destaque</h3>' +
+              '<p>Notas de 1 a 5 em cada critério; no fim, a banca escolhe o 1º, o 2º e o 3º lugar:</p><ul>' + CRITERIOS.map(function (c) { return '<li>' + esc(c.t) + '</li>'; }).join('') + '</ul></section>' +
           '</div></div>';
         break;
       case 'video':
@@ -4929,7 +4962,7 @@
               '<b>' + esc(nomesH.join(' e ')) + '</b>' + (insp.length ? '<span class="sl-eq-insp">Inspirado em ' + esc(insp.join(' · ')) + '</span>' : '') + '</div>' : '') +
             (membros.length ? '<div class="sl-eq-trilh"><span class="sl-eq-rot">Trilheiros</span><p>' + membros.map(function (m) { return '<span>' + esc(m) + '</span>'; }).join('') + '</p></div>' : '') +
           '</div>' +
-          '<div class="sl-eq-figs n' + hs.length + '">' + idlFlorSvg('sl-eq-flor') + hs.map(function (h2) { return '<figure><img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt=""></figure>'; }).join('') + '</div>' +
+          '<div class="sl-eq-figs n' + hs.length + '">' + '<span class="sl-eq-flor" aria-hidden="true"></span>' + hs.map(function (h2) { return '<figure><img src="' + esc(previa ? mini(h2.image) : h2.image) + '" alt=""></figure>'; }).join('') + '</div>' +
         '</div>';
         break;
       case 'fotos':
@@ -4946,7 +4979,7 @@
         break;
       case 'revelaHeroi':
       case 'revelaBanca':
-        h = '<div class="sl-centro"><span class="sl-eyebrow">Tela viva</span><h1 class="sl-mega sl-mega-m">' + (s.tipo === 'revelaHeroi' ? 'Revelação do Herói' : 'Revelação do Projeto destaque') + '</h1><p class="sl-lead">Suspense, contagem e o vencedor</p></div>';
+        h = '<div class="sl-centro"><span class="sl-eyebrow">Tela viva</span><h1 class="sl-mega sl-mega-m">' + (s.tipo === 'revelaHeroi' ? 'Revelação do Herói' : 'Revelação dos Projetos destaque') + '</h1><p class="sl-lead">' + (s.tipo === 'revelaHeroi' ? 'Suspense, contagem e o vencedor' : 'Suspense, contagem e o pódio: 1º, 2º e 3º lugar') + '</p></div>';
         break;
     }
     return h;
@@ -5330,7 +5363,7 @@
     // o que está DE FATO no telão agora
     var agora, estado, cor;
     if (remote.pausa) { agora = 'pausa'; estado = 'Modo pausa · fotos passando'; cor = 'pausa'; }
-    else if (remote.revelarBanca) { agora = { tipo: 'revelaBanca' }; estado = 'Revelando o Projeto destaque'; cor = 'revela'; }
+    else if (remote.revelarBanca) { agora = { tipo: 'revelaBanca' }; estado = 'Revelando os Projetos destaque'; cor = 'revela'; }
     else if (remote.revelar) { agora = { tipo: 'revelaHeroi' }; estado = 'Revelando o Herói'; cor = 'revela'; }
     else if (atual) { agora = atual; estado = 'Apresentação · slide ' + (i + 1) + ' de ' + l.length; cor = 'apres'; }
     else { agora = { tipo: 'votacao' }; estado = 'Fora da apresentação · votação no telão'; cor = 'fora'; }
@@ -5340,7 +5373,7 @@
     var ctlTot = adminRes.dados && adminRes.dados.liberado ? (adminRes.dados.total || 0) : null;
     var ctlIts = (adminBancaDados.itens || []).filter(function (x) { return x.notas && notasQtd(x.notas); });
     var ctlJur = {}; ctlIts.forEach(function (x) { ctlJur[x.jurado] = true; });
-    var ctlNJ = Object.keys(ctlJur).length, ctlNDec = (adminBancaDados.decisao || []).length;
+    var ctlNJ = Object.keys(ctlJur).length, ctlNDec = juradosDecisao().length;
     var ctlP = palcoAtual(), ctlPalco = '';
     if (ctlP && ctlNJ) ctlPalco = ctlIts.filter(function (x) { return x.projeto === ctlP.id && notasCompletas(x.notas); }).length + ' de ' + ctlNJ + ' já avaliaram ' + ctlP.name + '.';
 
@@ -5385,12 +5418,12 @@
           '<div class="ctlA-card ctlA-banca"><span class="ctlA-tit">' + ico('i-users') + ' Banca' + (ctlNJ ? '<span class="ctlA-num">' + ctlNJ + (ctlNJ === 1 ? ' jurado ativo' : ' jurados ativos') + '</span>' : '') + '</span>' +
             '<div class="ctlA-linha"><div class="grow"><b>Avaliações das equipes</b><span class="tiny">' + (remote.avaliacoes ? 'Abertas: os jurados dão notas.' + (ctlPalco ? ' ' + ctlPalco : '') : 'Fechadas: os jurados só leem os projetos.') + '</span></div>' +
               (remote.avaliacoes ? '<button class="btn btn-danger" data-act="ctlAval" data-v="0">Encerrar avaliações</button>' : '<button class="btn btn-laranja" data-act="ctlAval" data-v="1">Abrir avaliações</button>') + '</div>' +
-            '<div class="ctlA-linha"><div class="grow"><b>Decisão final da banca</b><span class="tiny">' + (remote.decisao ? 'Aberta: ' + ctlNDec + ' de ' + (ctlNJ || '—') + ' jurados já votaram.' : 'Voto fechado dos jurados para o Projeto destaque.') + '</span></div>' +
+            '<div class="ctlA-linha"><div class="grow"><b>Decisão final da banca</b><span class="tiny">' + (remote.decisao ? 'Aberta: ' + ctlNDec + ' de ' + (ctlNJ || '—') + ' jurados já votaram.' : 'Voto fechado dos jurados: cada um escolhe 1º, 2º e 3º.') + '</span></div>' +
               (remote.decisao ? '<button class="btn btn-danger" data-act="decisaoAbrir" data-v="0">Encerrar decisão</button>' : '<button class="btn btn-laranja" data-act="decisaoAbrir" data-v="1">Abrir decisão final</button>') + '</div>' +
           '</div>' +
           '<div class="ctlA-card ctlA-revela"><span class="ctlA-tit">' + ico('i-spark') + ' Revelações</span>' +
             '<div class="ctlA-par">' +
-              '<button class="btn ctlA-rv banca' + (remote.revelarBanca ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaBanca"><b>Projeto destaque</b><span>banca</span></button>' +
+              '<button class="btn ctlA-rv banca' + (remote.revelarBanca ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaBanca"><b>Projetos destaque</b><span>banca · 3</span></button>' +
               '<button class="btn ctlA-rv heroi' + (remote.revelar ? ' on' : '') + '" data-act="askSlideRevela" data-k="revelaHeroi"><b>Herói da Trilha</b><span>público</span></button>' +
             '</div><p class="tiny" style="margin:0">Pede confirmação antes de revelar. Encerre a votação/decisão antes.</p></div>' +
           '<div class="ctlA-card ctlA-roteiro"><span class="ctlA-tit">' + ico('i-grid') + ' Roteiro <span class="tiny">· toque para ir direto</span></span>' +
@@ -5907,12 +5940,12 @@
     var telaoC = '<section class="av-card">' +
       '<div class="av-cab"><span class="av-tit">' + ico('i-eye') + ' Telão</span>' + avChip('', remote.revelar || remote.revelarBanca, 'Revelando', 'Votação') + '</div>' +
       ((remote.revelar || remote.revelarBanca)
-        ? '<p class="small av-obs"><b>' + (remote.revelarBanca ? 'Revelando o Projeto destaque (banca).' : 'Revelando o Herói da Trilha (público).') + '</b></p>' +
+        ? '<p class="small av-obs"><b>' + (remote.revelarBanca ? 'Revelando os Projetos destaque (banca).' : 'Revelando o Herói da Trilha (público).') + '</b></p>' +
           '<button class="btn btn-outline btn-block btn-lg" data-act="desrevelar">Voltar o telão para a votação</button>'
         : '<button class="btn btn-primary btn-block btn-lg" data-act="askRevelar">' + ico('i-spark') + ' Revelar o Herói (público)</button>' +
-          '<button class="btn btn-laranja btn-block btn-lg" data-act="askRevelarBanca">' + ico('i-spark') + ' Revelar o Projeto destaque (banca)</button>') +
+          '<button class="btn btn-laranja btn-block btn-lg" data-act="askRevelarBanca">' + ico('i-spark') + ' Revelar os Projetos destaque (banca)</button>') +
       (remote.aberta && !remote.revelar ? '<p class="tiny av-obs">Dica: encerre a votação antes de revelar o Herói.</p>' : '') +
-      (remote.decisao && !remote.revelarBanca ? '<p class="tiny av-obs">Dica: encerre a decisão final antes de revelar o Projeto destaque.</p>' : '') +
+      (remote.decisao && !remote.revelarBanca ? '<p class="tiny av-obs">Dica: encerre a decisão final antes de revelar os Projetos destaque.</p>' : '') +
       (remote.pausa ? '<button class="btn btn-block ctl-pausa on" data-act="pausaOff">■ Sair do modo pausa</button>' : '<button class="btn btn-block ctl-pausa" data-act="pausaOn">❚❚ Modo pausa · fotos da Trilha</button>') +
       '<a class="btn btn-outline btn-block" href="#/controle">Controle da apresentação</a>' +
       '<div class="av-linha"><a class="btn btn-ghost btn-sm" href="#/telao" target="_blank" rel="noopener">Abrir o telão</a>' +
@@ -6118,8 +6151,8 @@
       '</div>' +
       '<div class="revelar-box revelar-site">' +
       '<div><b>Vencedores no site</b><p class="tiny">' + (remote.resultadoPublico
-        ? 'O Início e a página Resultado mostram o Herói do público e o Projeto destaque da banca (sem números).'
-        : 'Depois da revelação, ligue para o site mostrar o Herói do público e o Projeto destaque da banca. Ninguém vê números de votos nem notas.') + '</p></div>' +
+        ? 'O Início e a página Resultado mostram o Herói do público e os Projetos destaque da banca (sem números).'
+        : 'Depois da revelação, ligue para o site mostrar o Herói do público e os Projetos destaque da banca. Ninguém vê números de votos nem notas.') + '</p></div>' +
       '<button class="btn ' + (remote.resultadoPublico ? 'btn-outline' : 'btn-primary') + ' btn-sm" data-act="pubResult">' + (remote.resultadoPublico ? 'Tirar do site' : 'Mostrar no site') + '</button>' +
       '</div>';
   }
@@ -6167,10 +6200,13 @@
     for (var b = 0; b < 18; b++) {
       brilhos += '<i class="rv-brilho" style="--x:' + (8 + (b * 47) % 84) + '%;--y:' + (8 + (b * 31) % 70) + '%;--dl:' + (900 + (b * 173) % 2200) + 'ms;--sz:' + (1.4 + (b % 4) * .6).toFixed(1) + 'vh"></i>';
     }
+    // letra por letra (animação), mas agrupadas por palavra: a quebra de linha só acontece entre palavras
     function letras(txt, base) {
-      return String(txt).split('').map(function (ch, k) {
-        return ch === ' ' ? '<span class="rv-l rv-esp"> </span>' : '<span class="rv-l" style="--i:' + (base + k) + '">' + esc(ch) + '</span>';
-      }).join('');
+      var k = 0;
+      return String(txt).split(' ').map(function (pal) {
+        var w = '<span class="rv-w">' + pal.split('').map(function (ch) { return '<span class="rv-l" style="--i:' + (base + k++) + '">' + esc(ch) + '</span>'; }).join('') + '</span>';
+        k++; return w;
+      }).join('<span class="rv-l rv-esp"> </span>');
     }
     return '<div class="telao tl-revela rv rv-revelado' + tema + '" style="--t1:-' + t1 + 'ms">' + telaoFundo() +
       '<span class="rv-raios" aria-hidden="true"></span>' +
@@ -6180,9 +6216,10 @@
       '<div class="rv-brilhos" aria-hidden="true">' + brilhos + '</div>' +
       '<div class="tr-centro rv-centro">' +
         '<span class="tr-eyebrow rv-eyebrow">' + esc(o.itens.length > 1 ? o.eyebrowEmpate : o.eyebrowR) + '</span>' +
-        '<div class="rv-vencedores n' + o.itens.length + '">' + o.itens.map(function (it, n) {
+        '<div class="rv-vencedores n' + o.itens.length + (o.podio ? ' rv-podio' : '') + '">' + o.itens.map(function (it, n) {
           var off = n * 6;
-          return '<figure class="rv-v" style="--v:' + n + '">' +
+          return '<figure class="rv-v' + (it.pos ? ' pos' + it.pos : '') + '" style="--v:' + (it.pos ? (3 - it.pos) * 3 : n) + '">' +
+            (it.pos ? '<span class="rv-pos">' + it.pos + 'º lugar</span>' : '') +
             '<span class="rv-figs"><span class="rv-halo" aria-hidden="true"></span>' + (it.imgs || []).map(function (src) { return '<img src="' + esc(src) + '" alt="">'; }).join('') + '</span>' +
             '<figcaption><b class="rv-nome" aria-label="' + esc(it.nome) + '">' + letras(it.nome, off) + '</b>' +
             (it.sub ? '<span class="rv-sub">' + esc(it.sub) + '</span>' : '') + '</figcaption></figure>';
@@ -6465,7 +6502,7 @@
       if (r && r.ok) {
         remote.revelarBanca = !!v; if (v) remote.revelar = false;
         telao.revelInicio = v ? Date.now() : 0; telao.vencBanca = null; render();
-        toast(v ? 'O telão está revelando o Projeto destaque.' : 'O telão voltou para a votação.');
+        toast(v ? 'O telão está revelando os Projetos destaque.' : 'O telão voltou para a votação.');
       } else if (!(r && r.erro === 'chave_invalida')) toast('Não consegui atualizar.');
     }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Sem conexão com o servidor.'); });
   }
@@ -6474,30 +6511,33 @@
     telao.buscandoBanca = true;
     sbRpc('vencedor_banca', { p_chave: localState.adminKey }).then(function (r) {
       telao.buscandoBanca = false;
-      telao.vencBanca = (r && r.ok) ? (r.vencedores || []).map(function (v) { return v.id; }) : [];
+      telao.vencBanca = (r && r.ok) ? (r.vencedores || []).map(function (v, k) { return { id: v.id, pos: +v.pos || k + 1 }; }) : [];
       render();
     }).catch(function () { telao.buscandoBanca = false; });
   }
   // revelação do Projeto destaque (prêmio da banca), no laranja da decisão final
   function viewTelaoRevelacaoBanca() {
     if (!localState.adminKey) {
-      return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">Projeto destaque</h1>' +
+      return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">Projetos destaque</h1>' +
         '<p class="tr-nota">Para revelar aqui, entre como organização neste computador (4 toques na logo, ou #/entrar) e volte para o telão.</p></div></div>';
     }
     if (telao.vencBanca == null) telaoBuscarVencBanca();
     var itens = null;
     if (telao.vencBanca != null) {
-      itens = telao.vencBanca.map(byId).filter(Boolean).map(function (p) {
-        return { imgs: (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return h.image; }), nome: p.name,
+      // pódio: 2º à esquerda, 1º no meio (maior), 3º à direita
+      var ordem = { 2: 0, 1: 1, 3: 2 };
+      itens = telao.vencBanca.slice().sort(function (a, b) { return (ordem[a.pos] != null ? ordem[a.pos] : 9) - (ordem[b.pos] != null ? ordem[b.pos] : 9); }).map(function (v) {
+        var p = byId(v.id); if (!p) return null;
+        return { pos: v.pos, imgs: (p.heroes || []).filter(function (h) { return h.image; }).slice(0, 2).map(function (h) { return h.image; }), nome: p.name,
                  sub: [p.group ? 'Grupo ' + p.group : '', nomesHerois(p)].filter(Boolean).join(' · ') };
-      });
+      }).filter(Boolean);
       if (!itens.length && Date.now() - (telao.revelInicio || 0) >= REVELA_MS) {
         return '<div class="telao tl-revela tl-banca"><div class="tr-centro"><h1 class="tr-chamada">A banca ainda não votou</h1><p class="tr-nota">A revelação aparece quando houver votos na decisão final.</p></div></div>';
       }
     }
-    return cenaRevelacao({ tema: 'banca', itens: itens,
-      eyebrowS: 'IDL · Trilha 2026 · Escolha da banca', chamada: 'E o Projeto destaque é…',
-      eyebrowR: 'O Projeto destaque da banca é', eyebrowEmpate: 'Empate! Os Projetos destaque são' });
+    return cenaRevelacao({ tema: 'banca', itens: itens, podio: true,
+      eyebrowS: 'Trilhei · Banca Final IDL Tech · Escolha da banca', chamada: 'E os Projetos destaque são…',
+      eyebrowR: 'O Projeto destaque da banca é', eyebrowEmpate: 'Os Projetos destaque da banca' });
   }
   function telaoBuscarVencedores() {
     if (telao.buscando || !localState.adminKey) return;
@@ -6549,7 +6589,7 @@
     var vs = vencedoresPublicos();
     if (!vs.length) return '';
     var um = vs.length === 1 ? vs[0] : null;
-    var bs = ((pubRes.dados && pubRes.dados.banca) || []).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
+    var bs = ((pubRes.dados && pubRes.dados.banca) || []).slice().sort(function (a, b) { return (a.pos || 9) - (b.pos || 9); }).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
     var imgs = vs.map(function (x) { return x.hero.image; });
     bs.forEach(function (o) { if (o.image && imgs.indexOf(o.image) < 0) imgs.push(o.image); });
     return '<section class="faixa fx-escuro dobra dobra-venc car-slide' + (ativo ? ' is-ativo' : '') + '" aria-roledescription="slide">' +
@@ -6558,7 +6598,7 @@
         '<span class="eyebrow">Os vencedores da Trilha 2026</span>' +
         '<h1 class="mega">' + esc(vs.map(function (x) { return String(x.hero.name).split(/\s+[—–-]\s+/)[0]; }).join(' e ')) + '</h1>' +
         '<p class="dobra-sub">' + esc(um ? 'Herói escolhido pelo público' : 'Heróis escolhidos pelo público') +
-          (bs.length ? '<br><span class="dv-banca">Projeto destaque da banca: <b>' + esc(bs.map(function (o) { return o.name; }).join(' e ')) + '</b></span>' : '') + '</p>' +
+          (bs.length ? '<br><span class="dv-banca">' + (bs.length > 1 ? 'Projetos destaque da banca: ' : 'Projeto destaque da banca: ') + bs.map(function (o, k) { return (bs.length > 1 ? (k + 1) + 'º ' : '') + '<b>' + esc(o.name) + '</b>'; }).join(' · ') + '</span>' : '') + '</p>' +
         '<div class="dobra-chamada"><p>Obrigado a todos que votaram e acompanharam a Trilha 2026.</p>' +
         '<button class="btn btn-lg btn-laranja inst-btn" data-go="resultado">Ver os vencedores</button></div>' +
       '</div></section>';
@@ -7388,8 +7428,8 @@
     else if (act === 'slideSair') irSlide('');
     else if (act === 'askSlideRevela') {
       var kR = el.getAttribute('data-k'), ehB = kR === 'revelaBanca';
-      admin.confirm = { title: ehB ? 'Revelar o Projeto destaque?' : 'Revelar o Herói da Trilha?',
-        body: ehB ? 'O telão começa a revelação do projeto escolhido pela banca (suspense, contagem e o vencedor).' : 'O telão começa a revelação do Herói escolhido pelo público (suspense, contagem e o vencedor).',
+      admin.confirm = { title: ehB ? 'Revelar os Projetos destaque?' : 'Revelar o Herói da Trilha?',
+        body: ehB ? 'O telão começa a revelação dos 3 projetos escolhidos pela banca (suspense, contagem e o pódio com 1º, 2º e 3º).' : 'O telão começa a revelação do Herói escolhido pelo público (suspense, contagem e o vencedor).',
         yes: 'Sim, revelar agora', run: function () { irSlide(kR); } };
       renderOverlay();
     }
@@ -7417,7 +7457,7 @@
     }
     else if (act === 'desrevelar') { if (remote.revelarBanca) setRevelacaoBanca(false); if (remote.revelar || !remote.revelarBanca) setRevelacao(false); }
     else if (act === 'askRevelarBanca') {
-      admin.confirm = { title: 'Revelar o Projeto destaque no telão?', body: 'O telão mostra, com animação, o projeto mais votado na decisão final da banca (empate desempata pela média das notas). Encerre a decisão antes, para ninguém mudar o voto.', yes: 'Sim, revelar',
+      admin.confirm = { title: 'Revelar os Projetos destaque no telão?', body: 'O telão mostra, com animação, o pódio da decisão final da banca: 1º, 2º e 3º lugar pelos pontos (1º do jurado = 3, 2º = 2, 3º = 1; empate desempata pela média das notas). Encerre a decisão antes, para ninguém mudar o voto.', yes: 'Sim, revelar',
         run: function () { setRevelacaoBanca(true); } };
       renderOverlay();
     }
@@ -7430,7 +7470,11 @@
     }
     else if (act === 'bancaConfirmar') bancaConfirmar(el.getAttribute('data-id'));
     else if (act === 'bancaVoltar') { go('banca'); window.scrollTo(0, 0); }
-    else if (act === 'decEscolher') { banca.dec.escolha = el.getAttribute('data-id'); render(); }
+    else if (act === 'decEscolher') {
+      var idE = el.getAttribute('data-id'), le = (banca.dec.escolha || []).slice(), kE = le.indexOf(idE);
+      if (kE >= 0) le.splice(kE, 1); else if (le.length < 3) le.push(idE); else toast('Você já escolheu 3. Toque num escolhido para tirar.');
+      banca.dec.escolha = le; render();
+    }
     else if (act === 'decVotar') decVotar();
     else if (act === 'mesaImprimir') window.print();
     else if (act === 'ctlAval') { definirAvaliacoes(el.getAttribute('data-v') === '1'); }
@@ -7442,7 +7486,7 @@
           remote.decisao = abrir; toast(abrir ? 'Decisão final aberta para a banca.' : 'Decisão final encerrada.'); carregarAdminBanca();
         }).catch(function (e) { toast(String(e && e.message) === 'http 404' ? 'Rode o supabase.sql mais recente.' : 'Não deu certo agora. Tente de novo.'); });
       };
-      if (abrir) { admin.confirm = { title: 'Abrir a decisão final?', body: 'Os jurados passam a ver as médias de todos e podem votar no projeto vencedor.', yes: 'Sim, abrir', run: fazer }; renderOverlay(); }
+      if (abrir) { admin.confirm = { title: 'Abrir a decisão final?', body: 'Os jurados passam a ver as médias de todos e podem escolher os seus 3 projetos em ordem (1º, 2º e 3º).', yes: 'Sim, abrir', run: fazer }; renderOverlay(); }
       else fazer();
     }
     else if (act === 'bancaZerar') {

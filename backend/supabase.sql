@@ -74,13 +74,28 @@ alter table public.estado_votacao add column if not exists revelar_banca boolean
 -- avaliações da banca: começam fechadas; a organização abre quando quiser
 alter table public.estado_votacao add column if not exists avaliacoes_abertas boolean not null default false;
 
--- decisão final da banca: cada jurado escolhe 1 projeto (pode trocar enquanto aberta)
+-- decisão final da banca: cada jurado escolhe 3 projetos, em ordem
+-- (1º = 3 pontos, 2º = 2, 3º = 1); pode trocar enquanto estiver aberta
 alter table public.estado_votacao add column if not exists decisao_aberta boolean not null default false;
 create table if not exists public.decisao_banca (
-  jurado     text primary key check (length(trim(jurado)) between 2 and 60),
+  jurado     text not null check (length(trim(jurado)) between 2 and 60),
+  posicao    smallint not null default 1 check (posicao between 1 and 3),
   projeto_id text not null,
-  em         timestamptz not null default now()
+  em         timestamptz not null default now(),
+  primary key (jurado, posicao)
 );
+-- banco antigo (1 voto por jurado): ganha a coluna posicao e a chave (jurado, posicao)
+alter table public.decisao_banca add column if not exists posicao smallint not null default 1;
+do $$ begin
+  if exists (select 1 from pg_constraint where conname = 'decisao_banca_pkey' and conrelid = 'public.decisao_banca'::regclass
+              and array_length(conkey, 1) = 1) then
+    alter table public.decisao_banca drop constraint decisao_banca_pkey;
+    alter table public.decisao_banca add primary key (jurado, posicao);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'decisao_banca_posicao_check' and conrelid = 'public.decisao_banca'::regclass) then
+    alter table public.decisao_banca add constraint decisao_banca_posicao_check check (posicao between 1 and 3);
+  end if;
+end $$;
 
 -- opções de voto (Heróis "her_..." ou projetos "prj_...")
 create table if not exists public.projetos (
@@ -240,7 +255,7 @@ begin
   if not public._chave_ok(p_chave) then
     -- junto vai o Projeto destaque da banca (só o id; sem votos nem médias)
     return jsonb_build_object('liberado', true, 'so_vencedor', true,
-      'banca', coalesce((select jsonb_agg(jsonb_build_object('id', x->>'id')) from jsonb_array_elements(public._vencedor_banca_lista()) x), '[]'::jsonb),
+      'banca', coalesce((select jsonb_agg(jsonb_build_object('id', x->>'id', 'pos', (x->>'pos')::int)) from jsonb_array_elements(public._vencedor_banca_lista()) x), '[]'::jsonb),
       'vencedores', coalesce((
       select jsonb_agg(jsonb_build_object('id', x.id, 'nome', x.nome) order by x.nome)
         from (select p.id, p.nome, count(v.hash) as votos from public.projetos p
@@ -499,7 +514,7 @@ begin
                      order by projeto_id, jurado)
       from public.avaliacoes), '[]'::jsonb),
     'decisao_aberta', (select decisao_aberta from public.estado_votacao where id = 1),
-    'decisao', coalesce((select jsonb_agg(jsonb_build_object('jurado', jurado, 'projeto', projeto_id, 'em', em) order by em)
+    'decisao', coalesce((select jsonb_agg(jsonb_build_object('jurado', jurado, 'projeto', projeto_id, 'posicao', posicao, 'em', em) order by em, jurado, posicao)
       from public.decisao_banca), '[]'::jsonb));
 end $$;
 
@@ -565,20 +580,28 @@ begin
   return jsonb_build_object('ok', true, 'revelar', coalesce(p_revelar, false));
 end $$;
 
--- o Projeto destaque: mais votado na decisão final; empate desempata pela
--- média das notas (se ainda empatar, volta mais de um). Só a organização.
--- lista do(s) vencedor(es) da banca (uso interno: vencedor_banca e resultado)
+-- pontos da decisão final: 1º lugar do jurado = 3, 2º = 2, 3º = 1
+create or replace function public._pontos_banca()
+returns table (projeto_id text, pontos int, primeiros int, jurados int) language sql stable security definer
+set search_path = public, extensions as $$
+  select projeto_id, sum(4 - posicao)::int, count(*) filter (where posicao = 1)::int, count(*)::int
+    from public.decisao_banca group by projeto_id;
+$$;
+revoke all on function public._pontos_banca() from public, anon, authenticated;
+
+-- os 3 Projetos destaque da banca (1º, 2º e 3º): mais pontos; empate
+-- desempata pela média das notas e depois por quem teve mais 1º lugares.
+-- uso interno: vencedor_banca e resultado
 create or replace function public._vencedor_banca_lista()
 returns jsonb language plpgsql stable security definer
 set search_path = public, extensions as $$
 declare r jsonb;
 begin
-  with v as (select projeto_id, count(*) n from public.decisao_banca group by projeto_id),
-       m as (select (x->>'projeto') projeto_id, (x->>'media')::numeric media from jsonb_array_elements(public._medias_banca()) x),
-       t as (select v.projeto_id, v.n, coalesce(m.media, 0) media from v left join m using (projeto_id)),
-       top as (select * from t where n = (select max(n) from t)),
-       topm as (select * from top where media = (select max(media) from top))
-  select coalesce((select jsonb_agg(jsonb_build_object('id', projeto_id, 'votos', n, 'media', media)) from topm), '[]'::jsonb) into r;
+  with m as (select (x->>'projeto') projeto_id, (x->>'media')::numeric media from jsonb_array_elements(public._medias_banca()) x),
+       t as (select p.projeto_id, p.pontos, p.primeiros, coalesce(m.media, 0) media from public._pontos_banca() p left join m using (projeto_id) where p.pontos > 0),
+       o as (select *, row_number() over (order by pontos desc, media desc, primeiros desc, projeto_id) pos from t)
+  select coalesce((select jsonb_agg(jsonb_build_object('id', projeto_id, 'pos', pos, 'pontos', pontos, 'votos', pontos, 'media', media) order by pos)
+                     from o where pos <= 3), '[]'::jsonb) into r;
   return r;
 end $$;
 revoke all on function public._vencedor_banca_lista() from public, anon, authenticated;
@@ -589,7 +612,7 @@ set search_path = public, extensions as $$
 begin
   if not public._chave_ok(p_chave) then return jsonb_build_object('ok', false, 'erro', 'chave_invalida'); end if;
   return jsonb_build_object('ok', true, 'vencedores', public._vencedor_banca_lista(),
-    'votaram', (select count(*) from public.decisao_banca));
+    'votaram', (select count(distinct jurado) from public.decisao_banca));
 end $$;
 
 create or replace function public.definir_avaliacoes(p_chave text, p_abertas boolean)
@@ -626,17 +649,25 @@ begin
   return jsonb_build_object('ok', true, 'avaliacoes', n1, 'decisao', n2);
 end $$;
 
-create or replace function public.votar_decisao(p_senha text, p_jurado text, p_projeto text)
+-- voto da decisão final: os 3 projetos do jurado, em ordem (1º, 2º, 3º)
+drop function if exists public.votar_decisao(text, text, text);
+create or replace function public.votar_decisao(p_senha text, p_jurado text, p_projetos jsonb)
 returns jsonb language plpgsql security definer
 set search_path = public, extensions as $$
-declare j text := public._jurado(p_jurado);
+declare j text := public._jurado(p_jurado); ids text[];
 begin
   if not public._banca_ok(p_senha) then return jsonb_build_object('ok', false, 'erro', 'senha_banca_invalida'); end if;
   if not (select decisao_aberta from public.estado_votacao where id = 1) then return jsonb_build_object('ok', false, 'erro', 'decisao_fechada'); end if;
   if length(j) < 2 then return jsonb_build_object('ok', false, 'erro', 'jurado_invalido'); end if;
-  if coalesce(trim(p_projeto), '') = '' then return jsonb_build_object('ok', false, 'erro', 'projeto_invalido'); end if;
-  insert into public.decisao_banca (jurado, projeto_id, em) values (j, p_projeto, now())
-  on conflict (jurado) do update set projeto_id = excluded.projeto_id, em = now();
+  if jsonb_typeof(p_projetos) <> 'array' then return jsonb_build_object('ok', false, 'erro', 'projeto_invalido'); end if;
+  select array_agg(trim(x) order by k) into ids from jsonb_array_elements_text(p_projetos) with ordinality e(x, k);
+  if coalesce(array_length(ids, 1), 0) <> 3 or exists (select 1 from unnest(ids) x where coalesce(x, '') = '')
+     or (select count(distinct x) from unnest(ids) x) <> 3 then
+    return jsonb_build_object('ok', false, 'erro', 'escolha_3');
+  end if;
+  delete from public.decisao_banca where jurado = j;
+  insert into public.decisao_banca (jurado, posicao, projeto_id, em)
+    select j, k::smallint, ids[k], now() from generate_series(1, 3) k;
   return jsonb_build_object('ok', true);
 end $$;
 
@@ -651,9 +682,10 @@ begin
   if not aberta then return jsonb_build_object('ok', true, 'aberta', false); end if;
   return jsonb_build_object('ok', true, 'aberta', true,
     'medias', public._medias_banca(),
-    'meu_voto', (select projeto_id from public.decisao_banca where jurado = j),
-    'votos', coalesce((select jsonb_object_agg(projeto_id, n) from (select projeto_id, count(*) n from public.decisao_banca group by projeto_id) v), '{}'::jsonb),
-    'votaram', (select count(*) from public.decisao_banca),
+    'meus_votos', coalesce((select jsonb_agg(projeto_id order by posicao) from public.decisao_banca where jurado = j), '[]'::jsonb),
+    'pontos', coalesce((select jsonb_object_agg(projeto_id, pontos) from public._pontos_banca()), '{}'::jsonb),
+    'primeiros', coalesce((select jsonb_object_agg(projeto_id, primeiros) from public._pontos_banca()), '{}'::jsonb),
+    'votaram', (select count(distinct jurado) from public.decisao_banca),
     'jurados', (select count(*) from (select jurado from public.avaliacoes union select jurado from public.decisao_banca) u),
     -- notas e comentários de cada jurado, SEM nome: "Você" para o próprio e
     -- "Jurado 1, 2…" para os outros (o nome não sai do banco)
@@ -770,7 +802,7 @@ begin
     'registrar_voto(text,text,text)', 'consultar_voto(text)', 'resultado(text)',
     'entrar_admin(text)', 'entrar(text)', 'definir_senha_admin(text,text)', 'definir_votacao(text,boolean,boolean)', 'definir_candidatos(text,text[])',
     'definir_total_trilheiros(text,int)', 'definir_chave_evento(text,text)', 'salvar_conteudo(text,jsonb)', 'zerar_votos(text)', 'zerar_tudo(text)', 'definir_palco(text,text)', 'definir_revelacao(text,boolean)', 'entrar_banca(text)',
-    'salvar_avaliacao(text,text,text,jsonb,text)', 'definir_decisao(text,boolean)', 'definir_avaliacoes(text,boolean)', 'definir_revelacao_banca(text,boolean)', 'vencedor_banca(text)', 'definir_slide(text,text,text)', 'definir_pausa(text,boolean)', 'zerar_banca(text,boolean)', 'votar_decisao(text,text,text)', 'decisao_banca_ver(text,text)', 'minhas_avaliacoes(text,text)', 'avaliacoes_banca(text)', 'definir_senha_banca(text,text)', 'definir_visibilidade(text,boolean)', 'ler_chave_evento(text)',
+    'salvar_avaliacao(text,text,text,jsonb,text)', 'definir_decisao(text,boolean)', 'definir_avaliacoes(text,boolean)', 'definir_revelacao_banca(text,boolean)', 'vencedor_banca(text)', 'definir_slide(text,text,text)', 'definir_pausa(text,boolean)', 'zerar_banca(text,boolean)', 'votar_decisao(text,text,jsonb)', 'decisao_banca_ver(text,text)', 'minhas_avaliacoes(text,text)', 'avaliacoes_banca(text)', 'definir_senha_banca(text,text)', 'definir_visibilidade(text,boolean)', 'ler_chave_evento(text)',
     'adicionar_foto(text,text,text,text,boolean,text)', 'remover_foto(text,uuid)',
     'ordenar_fotos(text,uuid[])', 'definir_capa_foto(text,uuid)', 'atualizar_fotos(text,jsonb)']
   loop
