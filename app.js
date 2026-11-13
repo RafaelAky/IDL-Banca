@@ -240,6 +240,42 @@
     });
     d.cronograma = CRONO_VERSAO;
   }
+  /* Ordem do sorteio e nomes dos projetos (13/11/2026, PDF "Roteiro IDL Tech ·
+     4 fichas por página", roteiro de palco da MC): 8 equipes no 1º bloco e 9
+     no 2º (depois do café). Feito uma vez só (d.sorteio).                    */
+  var SORTEIO_VERSAO = '2026-11-13';
+  var SORTEIO = [
+    ['prj_maos', 'Mãos que Acolhem'],
+    ['prj_corrente', 'Corrente do Bem'],
+    ['prj_fronteira', 'Quebrando Fronteiras'],
+    ['prj_reciclagem', 'Recicle Hoje, Alimente o Amanhã'],
+    ['prj_conecta', 'Conecta Mais'],
+    ['prj_lutando', 'Lutando por Futuros'],
+    ['prj_ia', 'Mente Criativa'],
+    ['prj_troca', 'Troca de Talentos'],
+    ['prj_som_kiara', 'Conscientização Circular – Combate ao Excesso de Barulho'],
+    ['prj_som_neo', 'Som do Respeito'],
+    ['prj_ponte', 'Projeto Ponte: da Lei à Realidade'],
+    ['prj_conexao', 'Desconecte da Tela, Reconecte-se à Vida'],
+    ['prj_ouvir', 'Além de Palavras'],
+    ['prj_familycast', 'Escuta Compassiva – FamilyCast'],
+    ['prj_protagonismo', 'Fazer Acontecer'],
+    ['prj_memorias', 'Construindo Memórias de Cuidado'],
+    ['prj_acolher', 'Espaço Acolher – Sala Calma']
+  ];
+  var SORTEIO_BLOCO1 = 8;
+  function migrarSorteio(d) {
+    if (!d || !d.projects || d.sorteio === SORTEIO_VERSAO) return;
+    var porId = {}; d.projects.forEach(function (p) { porId[p.id] = p; });
+    if (SORTEIO.some(function (x) { return !porId[x[0]]; })) return;   // lista diferente da esperada: não mexe
+    var n1 = SORTEIO_BLOCO1, n2 = SORTEIO.length - n1;
+    SORTEIO.forEach(function (x, i) {
+      var p = porId[x[0]], um = i < n1, b = um ? BLOCOS[0] : BLOCOS[1], k = um ? i : i - n1, tot = um ? n1 : n2;
+      var passo = Math.floor((toMin(b.fim) - toMin(b.ini)) / Math.max(1, tot)), m = toMin(b.ini) + k * passo;
+      p.name = x[1]; p.block = b.rot; p.slot = pad2(Math.floor(m / 60)) + ':' + pad2(m % 60);
+    });
+    d.sorteio = SORTEIO_VERSAO;
+  }
   // como mostrar quando a equipe apresenta: só o bloco (curto) ou o bloco e o início dele
   function blocoDe(p) { return BLOCOS.filter(function (b) { return b.rot === (p && p.block); })[0] || null; }
   function horaRot(p) { var b = blocoDe(p); return b ? b.rot : (p && p.slot) || ''; }
@@ -313,6 +349,7 @@
     if ((d.contentVersion || 1) < 11) d.contentVersion = 11;
     migrarNov2026(d);
     migrarCronograma(d);
+    migrarSorteio(d);
     return d;
   }
   function save() { safeSet(KEY, JSON.stringify(db)); render(); enviarConteudo(); }
