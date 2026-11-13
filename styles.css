@@ -3623,3 +3623,6 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .sl-hrev-logo { width: min(52cqh, 30cqw); color: inherit; filter: drop-shadow(0 0 4cqh rgba(249, 114, 24, .7)); }
 .sl-hrev-logo .sl-hrev-flor { display: block; width: 100%; height: auto; animation: slFlorGira 3.6s cubic-bezier(.55, 0, .9, .4) var(--t0, 0ms) both; }
 @keyframes slFlorGira { from { transform: rotate(0deg); } to { transform: rotate(1440deg); } }
+/* alunos destaque */
+.sl-jur:not(.sl-banca) .sl-jur-nome { font-size: min(10cqh, 6cqw); }
+.sl-dest-inst { color: #ffb37a !important; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }

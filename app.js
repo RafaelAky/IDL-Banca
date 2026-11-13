@@ -276,6 +276,38 @@
     });
     d.sorteio = SORTEIO_VERSAO;
   }
+  /* Trilheiros de cada equipe como estão na capa da apresentação no Canva
+     (13/11/2026; no Projeto Ponte, no 2º slide). Troca a lista inteira:
+     quem não aparece no Canva sai. Feito uma vez só (d.trilheiros).     */
+  var TRILHEIROS_VERSAO = '2026-11-13';
+  var TRILHEIROS_CANVA = {
+    prj_maos: ['Isabele', 'Rebeca', 'Eloah'],
+    prj_corrente: ['Maria', 'Pérola', 'Sofya', 'Lorena'],
+    prj_fronteira: ['Livia', 'Gabriel', 'Gustavo', 'Manuelly', 'Nycolas'],
+    prj_reciclagem: ['Pietro', 'Melany', 'Kaue', 'Thaynara', 'Juliana'],
+    prj_conecta: ['Adryan', 'Giovana', 'Lara'],
+    prj_lutando: ['Erick', 'Vitor', 'Marina'],
+    prj_ia: ['João', 'Sthefany', 'Millena', 'Victor', 'Henrique'],
+    prj_troca: ['Isabelly Mendes', 'Matheus Mendes'],
+    prj_som_kiara: ['Marina', 'Thaís', 'David', 'Melissa', 'Maria'],
+    prj_som_neo: ['Kauã', 'Maria', 'Isac', 'Fhilipe', 'Renata'],
+    prj_ponte: ['Julia', 'Yasmin', 'Paolla', 'Gaby'],
+    prj_conexao: ['Felipe', 'Lanna', 'Emily', 'Aghata', 'Gleyciani'],
+    prj_ouvir: ['Alice', 'Gustavo', 'Luna', 'Maria', 'Maurício', 'Vitória'],
+    prj_familycast: ['Eloisa', 'Héric', 'Julia'],
+    prj_protagonismo: ['Igor', 'Kayla', 'Lukas', 'Maria Alice', 'Maria Clara'],
+    prj_memorias: ['Evellyn', 'Anderson', 'Vitor', 'Marcelo'],
+    prj_acolher: ['Andrew', 'Daniel', 'Rafael', 'Victor', 'Victoria']
+  };
+  function migrarTrilheiros(d) {
+    if (!d || !d.projects || d.trilheiros === TRILHEIROS_VERSAO) return;
+    d.projects.forEach(function (p) {
+      var l = TRILHEIROS_CANVA[p.id]; if (!l) return;
+      p.members = l.slice();
+      (p.teams || []).forEach(function (t) { if ((p.teams || []).length === 1) t.members = l.slice(); });
+    });
+    d.trilheiros = TRILHEIROS_VERSAO;
+  }
   // como mostrar quando a equipe apresenta: só o bloco (curto) ou o bloco e o início dele
   function blocoDe(p) { return BLOCOS.filter(function (b) { return b.rot === (p && p.block); })[0] || null; }
   function horaRot(p) { var b = blocoDe(p); return b ? b.rot : (p && p.slot) || ''; }
@@ -350,6 +382,7 @@
     migrarNov2026(d);
     migrarCronograma(d);
     migrarSorteio(d);
+    migrarTrilheiros(d);
     return d;
   }
   function save() { safeSet(KEY, JSON.stringify(db)); render(); enviarConteudo(); }
@@ -4808,7 +4841,7 @@
     setTimeout(function () { Array.prototype.forEach.call(velhas, function (v) { if (v.parentNode) v.parentNode.removeChild(v); }); }, 1700);
   }
 
-  var DECK_V = 12;
+  var DECK_V = 13;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4820,7 +4853,7 @@
     // "Mente Criativa" (Canva de João Lucas)
     'prj_ia': ['canva:https://www.canva.com/design/DAHatZorT1I/YuHjLe7TregwC-tRuHkAAw/view?embed'],
     // Projeto ponte (Heroína Clara)
-    'prj_ponte': ['canva:https://www.canva.com/design/DAHX1zyL9O8/rltl1XBc0Z56gHh3jx6Rkg/view?embed'],
+    'prj_ponte': ['canva:https://www.canva.com/design/DAHa00Et5Ww/07aAKcwwf3Ytw7JJSSK-2g/view?embed'],
     // Espaço acolher (Heroína Karol, inspirada na professora Cris)
     'prj_acolher': ['canva:https://www.canva.com/design/DAHatU5hTmQ/B-ciedHpDBWXZdERszl1fw/view?embed'],
     // Protagonismo estudantil (Heroína Faísca; no Canva: "Fazer Acontecer", inspirações Giba, Ilan e Giuliana Mafra)
@@ -4902,12 +4935,11 @@
     { id: 'sec_heroi',      tipo: 'secao',        on: true, titulo: 'O Herói da Trilha 2026', texto: 'Escolhido pelo público', hora: '12h24' },
     { id: 'revelaHeroi',    tipo: 'revelaHeroi',  on: true, titulo: 'Revelação · Herói da Trilha' },
     { id: 'destaques',      tipo: 'secao',        on: true, titulo: 'Alunos destaques', texto: 'Premiação e entrega', hora: '12h28' },
-    { id: 'dest1', tipo: 'jurado', on: true, titulo: 'Aluno destaque 1', grupoP: 'destaque', texto: '', foto: '', logo: '' },
-    { id: 'dest2', tipo: 'jurado', on: true, titulo: 'Aluno destaque 2', grupoP: 'destaque', texto: '', foto: '', logo: '' },
-    { id: 'dest3', tipo: 'jurado', on: true, titulo: 'Aluno destaque 3', grupoP: 'destaque', texto: '', foto: '', logo: '' },
-    { id: 'dest4', tipo: 'jurado', on: true, titulo: 'Aluno destaque 4', grupoP: 'destaque', texto: '', foto: '', logo: '' },
-    { id: 'dest5', tipo: 'jurado', on: true, titulo: 'Aluno destaque 5', grupoP: 'destaque', texto: '', foto: '', logo: '' },
-    { id: 'dest6', tipo: 'jurado', on: true, titulo: 'Aluno destaque 6', grupoP: 'destaque', texto: '', foto: '', logo: '' },
+    { id: 'dest1', tipo: 'jurado', on: true, titulo: 'Felipe Cassemiro', grupoP: 'destaque', texto: 'ABC Vida / Educa', foto: '', logo: '' },
+    { id: 'dest2', tipo: 'jurado', on: true, titulo: 'Héric Bueno de Lima', grupoP: 'destaque', texto: 'Instituto Novas Histórias', foto: '', logo: '' },
+    { id: 'dest3', tipo: 'jurado', on: true, titulo: 'Juliana Vicente Teodoro Pereira', grupoP: 'destaque', texto: '', foto: '', logo: '' },
+    { id: 'dest4', tipo: 'jurado', on: true, titulo: 'Lorena Koziel', grupoP: 'destaque', texto: '', foto: '', logo: '' },
+    { id: 'dest5', tipo: 'jurado', on: true, titulo: 'Victoria Eduarda de Souza Iurk', grupoP: 'destaque', texto: '', foto: '', logo: '' },
     { id: 'versiculo', tipo: 'versiculo', on: true, titulo: 'Jeremias 17:8', texto: 'Ele será como a árvore plantada junto às águas, que estende as suas raízes para o ribeiro.' },
     { id: 'sec_banca',      tipo: 'secao',        on: true, titulo: 'A banca no palco', texto: 'Homenagem, devolutiva e resultados dos projetos', hora: '12h38' },
     { id: 'revelaBanca3',   tipo: 'revelaBanca',  on: true, titulo: 'Revelação · 3º lugar', pos: 3 },
@@ -4942,7 +4974,7 @@
       if (o && manterTextos && (!o.tipo || o.tipo === n.tipo)) {
         ['titulo', 'texto', 'hora'].forEach(function (k) { if (o[k] !== undefined && (o[k] !== '' || n.tipo !== 'jurado')) n[k] = o[k]; });
         ['cargo', 'area', 'frase'].forEach(function (k) { if (o[k]) n[k] = o[k]; });
-        if (n.tipo === 'jurado' && JURADOS_PROVISORIOS.indexOf(o.titulo) >= 0) n.titulo = d.titulo;
+        if (n.tipo === 'jurado' && (JURADOS_PROVISORIOS.indexOf(o.titulo) >= 0 || /^Aluno destaque \d+$/.test(o.titulo || ''))) n.titulo = d.titulo;
         ['foto', 'logo'].forEach(function (k) { if (o[k]) n[k] = o[k]; });       // vazio no salvo não apaga o padrão
         if (/^Jurado \d+$/.test(o.titulo || '')) n.titulo = d.titulo;          // nome provisório antigo → nome real
       }
@@ -5138,10 +5170,10 @@
         }
         var jus = deckConfig().filter(function (x) { return x.tipo === 'jurado' && x.on && (x.grupoP === 'destaque') === ehDest; }), jn = jus.map(function (x) { return x.id; }).indexOf(it.id) + 1;
         h = '<div class="sl-jur">' +
-          '<div class="sl-jur-foto">' + (it.foto ? '<img src="' + esc(it.foto) + '" alt="' + esc(it.titulo || '') + '">' : '<span class="sl-jur-sem" aria-hidden="true">' + SL_ICO_PESSOA + '</span>') + '</div>' +
+          bancaAvatar(it, 'sl-jur-foto') +
           '<div class="sl-jur-txt"><span class="sl-eyebrow">' + (ehDest ? 'Aluno destaque' : 'Banca avaliadora') + (jn ? ' · ' + jn + ' de ' + jus.length : '') + '</span>' +
             '<h1 class="sl-jur-nome">' + esc(it.titulo || 'Nome') + '</h1>' +
-            (it.texto ? '<p class="sl-jur-bio">' + esc(it.texto) + '</p>' : '<p class="sl-jur-bio sl-jur-falta">' + (ehDest ? 'Projeto e motivo do destaque' : 'Minibio do jurado') + ' (editar no painel, aba Apresentação).</p>') +
+            (it.texto ? '<p class="sl-jur-bio' + (ehDest ? ' sl-dest-inst' : '') + '">' + esc(it.texto) + '</p>' : '') +
             (ehDest ? '' : '<div class="sl-jur-logo">' + (it.logo ? '<img src="' + esc(it.logo) + '" alt="">' : '<span>Logo da empresa ou instituição</span>') + '</div>') +
           '</div></div>';
         break;
