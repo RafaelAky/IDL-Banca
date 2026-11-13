@@ -4808,7 +4808,7 @@
     setTimeout(function () { Array.prototype.forEach.call(velhas, function (v) { if (v.parentNode) v.parentNode.removeChild(v); }); }, 1700);
   }
 
-  var DECK_V = 9;
+  var DECK_V = 10;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4872,13 +4872,15 @@
     { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
     { id: 'sec_retro',      tipo: 'secao',        on: true, titulo: 'Retrospectiva da Trilha', texto: '', hora: '8h15' },
     { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
-    { id: 'jurado1', tipo: 'jurado', on: true, titulo: 'Ismael Akiyama', texto: '', foto: '', logo: 'img/parceiros/akiyama.webp' },
-    { id: 'jurado2', tipo: 'jurado', on: true, titulo: 'Rafael Rodrigues', texto: '', foto: '', logo: 'img/parceiros/brenex.webp' },
-    { id: 'jurado3', tipo: 'jurado', on: true, titulo: 'Rosana Pimpão', texto: '', foto: '', logo: 'img/parceiros/pimpao.webp' },
-    { id: 'jurado4', tipo: 'jurado', on: true, titulo: 'Andrei Amaral', texto: '', foto: '', logo: '' },
-    { id: 'jurado5', tipo: 'jurado', on: true, titulo: 'Ismar Becker', texto: '', foto: '', logo: '' },
-    { id: 'jurado6', tipo: 'jurado', on: true, titulo: 'Thiago Nieweglowski', texto: '', foto: '', logo: '' },
-    { id: 'jurado7', tipo: 'jurado', on: true, titulo: 'Rebeca Accure', texto: '', foto: '', logo: '' },
+    { id: 'banca_intro', tipo: 'bancaIntro', on: true, titulo: 'Experiências e propósitos', texto: 'Sete olhares, diferentes trajetórias e um mesmo compromisso: valorizar o potencial dos nossos trilheiros.' },
+    { id: 'jurado1', tipo: 'jurado', on: true, titulo: 'Ismael Akiyama', cargo: 'Fundador e CEO · Akiyama Group', area: 'Inovação & impacto', texto: 'Fundador e CEO do Akiyama Group, referência em identificação biométrica e automação industrial. Cofundador do Instituto Dente de Leão e integrante do C12 Brasil, conecta empreendedorismo, inovação e compromisso com a transformação social.', frase: 'Tecnologia com propósito. Pessoas no centro.', foto: '', logo: '' },
+    { id: 'jurado2', tipo: 'jurado', on: true, titulo: 'Rafael Rodrigues Guimarães Wollmann', cargo: 'CFO · Grupo Brenex', area: 'Estratégia & liderança', texto: 'Executivo com atuação em finanças, estratégia, governança e gestão. É CFO do Grupo Brenex, do setor logístico, e traz experiência em avaliação voluntária de projetos voltados à educação e ao desenvolvimento de crianças e adolescentes.', frase: 'Visão de negócios com atenção às pessoas.', foto: 'img/banca/rafael-rodrigues.webp', logo: '' },
+    { id: 'jurado3', tipo: 'jurado', on: true, titulo: 'Rosana Pimpão', cargo: 'Empresária · Grupo Pimpão', area: 'Educação & propósito', texto: 'Empresária vinculada ao Grupo Pimpão, que atua com playgrounds e soluções educacionais. Participa da comunidade C12 Brasil e representa a importância de empreender com valores, propósito e atenção ao desenvolvimento das novas gerações.', frase: 'Empreender também é investir em futuros.', foto: 'img/banca/rosana-pimpao.webp', logo: '' },
+    { id: 'jurado4', tipo: 'jurado', on: true, titulo: 'Andrei Amaral', cargo: 'Fundador e CEO · Secret Group', area: 'Empreendedorismo & tecnologia', texto: 'Fundador e CEO do Secret Group, com trajetória empreendedora em varejo, e-commerce, tecnologia e logística. Atua na conexão entre inovação e negócios e aprofunda estudos em robótica humanoide e inteligência artificial aplicada.', frase: 'O futuro se constrói com atitude e inovação.', foto: 'img/banca/andrei-amaral.webp', logo: '' },
+    { id: 'jurado5', tipo: 'jurado', on: true, titulo: 'Ismar Becker', cargo: 'Empresário · Mentor · Conselheiro', area: 'Experiência & governança', texto: 'Administrador, empresário, mentor e conselheiro com carreira internacional. Com formação executiva em Harvard e INSEAD, dedica-se à estratégia, à governança e ao desenvolvimento de empresas familiares, compartilhando conhecimento como palestrante e autor.', frase: 'Experiência que inspira novas escolhas.', foto: '', logo: '' },
+    { id: 'jurado6', tipo: 'jurado', on: true, titulo: 'Thiago Nieweglowski', cargo: 'CEO · C12 Brasil', area: 'Liderança & propósito', texto: 'CEO do C12 Brasil e presidente do fundo de pensão Mais Futuro. Administrador com formação em Teologia e especializações em Finanças, atua há mais de 15 anos com liderança, investimentos e educação financeira, unindo negócios, valores e propósito.', frase: 'Grandes negócios. Grandes propósitos.', foto: '', logo: '' },
+    { id: 'jurado7', tipo: 'jurado', on: true, titulo: 'Rebeca Acure', cargo: 'Psicóloga · Fundadora da Acure', area: 'Cuidado & desenvolvimento', texto: 'Psicóloga formada pela UEM, mestre em Bioética pela PUCPR e especialista em Gestalt-terapia. Fundadora da Acure Psicoterapia, atua no cuidado emocional, no desenvolvimento humano e em consultoria para pessoas e organizações.', frase: 'Cuidar de pessoas é impulsionar possibilidades.', foto: 'img/banca/rebeca-acure.webp', logo: '' },
+    { id: 'banca_obrigado', tipo: 'bancaObrigado', on: true, titulo: 'Muito obrigado, avaliadores!', texto: 'Quando a experiência encontra o potencial, novas possibilidades começam a nascer.' },
     { id: 'comofunciona', tipo: 'secao', on: true, titulo: 'Como funcionarão as avaliações', texto: 'Dois prêmios: o Herói da Trilha, escolhido pelo público, e os Projetos destaque, escolhidos pela banca.', hora: '' },
     { id: 'cf_banca', tipo: 'cfBanca', on: true, titulo: 'Projetos destaque' },
     { id: 'cf_heroi', tipo: 'cfHeroi', on: true, titulo: 'Herói da Trilha' },
@@ -4915,6 +4917,8 @@
     { id: 'agradecimentos', tipo: 'texto',        on: true, titulo: 'Obrigado!', texto: 'A Trilha 2026 foi feita por cada trilheiro, cada família e cada parceiro que acreditou. Até a próxima!' },
     { id: 'fotos',          tipo: 'fotos',        on: true, titulo: 'Fotos da Trilha 2026' }
   ];
+  // nomes que os slides da banca tinham antes de chegarem os dados completos (13/11)
+  var JURADOS_PROVISORIOS = ['Rafael Rodrigues', 'Rebeca Accure', 'Ismael Akiyama', 'Rosana Pimpão', 'Andrei Amaral', 'Ismar Becker', 'Thiago Nieweglowski'];
   function deckConfig() {
     var ap = db.apresentacao || {}, salvo = ap.slides || [];
     if (ap.v === DECK_V) {
@@ -4936,7 +4940,9 @@
       if (o) ['video', 'on'].forEach(function (k) { if (o[k] !== undefined && o[k] !== '') n[k] = o[k]; });
       // títulos e textos editados no painel ficam (só se o slide continua do mesmo tipo)
       if (o && manterTextos && (!o.tipo || o.tipo === n.tipo)) {
-        ['titulo', 'texto', 'hora'].forEach(function (k) { if (o[k] !== undefined) n[k] = o[k]; });
+        ['titulo', 'texto', 'hora'].forEach(function (k) { if (o[k] !== undefined && (o[k] !== '' || n.tipo !== 'jurado')) n[k] = o[k]; });
+        ['cargo', 'area', 'frase'].forEach(function (k) { if (o[k]) n[k] = o[k]; });
+        if (n.tipo === 'jurado' && JURADOS_PROVISORIOS.indexOf(o.titulo) >= 0) n.titulo = d.titulo;
         ['foto', 'logo'].forEach(function (k) { if (o[k]) n[k] = o[k]; });       // vazio no salvo não apaga o padrão
         if (/^Jurado \d+$/.test(o.titulo || '')) n.titulo = d.titulo;          // nome provisório antigo → nome real
       }
@@ -4995,6 +5001,12 @@
   var SL_ICO_PESSOA = '<svg viewBox="0 0 48 48" fill="currentColor"><circle cx="24" cy="17" r="9"/><path d="M6 44c1.5-10 8.6-16 18-16s16.5 6 18 16z"/></svg>';
   var SL_ICO_CORACAO = '<svg viewBox="0 0 48 48" fill="currentColor"><path d="M24 42S6 31.5 6 18.5C6 12.7 10.4 8 15.8 8c3.4 0 6.4 1.8 8.2 4.6C25.8 9.8 28.8 8 32.2 8 37.6 8 42 12.7 42 18.5 42 31.5 24 42 24 42z"/></svg>';
   var SL_ICO_CAFE = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18h26v10a12 12 0 0 1-12 12h-2A12 12 0 0 1 8 28z"/><path d="M34 21h3a5 5 0 0 1 0 10h-3"/><path d="M15 6c-2 3 2 5 0 8M22 6c-2 3 2 5 0 8M29 6c-2 3 2 5 0 8" opacity=".7"/></svg>';
+  // membros da banca ligados no roteiro, na ordem; foto ou as iniciais (como no PowerPoint da banca)
+  function juradosBanca() { return deckConfig().filter(function (x) { return x.tipo === 'jurado' && x.on && x.grupoP !== 'destaque'; }); }
+  function bancaAvatar(x, cls) {
+    var nm = String(x.titulo || '').trim().split(/\s+/), ini = ((nm[0] || '')[0] || '') + (nm.length > 1 ? (nm[nm.length - 1][0] || '') : '');
+    return '<span class="' + cls + (x.foto ? '' : ' ini') + '">' + (x.foto ? '<img src="' + esc(x.foto) + '" alt="' + esc(x.titulo || '') + '">' : '<b>' + esc(ini.toUpperCase()) + '</b>') + '</span>';
+  }
   function slideMarca() { return '<span class="sl-marca"><img src="img/kv/trilhei.webp" alt=""><i></i><img src="img/kv/idltech.webp" alt=""></span>'; }
   function ytId(v) { var m = String(v || '').match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(String(v || '').trim()) ? String(v).trim() : ''); }
   // visual da apresentação: o do Instituto (fundo creme, flores douradas girando devagar, sementes de leve)
@@ -5051,6 +5063,16 @@
               '<img src="img/parceiros/' + pc.img + '" alt="' + esc(pc.nome) + '">' + (pc.sub ? '<small>' + esc(pc.sub) + '</small>' : '') + '</li>';
           }).join('') + '</ul></div>';
         break;
+      case 'bancaIntro':
+      case 'bancaObrigado':
+        var jusI = juradosBanca(), intro = s.tipo === 'bancaIntro';
+        h = '<div class="sl-centro sl-bintro">' +
+          '<span class="sl-eyebrow">' + (intro ? 'Um encontro de' : 'Nossa gratidão pela presença de cada um') + '</span>' +
+          '<h1 class="sl-mega">' + esc(it.titulo || '') + '</h1>' +
+          (intro ? '<p class="sl-bintro-sub">Conheça nossa banca avaliadora</p>' : '') +
+          '<ul class="sl-bintro-fotos">' + jusI.map(function (x, i) { return '<li style="--i:' + i + '">' + bancaAvatar(x, 'sl-bintro-av') + '<span>' + esc(String(x.titulo || '').split(' ')[0]) + '</span></li>'; }).join('') + '</ul>' +
+          (it.texto ? '<p class="sl-lead">' + esc(it.texto) + '</p>' : '') + '</div>';
+        break;
       case 'homenagem':
         var nomesHo = String(it.texto || '').split(/\n|;|,/).map(function (x) { return x.trim(); }).filter(Boolean);
         h = '<div class="sl-centro sl-hom"><span class="sl-eyebrow">Homenagem</span><h1 class="sl-mega">' + esc(it.titulo) + '</h1>' +
@@ -5092,6 +5114,19 @@
       case 'jurado':
         // membro da banca: foto, nome, minibio e a logo da empresa/instituição (tudo editável no painel)
         var ehDest = it.grupoP === 'destaque';
+        if (!ehDest) {
+          var jusB = juradosBanca(), jb = jusB.map(function (x) { return x.id; }).indexOf(it.id) + 1;
+          h = '<div class="sl-jur sl-banca">' +
+            '<div class="sl-jur-lado">' + bancaAvatar(it, 'sl-jur-foto') + '<span class="sl-jur-pill">Membro da banca' + (jb ? ' · ' + jb + '/' + jusB.length : '') + '</span></div>' +
+            '<div class="sl-jur-txt"><span class="sl-eyebrow">Conheça quem avalia nossos projetos</span>' +
+              '<h1 class="sl-jur-nome' + (String(it.titulo || '').length > 22 ? ' longo' : '') + '">' + esc(it.titulo || 'Nome') + '</h1>' +
+              (it.cargo ? '<p class="sl-jur-cargo">' + esc(it.cargo) + '</p>' : '') +
+              (it.area ? '<span class="sl-jur-area">' + esc(it.area) + '</span>' : '') +
+              (it.texto ? '<p class="sl-jur-bio">' + esc(it.texto) + '</p>' : '<p class="sl-jur-bio sl-jur-falta">Minibio do jurado (editar no painel, aba Apresentação).</p>') +
+              (it.frase ? '<blockquote class="sl-jur-frase">“' + esc(it.frase) + '”</blockquote>' : '') +
+            '</div></div>';   // sem logo: a empresa aparece só pelo nome, no cargo
+          break;
+        }
         var jus = deckConfig().filter(function (x) { return x.tipo === 'jurado' && x.on && (x.grupoP === 'destaque') === ehDest; }), jn = jus.map(function (x) { return x.id; }).indexOf(it.id) + 1;
         h = '<div class="sl-jur">' +
           '<div class="sl-jur-foto">' + (it.foto ? '<img src="' + esc(it.foto) + '" alt="' + esc(it.titulo || '') + '">' : '<span class="sl-jur-sem" aria-hidden="true">' + SL_ICO_PESSOA + '</span>') + '</div>' +
@@ -5704,8 +5739,10 @@
         : it.tipo === 'candidatos' ? 'Automático: para cada Herói candidato com vídeo, um slide de revelação (fala da apresentadora) e o vídeo' : it.tipo === 'votacao' ? 'Tela viva: QR da votação'
         : it.tipo === 'revelaHeroi' || it.tipo === 'revelaBanca' ? (SOM_REVELACAO ? 'Tela viva: revelação com animação e som' : 'Tela viva: revelação com animação (som desligado por enquanto)') : it.tipo === 'programacao' ? 'Automático: puxa a Programação'
         : it.tipo === 'parceiros' ? (it.id === 'parceiros' ? 'Mural dos parceiros: os logos trocam sozinhos, um a um' : 'Logos dos parceiros (definidos no código, img/parceiros/)')
-        : it.tipo === 'jurado' ? (it.grupoP === 'destaque' ? 'Aluno destaque: título = nome, texto = projeto/motivo, foto (o campo de logo não aparece)' : 'Membro da banca: título = nome, texto = minibio, foto e logo da empresa')
+        : it.tipo === 'jurado' ? (it.grupoP === 'destaque' ? 'Aluno destaque: título = nome, texto = projeto/motivo, foto' : 'Membro da banca: título = nome, cargo · empresa, área, minibio, frase e foto')
         : it.tipo === 'homenagem' ? 'Homenagem: no texto, os nomes separados por vírgula'
+        : it.tipo === 'bancaIntro' ? 'Abertura da banca: as fotos (ou iniciais) dos jurados ligados'
+        : it.tipo === 'bancaObrigado' ? 'Agradecimento à banca, com as fotos dos jurados'
         : it.tipo === 'versiculo' ? 'Versículo: título = referência, texto = o versículo'
         : it.tipo === 'combinados' ? 'Celular, banheiros e uso de imagem'
         : it.tipo === 'cfBanca' ? 'Como a banca avalia: critérios e decisão final'
@@ -5722,7 +5759,8 @@
         (auto ? '<p class="tiny ap-auto">' + esc(auto) + '</p>' : '') +
         (temTexto ? '<textarea data-ap="texto" rows="2" aria-label="Texto do slide">' + esc(it.texto || '') + '</textarea>' : '') +
         (it.tipo === 'secao' ? '<input data-ap="hora" value="' + esc(it.hora || '') + '" placeholder="Horário (ex.: 8h20)" aria-label="Horário da parte">' : '') +
-        (it.tipo === 'jurado' ? '<div class="ap-duo"><input data-ap="foto" value="' + esc(it.foto || '') + '" placeholder="Foto (ex.: img/banca/maria.webp)" aria-label="Foto do jurado"><input data-ap="logo" value="' + esc(it.logo || '') + '" placeholder="Logo da empresa (ex.: img/banca/empresa.webp)" aria-label="Logo da empresa"></div>' : '') +
+        (it.tipo === 'jurado' && it.grupoP !== 'destaque' ? '<div class="ap-duo"><input data-ap="cargo" value="' + esc(it.cargo || '') + '" placeholder="Cargo · empresa" aria-label="Cargo"><input data-ap="area" value="' + esc(it.area || '') + '" placeholder="Área (ex.: Inovação & impacto)" aria-label="Área"></div><input data-ap="frase" value="' + esc(it.frase || '') + '" placeholder="Frase (sem aspas)" aria-label="Frase do jurado">' : '') +
+        (it.tipo === 'jurado' ? '<input data-ap="foto" value="' + esc(it.foto || '') + '" placeholder="Foto (ex.: img/banca/maria.webp)" aria-label="Foto">' : '') +
         (it.tipo === 'cafe' ? '<input data-ap="volta" value="' + esc(it.volta || '') + '" placeholder="Horário de volta (ex.: 10h09)" aria-label="Horário de volta">' : '') +
         (it.tipo === 'video' ? '<input data-ap="video" value="' + esc(it.video || '') + '" placeholder="Link do YouTube do vídeo" aria-label="Link do vídeo">' : '') +
         '</li>';

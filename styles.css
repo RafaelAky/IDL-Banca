@@ -3568,3 +3568,30 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .tl-slide .sl-familia .sl-eyebrow { font-size: min(2.6cqh, 1.6cqw); }
 .sl-jur-logo img { max-width: 26cqw; max-height: 9cqh; width: auto; height: auto; }
 .tl-slide .sl-prog li { font-size: min(3.2cqh, 1.9cqw); padding-bottom: 1.2cqh; }
+
+/* membros da banca (modelo do PowerPoint da banca, no visual do Trilhei) */
+.ap-item input[data-ap=foto], .ap-item input[data-ap=frase] { font: inherit; border: 1.5px solid var(--c-linha); border-radius: 10px; padding: 8px 10px; width: 100%; box-sizing: border-box; }
+.sl-banca { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 4.4cqw; padding: 4cqh 6cqw 0; }
+.sl-jur-lado { display: grid; justify-items: center; gap: 3cqh; }
+.sl-banca .sl-jur-foto { width: min(32cqw, 58cqh); }
+.sl-jur-foto.ini, .sl-bintro-av.ini { background: linear-gradient(145deg, #f97218, #e0550a); }
+.sl-jur-foto.ini b { font-family: var(--fonte); font-weight: 800; font-size: min(20cqh, 12cqw); color: #fff; letter-spacing: -.02em; }
+.sl-jur-pill { padding: 1.2cqh 2.4cqw; border-radius: 99px; background: #fff; color: var(--c-roxo); font-weight: 800; font-size: min(2.2cqh, 1.3cqw); letter-spacing: .18em; text-transform: uppercase; }
+.sl-banca .sl-jur-txt { gap: 1.8cqh; }
+.sl-banca .sl-jur-nome { font-size: min(9cqh, 5.4cqw); text-transform: uppercase; letter-spacing: -.01em; }
+.sl-banca .sl-jur-nome.longo { font-size: min(6.6cqh, 4cqw); }
+.sl-jur-cargo { margin: 0; font-size: min(3.4cqh, 2cqw); font-weight: 700; color: #ffb37a; letter-spacing: .06em; text-transform: uppercase; }
+.sl-jur-area { padding: .9cqh 1.6cqw; border-radius: 1cqh; background: rgba(249, 114, 24, .2); border: 1.5px solid rgba(249, 114, 24, .6); color: #ffd7b5; font-weight: 800; font-size: min(2cqh, 1.2cqw); letter-spacing: .14em; text-transform: uppercase; }
+.sl-banca .sl-jur-bio { font-size: min(3.1cqh, 1.85cqw); max-width: 44ch; -webkit-line-clamp: 5; }
+.sl-jur-frase { margin: .6cqh 0 0; padding: 1.8cqh 2cqw; border-left: .6cqh solid var(--c-laranja); border-radius: 0 1.6cqh 1.6cqh 0; background: rgba(255, 255, 255, .08); font-style: italic; font-size: min(3.2cqh, 1.9cqw); color: #fff; max-width: 44ch; }
+/* abertura e agradecimento da banca */
+.sl-bintro { gap: 2.2cqh; }
+.sl-bintro .sl-mega { font-size: min(12cqh, 7cqw); }
+.sl-bintro-sub { margin: 0; font-size: min(4cqh, 2.4cqw); font-weight: 700; color: #ffb37a; letter-spacing: .08em; text-transform: uppercase; }
+.sl-bintro-fotos { list-style: none; margin: 1.4cqh 0; padding: 0; display: flex; justify-content: center; gap: 2cqw; }
+.sl-bintro-fotos li { display: grid; justify-items: center; gap: 1cqh; animation: slSobe .7s cubic-bezier(.2,.9,.3,1.2) calc(.2s + var(--i) * 90ms) both; }
+.sl-bintro-av { width: min(15cqh, 9cqw); height: min(15cqh, 9cqw); border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: rgba(255, 255, 255, .12); box-shadow: 0 0 0 .5cqh var(--c-laranja); }
+.sl-bintro-av img { width: 100%; height: 100%; object-fit: cover; }
+.sl-bintro-av b { font-weight: 800; font-size: min(5cqh, 3cqw); color: #fff; }
+.sl-bintro-fotos span { font-size: min(2.4cqh, 1.4cqw); font-weight: 600; color: rgba(255, 255, 255, .9); }
+.sl-bintro .sl-lead { font-size: min(3.6cqh, 2.2cqw); max-width: 40ch; }
