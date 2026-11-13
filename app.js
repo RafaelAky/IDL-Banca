@@ -2401,7 +2401,8 @@
     return t;
   }
 
-  var flow = { picked: null, error: '', busy: false, palavra: '' };
+  var flow = { picked: null, error: '', busy: false, palavra: '', palavraOk: false };
+  try { var pv0 = JSON.parse(sessionStorage.getItem('idl.palavra') || 'null'); if (pv0 && pv0.p) { flow.palavra = pv0.p; flow.palavraOk = true; } } catch (e) { /* sem storage */ }
 
   function onlyDigits(s) { return String(s || '').replace(/\D/g, ''); }
   function validCPF(raw) {
@@ -2521,6 +2522,20 @@
         '</form></div></div></div>';
     }
 
+    /* ---------- palavra-chave (logo depois do CPF) ---------- */
+    if (remote.on && remote.exigeChave && !flow.palavraOk) {
+      return '<div class="view view-faixa">' + head +
+        '<div class="corpo"><div class="painel-centro"><form class="painelinho painelinho-destaque stack" id="palavraForm" novalidate>' +
+        '<div class="field' + (flow.error ? ' err' : '') + '">' +
+        '<label for="palavraPasso">Agora, a palavra-chave anunciada no palco</label>' +
+        '<input class="big" id="palavraPasso" name="palavraPasso" type="text" autocomplete="off" autocapitalize="characters" placeholder="PALAVRA-CHAVE" value="' + esc(flow.palavra || '') + '">' +
+        '<span class="hint">Ela confirma que você está aqui, no evento. Vale com ou sem acento.</span>' +
+        '</div>' +
+        (flow.error ? '<span class="errmsg">' + ico('i-info') + esc(flow.error) + '</span>' : '') +
+        '<button class="btn btn-primary btn-block btn-lg" type="submit"' + (flow.busy ? ' disabled' : '') + '>' + (flow.busy ? 'Conferindo…' : 'Continuar') + '</button>' +
+        '</form></div></div></div>';
+    }
+
     /* ---------- escolha ---------- */
     var list = opcoesDeVoto();
     if (!list.length) {
@@ -2607,12 +2622,7 @@
       '<span class="eyebrow">Seu voto vai para</span>' +
       '<h2 id="sheetTitle" class="display" style="font-size:25px">' + esc(p.name) + '</h2>' +
       '<p class="lead">Depois de confirmar, seu voto não poderá ser alterado.</p>' +
-      (remote.on && remote.exigeChave
-        ? '<div class="field' + (flow.error ? ' err' : '') + '"><label for="palavraVoto">Palavra-chave anunciada no palco</label>' +
-          '<input class="big" id="palavraVoto" type="text" autocomplete="off" autocapitalize="characters" ' +
-          'placeholder="ANUNCIADA NO PALCO" value="' + esc(flow.palavra || '') + '" data-act="setPalavra">' +
-          '<span class="hint">Ela confirma que você está aqui, no evento.</span></div>'
-        : '') +
+
       (flow.error ? '<span class="errmsg">' + ico('i-info') + esc(flow.error) + '</span>' : '') +
       '<button class="btn btn-primary btn-block btn-lg" data-act="confirmVote"' + (flow.busy ? ' disabled' : '') + '>' +
       (flow.busy ? 'Registrando…' : 'Confirmar meu voto') + '</button>' +
@@ -2647,11 +2657,8 @@
       return;
     }
 
-    var campo = $('#palavraVoto');
-    if (campo) flow.palavra = campo.value;
-
     if (remote.exigeChave && !String(flow.palavra || '').trim()) {
-      falha('Informe a palavra-chave anunciada no palco.');
+      flow.busy = false; flow.picked = null; flow.palavraOk = false; renderOverlay(); render();
       return;
     }
 
@@ -2670,6 +2677,11 @@
         return;
       }
       if (cod === 'votacao_fechada') { remote.aberta = false; }
+      if (cod === 'palavra_invalida') {
+        // a palavra mudou (ou estava errada): volta para o passo da palavra-chave
+        flow.palavraOk = false; flow.palavra = ''; try { sessionStorage.removeItem('idl.palavra'); } catch (e) {}
+        flow.busy = false; flow.picked = null; flow.error = ERROS.palavra_invalida; renderOverlay(); render(); return;
+      }
       falha(ERROS[cod] || 'Não consegui registrar seu voto. Tente novamente.');
     }).catch(function () {
       falha('Seu voto ainda não foi confirmado. Verifique sua conexão e tente novamente.');
@@ -2995,7 +3007,7 @@
     var dia = [
       ['check', 'i-vote', 'Checklist', 'Confere banco, internet, votação, banca e telão antes de começar.'],
       ['camisas', 'i-users', 'Camisas', camOk == null ? 'Entrega das camisas aos trilheiros.' : '<b>' + camOk + ' de ' + cam.itens.length + '</b> entregues.'],
-      ['pulseiras', 'i-users', 'Pulseiras', pul.itens == null ? 'Pulseira com a palavra-chave para todos que chegam.' : (pul.itens.length ? '<b>' + pul.itens.filter(function (x) { return x.entregue; }).length + ' de ' + pul.itens.length + '</b> entregues.' : 'Lista ainda vazia: cole os nomes.')],
+      ['pulseiras', 'i-users', 'Pulseiras', pul.itens == null ? 'Controle de quem já recebeu a pulseira na entrada.' : (pul.itens.length ? '<b>' + pul.itens.filter(function (x) { return x.entregue; }).length + ' de ' + pul.itens.length + '</b> entregues.' : 'Lista ainda vazia: cole os nomes.')],
       ['aovivo', 'i-spark', 'Ao vivo', 'Palco, votação, banca e telão numa tela só, para o celular.', 'aovivo'],
       ['apres', 'i-play', 'Apresentação', (remote.on && iSl >= 0 ? 'No telão: <b>slide ' + (iSl + 1) + ' de ' + nSl + '</b>.' : nSl + ' slides no roteiro.') + ' Roteiro e textos dos slides.'],
       ['votacao', 'i-vote', 'Votação do público', (remote.on ? '<b>' + (aberta ? 'Aberta' : 'Fechada') + '</b>' + (totalVotos != null ? ' · ' + totalVotos + (totalVotos === 1 ? ' voto' : ' votos') : '') + '. ' : '') + 'Candidatos, apuração e vencedores no site.'],
@@ -5752,16 +5764,15 @@
   }
 
   /* =========================== PULSEIRAS DO EVENTO ===========================
-     Aba "Pulseiras" do painel: todos que chegam ao evento recebem a pulseira
-     (com a palavra-chave que destrava a votação). Igual às camisas: marca
+     Aba "Pulseiras" do painel: controle de quem já recebeu a pulseira na
+     entrada. Igual às camisas: marca
      quem já recebeu, várias pessoas ao mesmo tempo, atualiza a cada 5 s.
      A lista começa vazia: cole os nomes de uma vez (um por linha).          */
-  var pul = { itens: null, erro: '', carregando: false, filtro: 'faltam', grupo: '', busca: '', editando: null, em: 0, palavra: null, importando: false };
+  var pul = { itens: null, erro: '', carregando: false, filtro: 'faltam', grupo: '', busca: '', editando: null, em: 0, importando: false };
   var PUL_GRUPOS = ['Trilheiro', 'Família', 'Convidado', 'Equipe IDL', 'Jurado', 'Parceiro', 'Voluntário'];
   function pulCarregar(silencioso) {
     if (!remote.on || !localState.adminKey || pul.carregando) return;
     pul.carregando = true; if (!silencioso) render();
-    if (pul.palavra == null) sbRpc('ler_chave_evento', { p_chave: localState.adminKey }).then(function (r) { pul.palavra = r && r.ok ? (r.palavra || '') : ''; if (admin.tab === 'pulseiras') render(); }).catch(function () {});
     sbRpc('pulseiras_listar', { p_chave: localState.adminKey }).then(function (r) {
       pul.carregando = false;
       if (!r || !r.ok) { pul.erro = r && r.erro === 'chave_invalida' ? 'A senha deste aparelho não confere. Saia e entre de novo.' : 'Não consegui buscar a lista.'; render(); return; }
@@ -5819,7 +5830,6 @@
         '<button type="button" class="iconbtn" data-act="pulEditar" data-id="' + esc(x.id) + '" aria-label="Corrigir nome ou grupo">' + ico('i-pencil') + '</button></li>';
     }
     var filtros = [['faltam', 'Faltam', tot - ok], ['entregues', 'Receberam', ok], ['todos', 'Todos', tot]];
-    var palavra = pul.palavra ? '<div class="pul-palavra"><span class="eyebrow">Palavra-chave da pulseira</span><b>' + esc(pul.palavra) + '</b><span class="tiny">É a que destrava a votação no celular (vale com ou sem acento). Troque na aba Votação.</span></div>' : '';
     var importar = '<section class="painelinho stack pul-importar"><span class="eyebrow">' + (tot ? 'Acrescentar vários nomes' : 'Colar a lista de nomes') + '</span>' +
       '<p class="small">Um nome por linha. Para o grupo, use <b>Nome ; Grupo</b> (ou copie duas colunas de uma planilha). Se não informar, vale o grupo escolhido ao lado.</p>' +
       '<form class="pul-import stack"><textarea name="lista" rows="' + (tot ? 4 : 9) + '" placeholder="Maria Silva ; Família&#10;João Souza ; Trilheiro&#10;Ana Lima"></textarea>' +
@@ -5827,9 +5837,9 @@
       '<button class="btn btn-primary" type="submit"' + (pul.importando ? ' disabled' : '') + '>' + ico('i-plus') + (pul.importando ? ' Importando…' : ' Importar nomes') + '</button></div></form></section>';
     return '<div class="stack-lg cam pul">' + dl +
       '<section class="stack"><div class="row-between"><h2 class="h2">Pulseiras</h2><button class="btn btn-outline btn-sm" data-act="pulAtualizar">Atualizar</button></div>' +
-      '<p class="small">Na chegada, todo mundo recebe a pulseira com a palavra-chave da votação. Toque no ✓ quando a pessoa receber. Quem também está na lista de camisas tem a camisa marcada junto (e vice-versa). Várias pessoas podem marcar ao mesmo tempo; a lista atualiza sozinha.</p></section>' +
+      '<p class="small">Controle de quem já recebeu a pulseira na entrada. Toque no ✓ quando a pessoa receber. Quem também está na lista de camisas tem a camisa marcada junto (e vice-versa). Várias pessoas podem marcar ao mesmo tempo; a lista atualiza sozinha.</p></section>' +
       '<section class="painelinho cam-resumo"><div class="cam-total"><b class="num">' + ok + '<small> de ' + tot + '</small></b><span>pulseiras entregues</span>' +
-        '<div class="cam-barra"><i style="width:' + (tot ? (ok / tot * 100).toFixed(1) : 0) + '%"></i></div></div>' + palavra +
+        '<div class="cam-barra"><i style="width:' + (tot ? (ok / tot * 100).toFixed(1) : 0) + '%"></i></div></div>' +
         (grupos.length > 1 || (grupos.length === 1 && grupos[0] !== 'Sem grupo') ? '<div class="cam-tams pul-grupos">' + grupos.map(function (g) { var v = porG[g]; return '<button type="button" data-act="pulGrupo" data-g="' + esc(g) + '" class="' + (v.ok === v.t ? 'feito' : '') + (pul.grupo === g ? ' on' : '') + '"><b>' + esc(g) + '</b><span class="num">' + v.ok + '/' + v.t + '</span></button>'; }).join('') + '</div>' : '') +
       '</section>' +
       (tot ? '<div class="cam-ferr"><input type="search" class="cam-busca pul-busca" data-act="pulBusca" placeholder="Buscar pelo nome" value="' + esc(pul.busca) + '" aria-label="Buscar pessoa">' +
@@ -7744,7 +7754,7 @@
       if (!xm) return;
       admin.confirm = xm.entregue
         ? { title: 'Desfazer a entrega de ' + xm.nome + '?', danger: true, yes: 'Sim, desfazer', body: 'A camisa volta para a lista de quem ainda não recebeu (e a pulseira do mesmo nome também).', run: function () { camMarcar(idM); } }
-        : { title: 'Entregar a camisa ' + (xm.tamanho || '(sem tamanho)') + ' para ' + xm.nome + '?', yes: 'Confirmar entrega', body: 'Confira o nome e o tamanho antes de confirmar. A pulseira (com a palavra-chave) vai junto e fica marcada também.', run: function () { camMarcar(idM); } };
+        : { title: 'Entregar a camisa ' + (xm.tamanho || '(sem tamanho)') + ' para ' + xm.nome + '?', yes: 'Confirmar entrega', body: 'Confira o nome e o tamanho antes de confirmar. A pulseira vai junto e fica marcada também.', run: function () { camMarcar(idM); } };
       renderOverlay();
     }
     else if (act === 'camAtualizar') { cam.erro = ''; camCarregar(); }
@@ -7756,7 +7766,7 @@
         : { title: 'Entregar a pulseira para ' + xp.nome + '?', yes: 'Confirmar entrega', body: (xp.grupo ? xp.grupo + '. ' : '') + 'Confira o nome antes de confirmar. Se a pessoa está na lista de camisas, a camisa fica marcada junto.', run: function () { pulMarcar(idP); } };
       renderOverlay();
     }
-    else if (act === 'pulAtualizar') { pul.erro = ''; pul.palavra = null; pulCarregar(); }
+    else if (act === 'pulAtualizar') { pul.erro = ''; pulCarregar(); }
     else if (act === 'pulFiltro') { pul.filtro = el.getAttribute('data-f'); render(); }
     else if (act === 'pulGrupo') { var gP = el.getAttribute('data-g'); pul.grupo = pul.grupo === gP ? '' : gP; render(); }
     else if (act === 'pulEditar') { pul.editando = el.getAttribute('data-id'); render(); var fp = document.querySelector('.pul .cam-item.editando input'); if (fp) fp.focus(); }
@@ -7953,7 +7963,7 @@
     }
     else if (act === 'clearVotes') {
       admin.confirm = { title: 'Refazer o teste da votação?', body: 'Destrava, código e voto deste aparelho voltam ao início, para você testar o fluxo de novo.', yes: 'Sim, refazer', danger: true,
-        run: function () { localState.voted = null; localState.unlocked = false; localState.code = null; localState.hash = null; saveLocal(); render(); toast('Votação reiniciada neste aparelho.'); } };
+        run: function () { localState.voted = null; localState.unlocked = false; localState.code = null; localState.hash = null; flow.palavraOk = false; flow.palavra = ''; try { sessionStorage.removeItem('idl.palavra'); } catch (e) {} saveLocal(); render(); toast('Votação reiniciada neste aparelho.'); } };
       renderOverlay();
     }
     else if (act === 'resetAll') {
@@ -8126,6 +8136,26 @@
       sha256(onlyDigits(rawv) + '|' + SALT).then(function (h) {
         localState.hash = h; localState.code = makeCode(h);
         flow.error = ''; saveLocal(); render(); syncMeuVoto();
+      });
+      return;
+    }
+    if (f.id === 'palavraForm') {
+      var pal = String($('#palavraPasso').value || '').trim();
+      if (!pal) { flow.error = 'Informe a palavra-chave anunciada no palco.'; render(); return; }
+      flow.busy = true; flow.error = ''; render();
+      sbRpc('conferir_palavra', { p_palavra: pal }).then(function (r) {
+        flow.busy = false;
+        if (r && r.ok) {
+          flow.palavra = pal; flow.palavraOk = true;
+          try { sessionStorage.setItem('idl.palavra', JSON.stringify({ p: pal })); } catch (e) {}
+          render(); return;
+        }
+        flow.error = r && r.erro === 'votacao_fechada' ? ERROS.votacao_fechada : ERROS.palavra_invalida; render();
+      }).catch(function (e) {
+        flow.busy = false;
+        // banco sem a função nova: segue e o voto confere a palavra na hora de registrar
+        if (String(e && e.message) === 'http 404') { flow.palavra = pal; flow.palavraOk = true; render(); return; }
+        flow.error = 'Sem conexão. Tente de novo.'; render();
       });
       return;
     }
