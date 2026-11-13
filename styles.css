@@ -3595,3 +3595,31 @@ html[data-tema="escuro"] .ag-dia .ag-tag, html[data-tema="escuro"] .ag-dia .shor
 .sl-bintro-av b { font-weight: 800; font-size: min(5cqh, 3cqw); color: #fff; }
 .sl-bintro-fotos span { font-size: min(2.4cqh, 1.4cqw); font-weight: 600; color: rgba(255, 255, 255, .9); }
 .sl-bintro .sl-lead { font-size: min(3.6cqh, 2.2cqw); max-width: 40ch; }
+
+/* revelação antes do vídeo: o robô do IDL Tech no lugar da silhueta; depois o clarão e o Herói */
+.sl-hrev .sl-hrev-fig img { animation-name: slHrevImg2; }
+@keyframes slHrevImg2 {
+  0%, 70% { opacity: 0; transform: scale(.85); filter: brightness(2.4) drop-shadow(0 0 0 rgba(0,0,0,0)); }
+  78% { opacity: 1; transform: scale(1.05); filter: brightness(2.2) drop-shadow(0 0 6cqh rgba(255, 210, 140, .9)); }
+  100% { opacity: 1; transform: scale(1); filter: brightness(1) drop-shadow(0 3cqh 5cqh rgba(0, 0, 0, .45)); }
+}
+.sl-hrev-robo { position: absolute; z-index: 2; left: 50%; top: 52%; width: min(30cqh, 18cqw); color: #e8dbf7; transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 3cqh rgba(185, 143, 232, .7)); animation: slHrevRobo 3.6s cubic-bezier(.3, 0, .2, 1) var(--t0, 0ms) both; }
+.sl-hrev-robo svg { display: block; width: 100%; height: auto; animation: slRoboFlutua 1.6s ease-in-out infinite alternate; }
+.sl-hrev-robo .r-olhos { animation: slRoboPisca 2.2s steps(1) infinite; transform-origin: 100px 124px; }
+.sl-hrev-robo .r-ant { animation: slRoboAnt .8s ease-in-out infinite alternate; }
+@keyframes slHrevRobo {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(.7); }
+  14%, 62% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); filter: drop-shadow(0 0 8cqh rgba(255, 210, 140, 1)) brightness(2); }
+  78%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
+}
+@keyframes slRoboFlutua { to { transform: translateY(-2.4cqh); } }
+@keyframes slRoboPisca { 0%, 88% { transform: scaleY(1); } 92% { transform: scaleY(.1); } 96% { transform: scaleY(1); } }
+@keyframes slRoboAnt { to { fill: #ffd2a0; } }
+.sl-previa .sl-hrev-robo { display: none; }
+.sl-hrev-robo { width: min(46cqh, 26cqw); }
+/* no lugar do robô: a flor laranja do IDL girando cada vez mais rápido até a revelação */
+.sl-hrev-logo { width: min(52cqh, 30cqw); color: inherit; filter: drop-shadow(0 0 4cqh rgba(249, 114, 24, .7)); }
+.sl-hrev-logo .sl-hrev-flor { display: block; width: 100%; height: auto; animation: slFlorGira 3.6s cubic-bezier(.55, 0, .9, .4) var(--t0, 0ms) both; }
+@keyframes slFlorGira { from { transform: rotate(0deg); } to { transform: rotate(1440deg); } }

@@ -4808,7 +4808,7 @@
     setTimeout(function () { Array.prototype.forEach.call(velhas, function (v) { if (v.parentNode) v.parentNode.removeChild(v); }); }, 1700);
   }
 
-  var DECK_V = 10;
+  var DECK_V = 11;
   /* Apresentação própria de cada equipe (11/2026): depois do slide de chamada
      ao palco, entram as páginas da equipe, na ordem. Cada item é um arquivo em
      img/apres/<id do projeto>/ (PDF/PowerPoint convertidos em imagem) ou
@@ -4873,7 +4873,7 @@
     { id: 'sec_retro',      tipo: 'secao',        on: true, titulo: 'Retrospectiva da Trilha', texto: '', hora: '8h15' },
     { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
     { id: 'banca_intro', tipo: 'bancaIntro', on: true, titulo: 'Experiências e propósitos', texto: 'Sete olhares, diferentes trajetórias e um mesmo compromisso: valorizar o potencial dos nossos trilheiros.' },
-    { id: 'jurado1', tipo: 'jurado', on: true, titulo: 'Ismael Akiyama', cargo: 'Fundador e CEO · Akiyama Group', area: 'Inovação & impacto', texto: 'Fundador e CEO do Akiyama Group, referência em identificação biométrica e automação industrial. Cofundador do Instituto Dente de Leão e integrante do C12 Brasil, conecta empreendedorismo, inovação e compromisso com a transformação social.', frase: 'Tecnologia com propósito. Pessoas no centro.', foto: '', logo: '' },
+    { id: 'jurado1', tipo: 'jurado', on: true, titulo: 'Ismael Akiyama', cargo: 'Fundador e CEO · Akiyama Group', area: 'Inovação & impacto', texto: 'Fundador e CEO do Akiyama Group, referência em identificação biométrica e automação industrial. Cofundador do Instituto Dente de Leão e integrante do C12 Brasil, conecta empreendedorismo, inovação e compromisso com a transformação social.', frase: 'Tecnologia com propósito. Pessoas no centro.', foto: 'img/banca/ismael-akiyama.webp', logo: '' },
     { id: 'jurado2', tipo: 'jurado', on: true, titulo: 'Rafael Rodrigues Guimarães Wollmann', cargo: 'CFO · Grupo Brenex', area: 'Estratégia & liderança', texto: 'Executivo com atuação em finanças, estratégia, governança e gestão. É CFO do Grupo Brenex, do setor logístico, e traz experiência em avaliação voluntária de projetos voltados à educação e ao desenvolvimento de crianças e adolescentes.', frase: 'Visão de negócios com atenção às pessoas.', foto: 'img/banca/rafael-rodrigues.webp', logo: '' },
     { id: 'jurado3', tipo: 'jurado', on: true, titulo: 'Rosana Pimpão', cargo: 'Empresária · Grupo Pimpão', area: 'Educação & propósito', texto: 'Empresária vinculada ao Grupo Pimpão, que atua com playgrounds e soluções educacionais. Participa da comunidade C12 Brasil e representa a importância de empreender com valores, propósito e atenção ao desenvolvimento das novas gerações.', frase: 'Empreender também é investir em futuros.', foto: 'img/banca/rosana-pimpao.webp', logo: '' },
     { id: 'jurado4', tipo: 'jurado', on: true, titulo: 'Andrei Amaral', cargo: 'Fundador e CEO · Secret Group', area: 'Empreendedorismo & tecnologia', texto: 'Fundador e CEO do Secret Group, com trajetória empreendedora em varejo, e-commerce, tecnologia e logística. Atua na conexão entre inovação e negócios e aprofunda estudos em robótica humanoide e inteligência artificial aplicada.', frase: 'O futuro se constrói com atitude e inovação.', foto: 'img/banca/andrei-amaral.webp', logo: '' },
@@ -4999,6 +4999,15 @@
   var SL_ICO_WC = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="9" r="4"/><circle cx="34" cy="9" r="4"/><path d="M9 17h10v14h-3v12h-4V31H9z"/><path d="M34 16l-7 17h4v10h6V33h4z"/><path d="M24 15v30" opacity=".5"/></svg>';
   var SL_ICO_CAM = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15h9l3-5h12l3 5h9v24H6z"/><circle cx="24" cy="26" r="7"/></svg>';
   var SL_ICO_PESSOA = '<svg viewBox="0 0 48 48" fill="currentColor"><circle cx="24" cy="17" r="9"/><path d="M6 44c1.5-10 8.6-16 18-16s16.5 6 18 16z"/></svg>';
+  // robô do IDL Tech: fica no lugar do Herói até a revelação (assim ninguém adivinha pela silhueta)
+  var SL_ROBO_IDL = '<svg viewBox="0 0 200 260" fill="none"><line x1="100" y1="44" x2="100" y2="70" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>' +
+    '<circle class="r-ant" cx="100" cy="34" r="13" fill="#f97218"/>' +
+    '<rect x="26" y="70" width="148" height="122" rx="34" fill="#1d0b3d" stroke="currentColor" stroke-width="10"/>' +
+    '<line x1="12" y1="131" x2="26" y2="131" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><line x1="174" y1="131" x2="188" y2="131" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>' +
+    '<rect x="44" y="88" width="112" height="86" rx="22" fill="#2a1155"/>' +
+    '<g class="r-olhos"><circle cx="76" cy="124" r="13" fill="#f9a23a"/><circle cx="124" cy="124" r="13" fill="#f9a23a"/></g>' +
+    '<line x1="84" y1="154" x2="116" y2="154" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>' +
+    '<rect x="62" y="204" width="76" height="34" rx="12" fill="#f97218"/></svg>';
   var SL_ICO_CORACAO = '<svg viewBox="0 0 48 48" fill="currentColor"><path d="M24 42S6 31.5 6 18.5C6 12.7 10.4 8 15.8 8c3.4 0 6.4 1.8 8.2 4.6C25.8 9.8 28.8 8 32.2 8 37.6 8 42 12.7 42 18.5 42 31.5 24 42 24 42z"/></svg>';
   var SL_ICO_CAFE = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 18h26v10a12 12 0 0 1-12 12h-2A12 12 0 0 1 8 28z"/><path d="M34 21h3a5 5 0 0 1 0 10h-3"/><path d="M15 6c-2 3 2 5 0 8M22 6c-2 3 2 5 0 8M29 6c-2 3 2 5 0 8" opacity=".7"/></svg>';
   // membros da banca ligados no roteiro, na ordem; foto ou as iniciais (como no PowerPoint da banca)
@@ -5104,7 +5113,7 @@
         var t0R = previa ? 0 : Math.max(0, Date.now() - (telao.slideDesde || Date.now()));
         h = '<div class="sl-hrev" style="--t0:-' + t0R + 'ms">' +
           '<div class="sl-hrev-fig"><span class="sl-hrev-luz" aria-hidden="true"></span>' + (hr.image ? '<img src="' + esc(previa ? mini(hr.image) : hr.image) + '" alt="">' : '') +
-            '<span class="sl-hrev-q" aria-hidden="true">?</span></div>' +
+            '<span class="sl-hrev-robo sl-hrev-logo" aria-hidden="true">' + idlFlorSvg('sl-hrev-flor') + '</span></div>' +
           '<div class="sl-hrev-txt"><span class="sl-eyebrow sl-hrev-eb">Herói candidato</span>' +
             '<h1 class="sl-hrev-nome">' + esc(nmR) + '</h1>' +
             '<p class="sl-hrev-proj">' + esc(pr.name) + (pr.group ? ' · Grupo ' + esc(pr.group) : '') + '</p>' +
