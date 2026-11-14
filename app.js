@@ -383,6 +383,11 @@
     migrarCronograma(d);
     migrarSorteio(d);
     migrarTrilheiros(d);
+    // vídeo da retrospectiva (14/11/2026): entra uma vez no roteiro salvo; depois vale o que for editado no painel
+    if (!d._retroVideo1) {
+      d._retroVideo1 = true;
+      ((d.apresentacao && d.apresentacao.slides) || []).forEach(function (x) { if (x.id === 'retrospectiva') { x.video = 'https://www.youtube.com/watch?v=plESRVbUZUQ'; x.on = true; } });
+    }
     return d;
   }
   function save() { safeSet(KEY, JSON.stringify(db)); render(); enviarConteudo(); }
@@ -4916,7 +4921,7 @@
     { id: 'sebrae',         tipo: 'secao',        on: true, titulo: 'SEBRAE', texto: '', hora: '8h10', logo: 'img/sebrae.png' },
     { id: 'numeros',        tipo: 'numeros',      on: true, titulo: 'A Trilha 2026 em números' },
     { id: 'sec_retro',      tipo: 'secao',        on: true, titulo: 'Retrospectiva da Trilha', texto: '', hora: '8h15' },
-    { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: '' },
+    { id: 'retrospectiva',  tipo: 'video',        on: true, titulo: 'Retrospectiva da Trilha 2026', video: 'https://www.youtube.com/watch?v=plESRVbUZUQ' },
     { id: 'banca_intro', tipo: 'bancaIntro', on: true, titulo: 'Experiências e propósitos', texto: 'Sete olhares, diferentes trajetórias e um mesmo compromisso: valorizar o potencial dos nossos trilheiros.' },
     { id: 'jurado1', tipo: 'jurado', on: true, titulo: 'Ismael Akiyama', cargo: 'Fundador e CEO · Akiyama Group', area: 'Inovação & impacto', texto: 'Fundador e CEO do Akiyama Group, referência em identificação biométrica e automação industrial. Cofundador do Instituto Dente de Leão e integrante do C12 Brasil, conecta empreendedorismo, inovação e compromisso com a transformação social.', frase: 'Tecnologia com propósito. Pessoas no centro.', foto: 'img/banca/ismael-akiyama.webp', logo: '' },
     { id: 'jurado2', tipo: 'jurado', on: true, titulo: 'Rafael Rodrigues Guimarães Wollmann', cargo: 'CFO · Grupo Brenex', area: 'Estratégia & liderança', texto: 'Executivo com atuação em finanças, estratégia, governança e gestão. É CFO do Grupo Brenex, do setor logístico, e traz experiência em avaliação voluntária de projetos voltados à educação e ao desenvolvimento de crianças e adolescentes.', frase: 'Visão de negócios com atenção às pessoas.', foto: 'img/banca/rafael-rodrigues.webp', logo: '' },
