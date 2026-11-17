@@ -3758,3 +3758,60 @@ html[data-tema="escuro"] .mc-cartao, html[data-tema="escuro"] .mc-pausa { backgr
 html[data-tema="escuro"] .mc-l.tec, html[data-tema="escuro"] .mc-ed-l { background: #241739; }
 html[data-tema="escuro"] .mc-seguir { background: rgba(28, 17, 48, .6); border-color: #3a2a57; }
 html[data-tema="escuro"] .mc-tudo .mc-nav { background: rgba(18, 10, 32, .94); border-color: #3a2a57; }
+
+/* ====================== Trilha 2026 encerrada (pós-formatura) ====================== */
+/* selos dos vencedores */
+.selo-premio { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 800; line-height: 1.25; white-space: nowrap; }
+.selo-premio svg { width: 14px; height: 14px; flex: none; }
+.selo-premio.sp-banca { background: #fff3e8; color: #b4530c; border: 1px solid #f6c9a0; }
+.selo-premio.sp-banca.p1 { background: linear-gradient(135deg, #ffcf5c, #f9a23a); color: #4a2600; border-color: #f2a52c; }
+.selo-premio.sp-pub { background: #efe6fb; color: var(--c-roxo); border: 1px solid #d6c3f2; }
+.det-selos { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
+.det-selos .selo-premio { font-size: 13px; padding: 6px 12px; white-space: normal; }
+.ind-hora .selo-premio { font-size: 11px; padding: 3px 8px; }
+.ind-hora .selo-premio + .selo-premio { margin-top: 4px; }
+.ind-hora:has(.selo-premio) { display: grid; justify-items: start; gap: 4px; }
+.ch-selo { display: flex; justify-content: center; margin-top: 6px; }
+.ch-selo .selo-premio { font-size: 11px; }
+.botoeira-claro { justify-content: center; }
+/* painel: mover foto de álbum */
+.fr-mover { white-space: nowrap; font-size: 12.5px; }
+/* painel: arquivo 2026 */
+.arq-abas { flex-wrap: wrap; border-radius: 18px; }
+.arquivo .statgrid .sv small { font-size: .55em; color: var(--c-texto-2); font-weight: 600; }
+.arq-duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.arq-podio { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 6px; }
+.arq-podio li { font-size: 15px; }
+.arq-tab-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--c-linha); background: var(--c-branco, #fff); }
+.arq-tab { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.arq-tab th { text-align: left; padding: 9px 10px; background: #f6f2fc; color: var(--c-roxo); font-weight: 800; font-size: 12px; white-space: nowrap; }
+.arq-tab td { padding: 8px 10px; border-top: 1px solid var(--c-linha); vertical-align: top; }
+.arq-tab tr.top td { background: #fff8ef; font-weight: 700; }
+.arq-tab tr.falta td { color: var(--c-texto-2); }
+.arq-tab .arq-com { min-width: 260px; white-space: pre-wrap; }
+.arq-jur summary, .arquivo details > summary { cursor: pointer; padding: 2px 0; }
+.arquivo details[open] > summary { margin-bottom: 10px; }
+.arq-apres { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 18px; align-items: start; }
+.arq-sl { display: grid; gap: 10px; }
+.arq-sl .ctl-tela { width: 100%; }
+.arq-sl-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.arq-sl-sel { width: 100%; height: 42px; padding: 0 10px; border-radius: 10px; border: 1.5px solid var(--c-linha-forte); background: var(--c-branco, #fff); color: var(--c-texto); }
+.arq-fala { display: grid; gap: 8px; }
+.arq-mc { padding: 0; max-width: none; }
+@media (max-width: 900px) { .arq-apres { grid-template-columns: minmax(0, 1fr); } }
+html[data-tema="escuro"] .arq-tab th { background: #241739; }
+html[data-tema="escuro"] .arq-tab tr.top td { background: #2a1c12; }
+html[data-tema="escuro"] .selo-premio.sp-banca:not(.p1) { background: #2a1c12; border-color: #6b3d16; color: #f9b26e; }
+html[data-tema="escuro"] .selo-premio.sp-pub { background: #241739; border-color: #3a2a57; color: #d9c8fa; }
+/* vencedores com o pódio completo: Herói do público + os 3 da banca lado a lado */
+@media (min-width: 900px) {
+  .venc-grade.venc-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
+  .home-venc .venc-grade.venc-3 { max-width: 1180px; }
+  .venc-3 .venc-banca { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 14px; }
+  .venc-3 .venc-banca > .venc-tag, .venc-3 .venc-banca > .venc-premio { grid-column: 1 / -1; }
+  .venc-3 .venc-banca .venc-item + .venc-item { margin-top: 0; padding-top: 0; border-top: 0; padding-left: 14px; border-left: 1px dashed var(--c-linha-forte); }
+  .venc-3 .venc-item .h2 { font-size: clamp(1.15rem, 1.6vw, 1.45rem); }
+}
+.ind-selos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ind-selos .selo-premio { font-size: 11px; padding: 3px 9px; }
+.painel-centro.painel-resultado.painel-venc:has(.venc-3) { width: min(100%, 1180px); max-width: 1180px; }

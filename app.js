@@ -572,12 +572,31 @@
       .map(function (w) { return w[0] || ''; }).join('').toUpperCase() || '?';
   }
 
+  /* ====================== TRILHA 2026 ENCERRADA (17/11/2026) ======================
+     Depois da formatura o site vira a lembrança da Trilha: formatura, projetos,
+     Heróis e vencedores. Votação, banca, programação, telão e controles saem do
+     ar (os endereços antigos abrem o Início). Os números ficam no painel, aba 2026.
+     Para uma nova edição com votação e banca, troque ENCERRADO para false.        */
+  var ENCERRADO = true;
+  var VENC_2026 = {
+    heroi: ['her_samantha'],                                  // Herói da Trilha, escolhido pelo público
+    banca: [{ id: 'prj_som_neo', pos: 1 }, { id: 'prj_acolher', pos: 2 }, { id: 'prj_reciclagem', pos: 3 }]   // Projetos destaque da banca
+  };
+  var ROTAS_DO_EVENTO = /^(programacao|votacao|banca|decisao|mesa|telao|controle|mc|mosaico)$/;
+  function posBanca(pid) { var v = VENC_2026.banca.filter(function (x) { return x.id === pid; })[0]; return ENCERRADO && v ? v.pos : 0; }
+  function heroiVencedor(hid) { return ENCERRADO && VENC_2026.heroi.indexOf(hid) >= 0; }
+
   /* ------------------------------- roteador ------------------------------- */
   var route = { name: 'home', param: null, tab: 'projetos' };
   function parseHash() {
     var h = (location.hash || '#/').replace(/^#\/?/, '');
     var parts = h.split('/').filter(Boolean);
     if (!parts.length) return { name: 'home', param: null };
+    // evento encerrado: telas do dia (votação, banca, telão...) abrem o Início
+    if (ENCERRADO && ROTAS_DO_EVENTO.test(parts[0])) {
+      try { history.replaceState(null, '', '#/'); } catch (e) { /* ok */ }
+      return { name: 'home', param: null };
+    }
     return { name: parts[0], param: parts[1] || null };
   }
   // navInterna: a troca de tela veio de um clique no site (vai para o topo);
@@ -650,7 +669,7 @@
     route.name = r.name; route.param = r.param;
     rotaAnterior = r.name;
     if (r.name === 'admin') { var abaNova = abaDaRota(r.param); if (abaNova !== admin.tab) { admin.tab = abaNova; admin.fotosDe = null; } }
-    if (r.name === 'trilha2026' || r.name === 'admin') syncFotos();
+    if (r.name === 'trilha2026' || r.name === 'formatura' || r.name === 'admin') syncFotos();
     render();
     var chave = location.hash || '#/', interna = navInterna; navInterna = false;
     if (deDetalhe && LISTAS[r.name] && posicoes[chave] > 0) restaurarPosicao(chave);
@@ -680,6 +699,7 @@
      liga). Vale para todos, inclusive o aparelho da organização.
      Sem banco (modo prévia), vale a data do evento.                       */
   function mostraVotacao() {
+    if (ENCERRADO) return false;
     if (votacaoAberta()) return true;
     if (remote.on) return remote.visivel;
     if (localState.admin || localState.voted) return true;
@@ -689,9 +709,16 @@
   /* MODO PÓS-EVENTO: ligado no painel (aba Evento) quando a Banca termina.
      O Início vira agradecimento + vencedores + fotos, e a aba Votação dá
      lugar a "Vencedores". Desligar volta tudo ao modo de evento.          */
-  function posEvento() { return !!(db && db.posEvento); }
+  function posEvento() { return ENCERRADO || !!(db && db.posEvento); }
+  var NAV_FORMATURA = { id: 'formatura', label: 'Fotos da Formatura', midLabel: 'Formatura', shortLabel: 'Formatura', icon: 'i-spark' };
   var NAV_VENC = { id: 'resultado', label: 'Vencedores', shortLabel: 'Vencedores', icon: 'i-spark' };
   function navItens() {
+    if (ENCERRADO) {
+      // depois da formatura: lembrança da Trilha (sem votação, banca nem programação)
+      var fim = [NAV_BASE[0], NAV_BASE[1], NAV_BASE[3], { id: 'resultado', label: 'Vencedores', shortLabel: 'Vencedores', icon: 'i-vote' }, NAV_FORMATURA,
+        { id: 'trilha2026', label: 'A Trilha em 2026', midLabel: 'A Trilha', shortLabel: 'A Trilha', icon: 'i-eye' }];
+      return ehAdmin() ? fim.concat([NAV_ADMIN]) : fim;
+    }
     var base = mostraVotacao() ? NAV_BASE : NAV_BASE.filter(function (n) { return n.id !== 'votacao'; });
     if (posEvento()) {
       base = NAV_BASE.filter(function (n) { return n.id !== 'votacao'; });
@@ -1160,12 +1187,24 @@
       '</div></section>' : '';
 
     var retroPh = fotosDoSite();
+    // fotos da formatura (depois do evento, antes das do ano)
+    var formPh = ENCERRADO ? fotosDoProjeto('formatura') : [];
+    var fotosForm = formPh.length ? '<section class="faixa fx-branco home-fotos home-fotos-form">' +
+      '<div class="cont fotos-in">' +
+      '<div class="fotos-col">' + formPh.slice(0, 3).map(function (p, i) {
+        return '<span class="fotos-f f' + (i + 1) + '">' + imgFoto(p, '', ' loading="lazy"') + '</span>';
+      }).join('') + '</div>' +
+      '<div class="fotos-txt"><span class="eyebrow">' + esc(db.event.dateLabel || '14/11/2026') + ' · Formatura</span>' +
+      '<h2 class="titulo">' + esc((db.formatura && db.formatura.title) || 'A Formatura da Trilha 2026') + '</h2>' +
+      '<p class="lead">' + esc((db.formatura && db.formatura.lead) || 'A manhã em que os trilheiros apresentaram seus projetos para a banca, as famílias e os parceiros, e receberam seus certificados.') + '</p>' +
+      '<button class="btn btn-outline" data-go="formatura">Ver as ' + formPh.length + ' fotos ' + ico('i-chev') + '</button></div>' +
+      '</div></section>' : '';
     var fotos = retroPh.length ? '<section class="faixa fx-tint home-fotos">' +
       '<div class="cont fotos-in">' +
       '<div class="fotos-col">' + retroPh.slice(0, 3).map(function (p, i) {
         return '<span class="fotos-f f' + (i + 1) + '">' + imgFoto(p, '', ' loading="lazy"') + '</span>';
       }).join('') + '</div>' +
-      '<div class="fotos-txt"><span class="eyebrow">Antes da Banca</span>' +
+      '<div class="fotos-txt"><span class="eyebrow">' + (ENCERRADO ? 'Ao longo do ano' : 'Antes da Banca') + '</span>' +
       '<h2 class="titulo">' + esc(db.retro.title || 'A Trilha em 2026') + '</h2>' +
       '<p class="lead">Um ano de rodas de conversa, visitas, ensaios e ideias que mudaram de forma pelo caminho.</p>' +
       '<button class="btn btn-outline" data-go="trilha2026">Ver a retrospectiva ' + ico('i-chev') + '</button></div>' +
@@ -1185,8 +1224,9 @@
       // no pós-evento, a faixa da votação vira a dos vencedores (se já foram publicados)
       var vPub = vencedoresPublicos();
       voteHtml = vPub.length ? '<section class="faixa fx-branco home-venc"><div class="cont">' +
-        '<div class="hv-cab"><span class="eyebrow">Banca Final · ' + esc(ev.dateLabel || '') + '</span><h2 class="titulo">Os vencedores da Trilha 2026</h2></div>' +
-        vencedoresHtml(vPub.map(function (x) { return opcaoPorId(x.hero.id); }).filter(Boolean), pubRes.dados && pubRes.dados.banca) +
+        '<div class="hv-cab"><span class="eyebrow">Banca Final e Formatura · ' + esc(ev.dateLabel || '') + '</span><h2 class="titulo">Os vencedores da Trilha 2026</h2>' +
+          (ENCERRADO ? '<p class="lead">Parabéns a todos os trilheiros que chegaram até aqui! Estes foram os escolhidos pelo público e pela banca avaliadora.</p>' : '') + '</div>' +
+        vencedoresHtml(vPub.map(function (x) { return ENCERRADO ? vencHeroiOpcao(x) : opcaoPorId(x.hero.id); }).filter(Boolean), bancaPublica()) +
         '</div></section>' : '';
     } else if (localState.voted) {
       voteHtml = '<section class="faixa fx-escuro home-voto">' + sementesNoAr(4) + '<div class="cont voto-in">' +
@@ -1266,6 +1306,7 @@
 
       (pos ? '' : cartaoPalco()) +
       ((banner || avisoAdmin) ? '<div class="cont home-avisos">' + banner + avisoAdmin + '</div>' : '') +
+      (ENCERRADO ? voteHtml : '') +
 
       /* ---- os números ---- */
       '<section class="faixa fx-claro home-nums">' +
@@ -1282,7 +1323,8 @@
         '</div>' +
       '</section>' +
 
-      (pos ? voteHtml : '') +
+      (pos && !ENCERRADO ? voteHtml : '') +
+      fotosForm +
       '<section class="faixa fx-tint home-agora"><div class="cont agora-in">' +
       nowHtml + shortcuts + '</div></section>' +
       turma +
@@ -1456,7 +1498,8 @@
       db.projects.forEach(function (p) { if (p.block) blocos[String(p.block).toLowerCase()] = p.block; });
       var nomesBlocos = Object.keys(blocos);
       if (nomesBlocos.length < 2 && filt.block !== 'todos') filt.block = 'todos';
-      var chips = nomesBlocos.length < 2 ? '' : [['todos', 'Todos']].concat(nomesBlocos.map(function (k) { return [k, blocos[k]]; }))
+      if (ENCERRADO) filt.block = 'todos';
+      var chips = (nomesBlocos.length < 2 || ENCERRADO) ? '' : [['todos', 'Todos']].concat(nomesBlocos.map(function (k) { return [k, blocos[k]]; }))
         .map(function (f) {
           return '<button class="fchip" data-filter="' + esc(f[0]) + '" aria-pressed="' + (filt.block === f[0]) + '">' + esc(f[1]) + '</button>';
         }).join('');
@@ -1480,10 +1523,11 @@
           var aoVivoAgora = palcoNoSite(p.id);
           var eqs = (p.teams || []).length;
           return '<li><button class="ind-item' + (p.id === destaqueId ? ' is-foco' : '') + '" data-go="projeto/' + esc(p.id) + '">' +
-            '<span class="ind-hora num">' + (aoVivoAgora ? '<span class="chip-live"><span class="livedot"></span>Agora</span>' : esc(horaRot(p))) + '</span>' +
+            '<span class="ind-hora num">' + (ENCERRADO ? '' : aoVivoAgora ? '<span class="chip-live"><span class="livedot"></span>Agora</span>' : esc(horaRot(p))) + '</span>' +
             '<span class="ind-txt">' +
               '<span class="ind-nome">' + esc(p.name) + '</span>' +
               '<span class="ind-sub">' + esc([p.group ? 'grupo ' + p.group : '', p.category || ''].filter(Boolean).join(' · ')) + '</span>' +
+              (ENCERRADO && seloPremio(p.id, null, true) ? '<span class="ind-selos">' + seloPremio(p.id, null, true) + '</span>' : '') +
               (eqs > 1 ? '<span class="ind-nota">' + maiuscula(extenso(eqs, true)) + ' equipes, ' + extenso(eqs) + ' projetos integrados numa mesma apresentação</span>' : '') +
             '</span>' +
             '<span class="ind-herois">' + (p.heroes || []).map(function (h) { return quadroHeroi(h, 'quadro-mini', ' aria-hidden="true"'); }).join('') + '</span>' +
@@ -1503,6 +1547,7 @@
             (videoId(x.hero.video) ? '<span class="ct-play" aria-hidden="true">' + ico('i-play') + '</span>' : '') +
             '<span class="ch-nome">' + esc(x.hero.name) + '</span>' +
             '<span class="ch-sub">' + esc((x.project.group ? 'grupo ' + x.project.group + ' · ' : '') + x.project.name) + '</span>' +
+            (heroiVencedor(x.hero.id) ? '<span class="ch-selo">' + seloPremio(null, x.hero.id, true) + '</span>' : '') +
             '</button>';
         }).join('') + '</div>';
       }
@@ -1587,7 +1632,7 @@
     var pessoas;
     if (equipes.length > 1) {
       pessoas = '<section class="detail-sec equipes">' +
-        '<p class="small">Cada equipe construiu o seu projeto e o seu Herói. As ' + extenso(equipes.length, true) + ' apresentam juntas na Banca.</p>' +
+        '<p class="small">Cada equipe construiu o seu projeto e o seu Herói. As ' + extenso(equipes.length, true) + (ENCERRADO ? ' apresentaram juntas na Banca.' : ' apresentam juntas na Banca.') + '</p>' +
         '<div class="equipes-grade">' + equipes.map(function (t) {
           var h = (p.heroes || []).filter(function (x) { return x.id === t.hero; })[0];
           return '<article class="equipe">' +
@@ -1630,8 +1675,8 @@
       ? '<button class="btn btn-primary btn-block btn-lg" data-nav="votacao">Votar neste momento</button>' : '';
 
     var ficha = '<dl class="ficha">' +
-      (quandoEquipe(p) ? '<div><dt>Apresentação</dt><dd class="num">' + esc(blocoDe(p) ? blocoDe(p).rot + ', a partir das ' + blocoDe(p).hora : p.slot) + '</dd></div>' : '') +
-      (p.block ? '<div><dt>Bloco</dt><dd>' + esc(p.block) + '</dd></div>' : '') +
+      (ENCERRADO ? (posBanca(p.id) ? '<div><dt>Prêmio</dt><dd>' + posBanca(p.id) + 'º lugar · Projetos destaque da banca</dd></div>' : '') : quandoEquipe(p) ? '<div><dt>Apresentação</dt><dd class="num">' + esc(blocoDe(p) ? blocoDe(p).rot + ', a partir das ' + blocoDe(p).hora : p.slot) + '</dd></div>' : '') +
+      (p.block && !ENCERRADO ? '<div><dt>Bloco</dt><dd>' + esc(p.block) + '</dd></div>' : '') +
       (p.group ? '<div><dt>Grupo</dt><dd>' + esc(p.group) + '</dd></div>' : '') +
       (equipes.length > 1 ? '<div><dt>Equipes</dt><dd>' + equipes.length + '</dd></div>' : '') +
       ((p.members || []).length ? '<div><dt>Trilheiros</dt><dd class="num">' + p.members.length + '</dd></div>' : '') +
@@ -1645,7 +1690,7 @@
       '<button data-go="projeto/' + esc(next.id) + '"><span class="k">Próximo →</span><span class="v">' + esc(next.name) + '</span></button>' +
       '</nav>' : '';
 
-    var meta = [quandoEquipe(p), blocoDe(p) ? '' : p.block, p.category].filter(Boolean).map(esc).join(' · ');
+    var meta = [ENCERRADO ? '' : quandoEquipe(p), blocoDe(p) || ENCERRADO ? '' : p.block, p.category].filter(Boolean).map(esc).join(' · ');
     var hs = (p.heroes || []).filter(function (h) { return h.image; });
     // setas nas pontas (e deslizar o dedo / teclado), como nos Heróis
     var setasP = db.projects.length > 1 ?
@@ -1668,6 +1713,7 @@
             (palcoNoSite(p.id) ? '<span class="pc-ao-vivo"><i></i>No palco agora</span>' : '') +
             (meta ? '<p class="det-meta">' + meta + '</p>' : '') +
             '<h1 class="titulo-pag">' + esc(p.name) + '</h1>' +
+            (ENCERRADO && seloPremio(p.id) ? '<p class="det-selos">' + seloPremio(p.id) + '</p>' : '') +
             (p.tagline ? '<p class="lead">' + esc(p.tagline) + '</p>' : '') +
             botaoCompartilhar('projeto/' + p.id, p.name, 'Conheça o projeto "' + p.name + '", da Trilha 2026 · Banca Final IDL Tech') +
           '</div>' +
@@ -1858,7 +1904,8 @@
             '<h1 class="titulo-pag">' + esc(h.name) + '</h1>' +
             (insp ? '<p class="lead">' + (/signific/i.test(insp) ? esc(insp) : 'Inspirado em ' + esc(insp)) + '</p>' : '') +
             '<p class="det-nota num">Herói ' + (hidx + 1) + ' de ' + list.length + '</p>' +
-            (ehCandidato(h) ? '<p class="det-candidato">' + ico('i-vote') + ' Candidato na votação do público</p>' : '') +
+            (ENCERRADO ? (heroiVencedor(h.id) ? '<p class="det-selos">' + seloPremio(null, h.id) + '</p>' : '')
+              : ehCandidato(h) ? '<p class="det-candidato">' + ico('i-vote') + ' Candidato na votação do público</p>' : '') +
             botaoCompartilhar('heroi/' + h.id, h.name, 'Conheça o Herói ' + String(h.name).split(/\s+[—–-]\s+/)[0] + ', criado pelos trilheiros da Trilha 2026 · Banca Final IDL Tech') +
           '</div>' +
           '<div class="det-figs n1">' + florGirando() + setas.replace(/det-seta /g, 'det-seta no-cel ') +
@@ -1868,7 +1915,7 @@
       '</section>' +
       '<div class="corpo duas-colunas">' +
         '<div class="detalhe-texto">' +
-          ((ehCandidato(h) && h.campanha) ? '<p class="campanha-nota">' + esc(h.campanha) + '</p>' : '') +
+          ((ehCandidato(h) && h.campanha && !ENCERRADO) ? '<p class="campanha-nota">' + esc(h.campanha) + '</p>' : '') +
           heroVideoBlock(h) +
           ((ehCandidato(h) && votacaoAberta() && !localState.voted)
             ? '<button class="btn btn-laranja btn-block btn-lg" data-nav="votacao">' + ico('i-vote') + ' Votar agora</button>' : '') +
@@ -1962,6 +2009,49 @@
     return fotosDoSite();
   }
 
+  /* ---- Fotos da Formatura (#/formatura): o álbum do dia 14/11 ----
+     As fotos ficam no mesmo banco das outras, marcadas com o álbum
+     "formatura"; não entram no mosaico da Trilha.                        */
+  function viewFormatura() {
+    var f = db.formatura || {};
+    var ph = fotosDoProjeto('formatura');
+    var tit = f.title || 'A Formatura da Trilha 2026';
+    var lead = f.lead || 'Banca Final e Formatura IDL Tech · ' + (db.event.dateLabel || '14/11/2026') + (db.event.place ? ' · ' + db.event.place : '') + '. A manhã em que os trilheiros apresentaram seus projetos e celebraram a conclusão da Trilha.';
+    if (!ph.length) {
+      return '<div class="view">' + faixaTopo('escuro', 'Banca Final e Formatura', tit, lead, '', '') +
+        '<div class="corpo"><div class="empty"><h2 class="h3">As fotos estão chegando</h2>' +
+        '<p>As fotos da formatura aparecem aqui assim que a organização publicar.</p>' +
+        '<button class="btn btn-outline" style="margin-top:14px" data-go="trilha2026">Ver as fotos da Trilha</button></div></div></div>';
+    }
+    var capa = ph.filter(function (p) { return p[1] === 2; })[0] || ph[0];
+    var tiles = ph.map(function (p, i) {
+      return '<button class="mtile' + (p[1] === 2 ? ' larga' : '') + '" data-act="lbOpen" data-lb="formatura" data-i="' + i + '" aria-label="Ampliar foto' + (p[2] ? ': ' + esc(p[2]) : '') + '">' +
+        imgFoto(p, null, ' loading="lazy"') + '</button>';
+    }).join('');
+    return '<div class="view">' +
+      '<section class="faixa fx-escuro retro-topo">' +
+        (capa ? '<span class="retro-foto" aria-hidden="true">' + imgFoto(capa, '') + '</span>' : '') +
+        '<div class="cont retro-in">' +
+          '<button class="voltar" data-go="home">' + ico('i-arrow-left') + 'Início</button>' +
+          '<span class="eyebrow">Banca Final e Formatura · ' + esc(db.event.dateLabel || '14/11/2026') + '</span>' +
+          '<h1 class="titulo-pag">' + esc(tit) + '</h1>' +
+          '<p class="lead">' + esc(lead) + '</p>' +
+          '<p class="topo-nota num">' + ph.length + (ph.length === 1 ? ' foto' : ' fotos') + '</p>' +
+        '</div>' +
+      '</section>' +
+      '<section class="faixa fx-branco retro-mosaico"><div class="cont">' +
+        '<div class="bloco-cab"><div><span class="eyebrow">14 de novembro</span><h2 class="titulo">O dia, foto a foto</h2></div></div>' +
+        '<div class="mosaico">' + tiles + '</div>' +
+      '</div></section>' +
+      '<section class="faixa fx-escuro retro-fim">' + sementesNoAr(4) + '<div class="cont voto-in">' +
+        '<span class="eyebrow">Trilha 2026</span>' +
+        '<h2 class="titulo">Conheça quem venceu</h2>' +
+        '<p class="lead">O Herói escolhido pelo público e os Projetos destaque da banca.</p>' +
+        '<button class="btn btn-lg btn-claro" data-go="resultado">Ver os vencedores ' + ico('i-chev') + '</button>' +
+      '</div></section>' +
+      '</div>';
+  }
+
   function viewRetro() {
     var r = db.retro || { photos: [] };
     var todas = fotosDoSite();
@@ -2029,9 +2119,11 @@
 
       '<section class="faixa fx-escuro retro-fim">' + sementesNoAr(4) + '<div class="cont voto-in">' +
         '<span class="eyebrow">' + esc(db.event.dateLabel || '') + '</span>' +
-        '<h2 class="titulo">Tudo isso chega à Banca Final</h2>' +
-        '<p class="lead">Conheça os projetos e os Heróis construídos ao longo do ano.</p>' +
-        '<button class="btn btn-lg btn-claro" data-go="projetos">Conhecer os projetos ' + ico('i-chev') + '</button>' +
+        '<h2 class="titulo">' + (ENCERRADO ? 'Tudo isso chegou à formatura' : 'Tudo isso chega à Banca Final') + '</h2>' +
+        '<p class="lead">' + (ENCERRADO ? 'Veja as fotos do dia 14/11 e os vencedores da Trilha 2026.' : 'Conheça os projetos e os Heróis construídos ao longo do ano.') + '</p>' +
+        (ENCERRADO ? '<div class="botoeira botoeira-claro"><button class="btn btn-lg btn-claro" data-go="formatura">Fotos da formatura ' + ico('i-chev') + '</button>' +
+          '<button class="btn btn-lg btn-claro" data-go="resultado">Os vencedores ' + ico('i-chev') + '</button></div>'
+          : '<button class="btn btn-lg btn-claro" data-go="projetos">Conhecer os projetos ' + ico('i-chev') + '</button>') +
       '</div></section>' +
       '</div>';
   }
@@ -2818,6 +2910,22 @@
 
   /* =============================== RESULTADO ============================== */
   // os dois prêmios lado a lado: Herói do público e Projeto destaque da banca
+  // Projetos destaque da banca que o site mostra: os fixos de 2026 ou os do banco
+  function bancaPublica() { return ENCERRADO ? VENC_2026.banca : ((pubRes.dados && pubRes.dados.banca) || []); }
+  // o Herói vencedor como cartão (sem depender da lista de candidatos da votação)
+  function vencHeroiOpcao(x) {
+    if (!x) return null;
+    return { id: x.hero.id, name: String(x.hero.name).split(/\s+[—–-]\s+/)[0], image: x.hero.image,
+      sub: 'Projeto ' + x.project.name, go: 'heroi/' + x.hero.id };
+  }
+  // selo de prêmio (projetos e Heróis vencedores de 2026)
+  function seloPremio(pid, hid, curto) {
+    var out = '', pos = pid ? posBanca(pid) : 0;
+    if (pos) out += '<span class="selo-premio sp-banca p' + pos + '">' + ico('i-spark') + (curto ? pos + 'º · banca' : pos + 'º lugar · Projetos destaque da banca') + '</span>';
+    var hs = hid ? [hid] : (pid && byId(pid) ? (byId(pid).heroes || []).map(function (h) { return h.id; }) : []);
+    if (hs.some(heroiVencedor)) out += '<span class="selo-premio sp-pub">' + ico('i-vote') + (curto ? 'Herói do público' : 'Herói da Trilha 2026 · escolhido pelo público') + '</span>';
+    return out;
+  }
   function vencBancaOpcao(id) {
     var p = byId(id); if (!p) return null;
     var hs = p.heroes || [];
@@ -2836,12 +2944,22 @@
             (o.go ? '<button class="btn btn-outline btn-sm" data-go="' + esc(o.go) + '">Conheça a história</button>' : '') + '</div>';
         }).join('') : '<p class="venc-vazio">' + esc(vazio) + '</p>') + '</section>';
     }
-    return '<div class="venc-grade">' +
+    return '<div class="venc-grade' + (bs.length >= 3 ? ' venc-3' : '') + '">' +
       card('venc-pub', 'Prêmio do público', 'Herói da Trilha', publico || [], 'Ainda sem votos.') +
       card('venc-banca', 'Prêmio da banca', bs.length > 1 ? 'Projetos destaque' : 'Projeto destaque', bs, 'A banca ainda não decidiu.') +
       '</div>';
   }
   function viewResultado(isAdmin) {
+    if (ENCERRADO) {
+      return '<div class="view view-faixa">' +
+        faixaTopo('escuro', 'Banca Final e Formatura · ' + (db.event.dateLabel || '14/11/2026'), 'Os vencedores da Trilha 2026',
+          'O Herói escolhido pelo público e os 3 Projetos destaque escolhidos pela banca avaliadora. Parabéns a todos os trilheiros!', '', '') +
+        '<div class="corpo"><div class="painel-centro painel-resultado painel-venc">' +
+          vencedoresHtml(vencedoresPublicos().map(vencHeroiOpcao).filter(Boolean), bancaPublica()) +
+          '<div class="botoeira"><button class="btn btn-outline" data-go="projetos">Conhecer todos os projetos</button>' +
+          '<button class="btn btn-outline" data-go="formatura">Fotos da formatura</button></div>' +
+        '</div></div></div>';
+    }
     var rows, total;
     var herois = votoEmHerois();
     var destinoVer = herois ? 'herois' : 'projetos';
@@ -2906,7 +3024,7 @@
                : 'Todos estes projetos chegaram até a Banca. Cada um carrega uma jornada de transformação.',
         '', '') +
       '<div class="corpo"><div class="painel-centro painel-resultado">' +
-      (remote.on ? vencedoresHtml(rows.filter(function (r) { return r.n > 0 && r.n === rows[0].n; }).map(function (r) { return r.p; }), pubRes.dados && pubRes.dados.banca)
+      (remote.on ? vencedoresHtml(rows.filter(function (r) { return r.n > 0 && r.n === rows[0].n; }).map(function (r) { return r.p; }), bancaPublica())
         : (top ? '<div class="painelinho painelinho-destaque vencedor">' +
         (top.image ? '<figure class="pr-fig pr-fig-grande"><img src="' + esc(top.image) + '" alt=""></figure>' : '') +
         '<span class="eyebrow">' + (herois ? 'Herói mais votado' : 'Projeto mais lembrado pelo público') + '</span>' +
@@ -2946,7 +3064,11 @@
   var LEILAO_ATIVO = false;
   /* abas em dois grupos: o que se usa no DIA da formatura (na ordem da
      manhã) e a CONFIGURAÇÃO do site no dia a dia                          */
-  var ADMIN_GRUPOS = [
+  var ADMIN_GRUPOS = ENCERRADO ? [
+    // depois da formatura: só a configuração do site e o arquivo de 2026
+    { id: 'site', rot: 'Configuração do site', abas: [['geral', 'Visão geral'], ['evento', 'Evento'], ['projetos', 'Projetos'], ['herois', 'Heróis'], ['formatura', 'Fotos da formatura'], ['retro', 'Fotos da Trilha'], ['dados', 'Dados e backup']] },
+    { id: 'arquivo', rot: 'Arquivo', abas: [['a2026', '2026']] }
+  ] : [
     { id: 'dia', rot: 'Dia da formatura', abas: [['check', 'Checklist'], ['camisas', 'Camisas'], ['pulseiras', 'Pulseiras'], ['aovivo', 'Ao vivo'], ['apres', 'Apresentação'], ['votacao', 'Votação'], ['banca', 'Banca']].concat(LEILAO_ATIVO ? [['leilao', 'Leilão']] : []) },
     { id: 'site', rot: 'Configuração do site', abas: [['geral', 'Visão geral'], ['evento', 'Evento'], ['programacao', 'Programação'], ['projetos', 'Projetos'], ['herois', 'Heróis'], ['retro', 'Fotos'], ['dados', 'Dados e backup']] }
   ];
@@ -2987,6 +3109,8 @@
     if (admin.tab === 'apres') return adminApresentacao();
     if (admin.tab === 'leilao' && LEILAO_ATIVO) return adminLeilao();
     if (admin.tab === 'geral') return adminGeral();
+    if (admin.tab === 'formatura') return adminFormaturaFotos();
+    if (admin.tab === 'a2026') return adminArquivo();
     if (admin.tab === 'evento') return adminEvento();
     if (admin.tab === 'programacao') return adminPrograma();
     if (admin.tab === 'projetos') return adminProjetos();
@@ -3020,6 +3144,7 @@
 
   /* --- evento --- */
   function chavePosEvento() {
+    if (ENCERRADO) return '<section class="painelinho stack pos-chave"><span class="eyebrow">Trilha 2026 encerrada</span><p class="small" style="margin:0">O site está no modo de lembrança da formatura: Início com os vencedores, Fotos da formatura e A Trilha. Votação, banca, programação e telão estão fora do ar. Os números ficam na aba <b>2026</b>.</p></section>';
     var on = posEvento();
     return '<section class="painelinho stack pos-chave"><span class="eyebrow">Depois da Banca</span>' +
       '<label class="av-vis' + (on ? ' on' : '') + '"><input type="checkbox" data-act="togglePosEvento"' + (on ? ' checked' : '') + '>' +
@@ -3060,6 +3185,7 @@
      "Dia da formatura" mostra o estado de cada coisa do evento; "Configuração
      do site" leva às edições do dia a dia.                                */
   function adminGeral() {
+    if (ENCERRADO) return adminGeralFim();
     var fase = eventPhase(), a = agora();
     var aberta = remote.on ? remote.aberta : localState.unlocked;
     var res = adminRes.dados;
@@ -3510,6 +3636,8 @@
         '<div class="fr-btns">' +
           '<button type="button" class="iconbtn" data-act="fotoSobe" data-i="' + i + '"' + da + ' aria-label="Subir foto ' + (i + 1) + '"' + (i === 0 ? ' disabled' : '') + '>' + ico('i-up') + '</button>' +
           '<button type="button" class="iconbtn" data-act="fotoDesce" data-i="' + i + '"' + da + ' aria-label="Descer foto ' + (i + 1) + '"' + (i === ph.length - 1 ? ' disabled' : '') + '>' + ico('i-down') + '</button>' +
+          ((ENCERRADO && (escopo === 'geral' || escopo === 'formatura')) ? '<button type="button" class="btn btn-ghost btn-sm fr-mover" data-act="fotoMover" data-i="' + i + '"' + da + ' title="Passar esta foto para o outro álbum">' +
+            (escopo === 'geral' ? '→ Formatura' : '→ A Trilha') + '</button>' : '') +
           '<button type="button" class="iconbtn iconbtn-danger" data-act="fotoApaga" data-i="' + i + '"' + da + ' aria-label="Remover foto ' + (i + 1) + '">' + ico('i-trash') + '</button>' +
         '</div>' +
       '</div>';
@@ -3543,8 +3671,8 @@
     var nEquipe = fotosDoSite().length - fotosGerais().length;
     return '<div class="stack-lg">' +
       '<form id="retroForm" class="stack">' +
-        '<h2 class="h2">A Trilha em 2026</h2>' +
-        '<p class="small">É a aba <b>Fotos</b> do aplicativo. A primeira dobra usa a foto de capa; o restante aparece no mosaico. ' +
+        '<h2 class="h2">' + (ENCERRADO ? 'Fotos da Trilha · A Trilha em 2026' : 'A Trilha em 2026') + '</h2>' +
+        '<p class="small">É a aba <b>' + (ENCERRADO ? 'A Trilha' : 'Fotos') + '</b> do aplicativo. A primeira dobra usa a foto de capa; o restante aparece no mosaico. ' +
         'As fotos das equipes' + (nEquipe ? ' (' + nEquipe + ' agora)' : '') + ' também entram no mosaico, com o nome do projeto, e são cuidadas na aba <b>Projetos</b>, em cada projeto.</p>' +
         fieldText('rtitle', 'Título da página', r.title) +
         fieldArea('rlead', 'Texto de abertura', r.lead) +
@@ -3552,6 +3680,189 @@
       '</form>' +
       gerenciadorFotos('geral') +
     '</div>';
+  }
+
+  /* ---- Visão geral depois da formatura ---- */
+  function adminGeralFim() {
+    function card(t) {
+      return '<button class="card card-btn shortcut" data-atab="' + t[0] + '"><span class="ic">' + ico(t[1]) + '</span>' +
+        '<span><span class="st">' + esc(t[2]) + '</span><br><span class="ss">' + t[3] + '</span></span></button>';
+    }
+    var cards = [
+      ['evento', 'i-cal', 'Evento', 'Nome, data e local que aparecem no site.'],
+      ['projetos', 'i-grid', 'Projetos', db.projects.length + ' projetos: textos, trilheiros e fotos das equipes.'],
+      ['herois', 'i-spark', 'Heróis', nHerois() + ' Heróis: história, inspiração, ilustração e vídeo.'],
+      ['formatura', 'i-eye', 'Fotos da formatura', fotosDoProjeto('formatura').length + ' fotos do dia 14/11.'],
+      ['retro', 'i-eye', 'Fotos da Trilha', fotosGerais().length + ' fotos do ano (mais as das equipes).'],
+      ['dados', 'i-save', 'Dados e backup', 'Exportar e importar o conteúdo.'],
+      ['a2026', 'i-key', 'Arquivo 2026', 'Votos do público, notas e decisão da banca, apresentação, roteiro, pulseiras e camisas.']
+    ].map(card).join('');
+    var bs = VENC_2026.banca.map(function (v) { var p = byId(v.id); return v.pos + 'º ' + (p ? p.name : v.id); }).join(' · ');
+    var hv = VENC_2026.heroi.map(function (id) { var x = heroById(id); return x ? String(x.hero.name).split(/\s+[—–-]\s+/)[0] : id; }).join(', ');
+    return '<div class="stack-lg">' +
+      '<section class="stack"><h2 class="h2">Visão geral</h2>' +
+      '<p class="small">A Trilha 2026 terminou. O site mostra a formatura, os projetos, os Heróis e os vencedores. Votação, banca, programação e telão saíram do ar; tudo o que aconteceu no dia está guardado na aba <b>2026</b>.</p>' +
+      '<div class="statgrid">' +
+        '<div class="stat"><div class="sv">' + nProjetos() + '</div><div class="sl">Projetos</div></div>' +
+        '<div class="stat"><div class="sv">' + nTrilheiros() + '</div><div class="sl">Trilheiros</div></div>' +
+        '<div class="stat"><div class="sv">' + nHerois() + '</div><div class="sl">Heróis</div></div>' +
+        '<div class="stat"><div class="sv">' + fotosDoProjeto('formatura').length + '</div><div class="sl">Fotos da formatura</div></div>' +
+      '</div>' +
+      '<div class="painelinho stack" style="gap:6px"><span class="eyebrow">Vencedores no site</span>' +
+        '<p class="small" style="margin:0"><b>Herói da Trilha (público):</b> ' + esc(hv) + '<br><b>Projetos destaque (banca):</b> ' + esc(bs) + '</p></div>' +
+      '</section>' +
+      '<section class="stack"><h3 class="h3">Configuração do site</h3><div class="shortcuts">' + cards + '</div></section>' +
+      '</div>';
+  }
+
+  /* ---- Fotos da formatura (painel) ---- */
+  function adminFormaturaFotos() {
+    var f = db.formatura || {};
+    return '<div class="stack-lg">' +
+      '<form id="formForm" class="stack">' +
+        '<h2 class="h2">Fotos da formatura</h2>' +
+        '<p class="small">É a aba <b>Formatura</b> do site: só as fotos do dia 14/11. As fotos do ano ficam em <b>Fotos da Trilha</b>; o botão <b>→ A Trilha</b> / <b>→ Formatura</b> passa uma foto de um álbum para o outro. A primeira foto que ocupa duas colunas vira a capa.</p>' +
+        fieldText('ftitle', 'Título da página', f.title || '') +
+        fieldArea('flead', 'Texto de abertura (vazio = texto padrão)', f.lead || '') +
+        '<button class="btn btn-primary" type="submit">' + ico('i-save') + ' Salvar título e texto</button>' +
+      '</form>' +
+      gerenciadorFotos('formatura') +
+    '</div>';
+  }
+
+  /* ======================== ARQUIVO 2026 (painel) ========================
+     O retrato gravado no banco no fim da Banca (tabela arquivo, ano 2026):
+     votos do público, notas e decisão da banca, apresentação, roteiro da
+     apresentadora, pulseiras e camisas. Só leitura.                       */
+  var arq = { dados: null, criado: null, carregando: false, erro: '', aba: 'resumo', slide: 0 };
+  function arqCarregar() {
+    if (!remote.on || !localState.adminKey || arq.carregando) return;
+    arq.carregando = true;
+    sbRpc('arquivo_ler', { p_chave: localState.adminKey, p_ano: 2026 }).then(function (r) {
+      arq.carregando = false;
+      if (!r || !r.ok) { arq.erro = r && r.erro === 'sem_arquivo' ? 'O arquivo de 2026 ainda não foi gravado: rode o supabase.sql mais recente no Supabase.' : 'Não consegui abrir o arquivo.'; render(); return; }
+      arq.dados = r.dados || {}; arq.criado = r.criado_em; arq.erro = '';
+      // as telas da banca e do roteiro reaproveitam estes dados
+      adminBancaDados.itens = (arq.dados.banca && arq.dados.banca.avaliacoes) || [];
+      adminBancaDados.decisao = (arq.dados.banca && arq.dados.banca.decisao) || [];
+      mcR.falas = arq.dados.roteiro_mc || {};
+      render();
+    }).catch(function (e) {
+      arq.carregando = false;
+      arq.erro = String(e && e.message) === 'http 404' ? 'O banco ainda não tem o arquivo: rode o supabase.sql mais recente no Supabase.' : 'Sem conexão com o servidor.';
+      render();
+    });
+  }
+  function arqData(t) { return t ? new Date(t).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : '—'; }
+  function arqNomeVoto(id) { var x = heroById(id); if (x) return { nome: String(x.hero.name).split(/\s+[—–-]\s+/)[0], sub: x.project.name }; var p = byId(id); return { nome: p ? p.name : id, sub: '' }; }
+  function adminArquivo() {
+    if (!remote.on) return '<div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">O arquivo funciona na versão publicada, com o banco ligado.</p></div>';
+    if (!arq.dados && !arq.carregando && !arq.erro) setTimeout(arqCarregar, 0);
+    if (arq.erro && !arq.dados) return '<div class="stack"><h2 class="h2">Arquivo 2026</h2><div class="banner"><span class="bi">' + ico('i-info') + '</span><p class="grow">' + esc(arq.erro) + '</p></div><button class="btn btn-outline" data-act="arqRecarregar">Tentar de novo</button></div>';
+    if (!arq.dados) return '<div class="stack"><h2 class="h2">Arquivo 2026</h2><p class="small">Abrindo o arquivo…</p></div>';
+    var d = arq.dados, pub = d.publico || {}, bc = d.banca || {};
+    var abas = [['resumo', 'Resumo'], ['publico', 'Votos do público'], ['banca', 'Banca'], ['apres', 'Apresentação e roteiro'], ['pulseiras', 'Pulseiras e camisas']];
+    var topo = '<section class="stack"><div class="row-between wrap" style="gap:10px"><div><h2 class="h2">Arquivo 2026</h2>' +
+      '<p class="small" style="margin-top:4px">Banca Final e Formatura · 14/11/2026. Retrato gravado em ' + esc(arqData(arq.criado)) + '. Só leitura: nada aqui muda o site.</p></div>' +
+      '<div class="row wrap" style="gap:8px"><button class="btn btn-sm btn-primary" data-act="arqPlanilha">' + ico('i-save') + ' Baixar planilha</button>' +
+      '<button class="btn btn-sm btn-outline" data-act="arqJson">' + ico('i-save') + ' Baixar tudo (JSON)</button></div></div>' +
+      '<div class="segmento cam-filtro arq-abas">' + abas.map(function (a) { return '<button type="button" data-act="arqAba" data-a="' + a[0] + '" aria-pressed="' + (arq.aba === a[0]) + '">' + a[1] + '</button>'; }).join('') + '</div></section>';
+    var corpo = '';
+    var totVotos = +pub.total || 0;
+    var pul = d.pulseiras || [], cam = d.camisas || [];
+    var nJ = {}; (bc.avaliacoes || []).forEach(function (a) { if (a.notas && notasQtd(a.notas)) nJ[a.jurado] = 1; });
+    if (arq.aba === 'resumo') {
+      var bsN = VENC_2026.banca.map(function (v) { var p = byId(v.id); return '<li><b>' + v.pos + 'º</b> ' + esc(p ? p.name : v.id) + '</li>'; }).join('');
+      corpo = '<div class="statgrid">' +
+          '<div class="stat"><div class="sv">' + totVotos + '</div><div class="sl">Votos do público</div></div>' +
+          '<div class="stat"><div class="sv">' + Object.keys(nJ).length + '</div><div class="sl">Jurados que avaliaram</div></div>' +
+          '<div class="stat"><div class="sv">' + juradosDecisao().length + '</div><div class="sl">Votos na decisão final</div></div>' +
+          '<div class="stat"><div class="sv">' + (bc.avaliacoes || []).length + '</div><div class="sl">Avaliações (jurado × projeto)</div></div>' +
+          '<div class="stat"><div class="sv">' + pul.filter(function (x) { return x.entregue; }).length + '<small>/' + pul.length + '</small></div><div class="sl">Pulseiras entregues</div></div>' +
+          '<div class="stat"><div class="sv">' + cam.filter(function (x) { return x.entregue; }).length + '<small>/' + cam.length + '</small></div><div class="sl">Camisas entregues</div></div>' +
+        '</div>' +
+        '<div class="arq-duas"><section class="painelinho stack"><span class="eyebrow">Herói da Trilha · público</span>' +
+          VENC_2026.heroi.map(function (id) { var n = arqNomeVoto(id), v = (pub.projetos || []).filter(function (x) { return x.id === id; })[0]; return '<p class="h3" style="margin:0">' + esc(n.nome) + '</p><p class="small" style="margin:0">' + esc(n.sub) + (v ? ' · ' + v.votos + ' votos' + (totVotos ? ' (' + Math.round(v.votos / totVotos * 100) + '%)' : '') : '') + '</p>'; }).join('') + '</section>' +
+        '<section class="painelinho stack"><span class="eyebrow">Projetos destaque · banca</span><ol class="arq-podio">' + bsN + '</ol></section></div>' +
+        (pub.primeiro ? '<p class="tiny">Votação do público: primeiro voto às ' + esc(arqData(pub.primeiro)) + ', último às ' + esc(arqData(pub.ultimo)) + '.</p>' : '');
+    } else if (arq.aba === 'publico') {
+      var ls = (pub.projetos || []).slice().sort(function (a, b) { return b.votos - a.votos; });
+      var mx = ls.length ? Math.max(1, ls[0].votos) : 1;
+      corpo = '<section class="painelinho stack"><span class="eyebrow">Votação do Herói da Trilha · ' + totVotos + ' votos</span>' +
+        ls.map(function (r, i) {
+          var n = arqNomeVoto(r.id), pct = totVotos ? r.votos / totVotos * 100 : 0;
+          return '<div class="resultbar' + (i === 0 && r.votos > 0 ? ' is-top' : '') + '"><div class="rb-top"><span class="rb-name">' + (i + 1) + 'º · ' + esc(n.nome) + (n.sub ? ' <span class="tiny">· ' + esc(n.sub) + '</span>' : '') + '</span>' +
+            '<span class="rb-val">' + r.votos + (r.votos === 1 ? ' voto' : ' votos') + ' · ' + pct.toFixed(1).replace('.', ',') + '%</span></div>' +
+            '<div class="track"><div class="bar" style="width:' + (r.votos / mx * 100).toFixed(1) + '%"></div></div></div>';
+        }).join('') + '</section>' +
+        '<p class="tiny">Um voto por CPF (o CPF não fica guardado, só um código embaralhado). Votação aberta com a palavra-chave RAÍZES.</p>';
+    } else if (arq.aba === 'banca') {
+      var linhas = consolidadoBanca(), pr = primeirosDecisao();
+      var dec = linhas.filter(function (l) { return l.votos > 0; }).sort(function (a, b) { return b.votos - a.votos || (b.media || 0) - (a.media || 0) || (pr[b.p.id] || 0) - (pr[a.p.id] || 0); });
+      function tab(cab, rows) { return '<div class="arq-tab-wrap"><table class="arq-tab"><thead><tr>' + cab.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>'; }
+      var porJ = {}; (bc.avaliacoes || []).forEach(function (a) { if (a.notas && notasQtd(a.notas)) (porJ[a.jurado] = porJ[a.jurado] || []).push(a); });
+      corpo = '<section class="stack"><h3 class="h3">Decisão final <span class="tiny">(1º do jurado = 3 pontos, 2º = 2, 3º = 1)</span></h3>' +
+          tab(['Posição', 'Projeto', 'Pontos', 'Vezes em 1º', 'Média das notas'], dec.map(function (l, i) {
+            return '<tr' + (i < 3 ? ' class="top"' : '') + '><td>' + (i + 1) + 'º</td><td>' + esc(l.p.name) + '</td><td>' + l.votos + '</td><td>' + (pr[l.p.id] || 0) + '</td><td>' + (l.media == null ? '—' : l.media.toFixed(2).replace('.', ',')) + '</td></tr>'; })) +
+        '</section>' +
+        '<section class="stack"><h3 class="h3">Voto de cada jurado</h3>' +
+          tab(['Jurado', '1º lugar', '2º lugar', '3º lugar'], juradosDecisao().map(function (j) {
+            return '<tr><td><b>' + esc(j.jurado) + '</b></td>' + [0, 1, 2].map(function (k) { var p = byId(j.lista[k]); return '<td>' + esc(p ? p.name : (j.lista[k] || '—')) + '</td>'; }).join('') + '</tr>'; })) +
+        '</section>' +
+        '<section class="stack"><h3 class="h3">Ranking pelas médias <span class="tiny">(notas de 1 a 5)</span></h3>' +
+          tab(['#', 'Projeto', 'Jurados'].concat(CRITERIOS.map(function (c) { return esc(c.t); }), ['Média']), linhas.map(function (l, i) {
+            return '<tr><td>' + (l.media == null ? '' : i + 1) + '</td><td>' + esc(l.p.name) + '</td><td>' + l.n + '</td>' + CRITERIOS.map(function (c) { return '<td>' + (l.crit[c.k] == null ? '—' : l.crit[c.k].toFixed(2).replace('.', ',')) + '</td>'; }).join('') +
+              '<td><b>' + (l.media == null ? '—' : l.media.toFixed(2).replace('.', ',')) + '</b></td></tr>'; })) +
+        '</section>' +
+        '<section class="stack"><h3 class="h3">Notas e comentários de cada jurado</h3>' +
+          Object.keys(porJ).sort().map(function (j) {
+            return '<details class="painelinho arq-jur"><summary><b>' + esc(j) + '</b> <span class="tiny">· ' + porJ[j].length + ' projetos</span></summary>' +
+              tab(['Projeto'].concat(CRITERIOS.map(function (c) { return esc(c.t); }), ['Média', 'Comentário']), porJ[j].map(function (a) {
+                var p = byId(a.projeto);
+                return '<tr><td>' + esc(p ? p.name : a.projeto) + '</td>' + CRITERIOS.map(function (c) { return '<td>' + (a.notas[c.k] || '—') + '</td>'; }).join('') +
+                  '<td>' + (notasMedia(a.notas) == null ? '—' : notasMedia(a.notas).toFixed(2).replace('.', ',')) + '</td><td class="arq-com">' + esc(a.comentario || '') + '</td></tr>'; })) + '</details>';
+          }).join('') +
+        '</section>';
+    } else if (arq.aba === 'apres') {
+      var l = deckSlides(), n = Math.max(0, Math.min(l.length - 1, arq.slide)), s0 = l[n];
+      corpo = '<section class="arq-apres">' +
+        '<div class="arq-sl"><div class="ctl-tela-wrap">' + previaTela(s0) + '</div>' +
+          '<div class="arq-sl-nav"><button class="btn btn-outline" data-act="arqSlide" data-d="-1"' + (n <= 0 ? ' disabled' : '') + '>' + ico('i-arrow-left') + ' Anterior</button>' +
+          '<span class="num"><b>' + (n + 1) + '</b> de ' + l.length + '</span>' +
+          '<button class="btn btn-primary" data-act="arqSlide" data-d="1"' + (n >= l.length - 1 ? ' disabled' : '') + '>Próximo ' + ico('i-chev') + '</button></div>' +
+          '<select class="arq-sl-sel" data-act="arqSlideIr" aria-label="Ir para o slide">' + l.map(function (s, j) { return '<option value="' + j + '"' + (j === n ? ' selected' : '') + '>' + (j + 1) + ' · ' + esc(s.rotulo) + '</option>'; }).join('') + '</select>' +
+        '</div>' +
+        '<div class="arq-fala"><span class="eyebrow">Fala da apresentadora neste slide</span><div class="mc arq-mc" style="--mc-f:.9"><div class="mc-falas">' + (s0 ? mcLinhasHtml(s0.key) : '') + '</div></div></div>' +
+        '</section>';
+    } else if (arq.aba === 'pulseiras') {
+      var gr = {}; pul.forEach(function (x) { var g = x.grupo || 'Sem grupo'; gr[g] = gr[g] || { t: 0, ok: 0 }; gr[g].t++; if (x.entregue) gr[g].ok++; });
+      var tm = {}; cam.forEach(function (x) { var t = x.tamanho || '?'; tm[t] = tm[t] || { t: 0, ok: 0 }; tm[t].t++; if (x.entregue) tm[t].ok++; });
+      function lista(rows, cab) { return '<div class="arq-tab-wrap"><table class="arq-tab"><thead><tr>' + cab.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>'; }
+      corpo = '<div class="arq-duas"><section class="painelinho stack"><span class="eyebrow">Pulseiras por grupo</span>' +
+          Object.keys(gr).map(function (g) { return '<p class="small" style="margin:0"><b>' + esc(g) + ':</b> ' + gr[g].ok + ' de ' + gr[g].t + ' receberam</p>'; }).join('') + '</section>' +
+        '<section class="painelinho stack"><span class="eyebrow">Camisas por tamanho</span>' +
+          Object.keys(tm).map(function (t) { return '<p class="small" style="margin:0"><b>' + esc(t) + ':</b> ' + tm[t].ok + ' de ' + tm[t].t + ' entregues</p>'; }).join('') + '</section></div>' +
+        '<details class="painelinho"><summary><b>Lista de pulseiras</b> <span class="tiny">· ' + pul.length + ' pessoas</span></summary>' +
+          lista(pul.map(function (x) { return '<tr' + (x.entregue ? '' : ' class="falta"') + '><td>' + esc(x.nome) + '</td><td>' + esc(x.grupo || '') + '</td><td>' + (x.entregue ? 'Sim · ' + esc(arqData(x.em)) + (x.por ? ' · ' + esc(x.por) : '') : 'Não') + '</td><td>' + esc(x.camisa ? (x.camisa_tam || '?') : '') + '</td></tr>'; }), ['Nome', 'Grupo', 'Recebeu', 'Camisa']) + '</details>' +
+        '<details class="painelinho"><summary><b>Lista de camisas</b> <span class="tiny">· ' + cam.length + ' camisas</span></summary>' +
+          lista(cam.map(function (x) { return '<tr' + (x.entregue ? '' : ' class="falta"') + '><td>' + esc(x.nome) + '</td><td>' + esc(x.tamanho || '?') + '</td><td>' + (x.entregue ? 'Sim · ' + esc(arqData(x.em)) + (x.por ? ' · ' + esc(x.por) : '') : 'Não') + '</td></tr>'; }), ['Nome', 'Tamanho', 'Entregue']) + '</details>';
+    }
+    return '<div class="stack-lg arquivo">' + topo + corpo + '</div>';
+  }
+  // planilha do arquivo: público + as 4 folhas da banca + pulseiras e camisas
+  function planilhaArquivo() {
+    var d = arq.dados || {}, pub = d.publico || {}, tot = +pub.total || 0, quando = 'retrato de ' + arqData(arq.criado);
+    var f0 = XL.folha('Público', 'Votação do público · Herói da Trilha 2026', 'IDL · ' + tot + ' votos · ' + quando,
+      [{ t: 'Posição', w: 10, tipo: 'pos' }, { t: 'Herói', w: 30, tipo: 'forte' }, { t: 'Projeto', w: 48 }, { t: 'Votos', w: 10, tipo: 'int' }, { t: '%', w: 10, tipo: 'n2' }],
+      (pub.projetos || []).slice().sort(function (a, b) { return b.votos - a.votos; }).map(function (r, i) { var n = arqNomeVoto(r.id); return [i + 1, n.nome, n.sub, r.votos, tot ? +(r.votos / tot * 100).toFixed(2) : 0]; }),
+      { destacar: function (l, i) { return i === 0; } });
+    var fp = XL.folha('Pulseiras', 'Pulseiras · quem recebeu', 'IDL · ' + quando,
+      [{ t: 'Nome', w: 40, tipo: 'forte' }, { t: 'Grupo', w: 18 }, { t: 'Recebeu', w: 10 }, { t: 'Horário', w: 18 }, { t: 'Por', w: 14 }, { t: 'Camisa', w: 10 }],
+      (d.pulseiras || []).map(function (x) { return [x.nome, x.grupo || '', x.entregue ? 'Sim' : 'Não', x.entregue ? arqData(x.em) : '', x.por || '', x.camisa ? (x.camisa_tam || '?') : '']; }));
+    var fc = XL.folha('Camisas', 'Camisas · entregas', 'IDL · ' + quando,
+      [{ t: 'Nome', w: 34, tipo: 'forte' }, { t: 'Tamanho', w: 10 }, { t: 'Entregue', w: 10 }, { t: 'Horário', w: 18 }, { t: 'Por', w: 14 }],
+      (d.camisas || []).map(function (x) { return [x.nome, x.tamanho || '', x.entregue ? 'Sim' : 'Não', x.entregue ? arqData(x.em) : '', x.por || '']; }));
+    return [f0].concat(planilhaBanca(), [fp, fc]);
   }
 
   var fotoEnvio = { ocupado: false, feito: 0, total: 0, escopo: '' };
@@ -4070,6 +4381,7 @@
     var texto = sub || (contexto === 'admin' ? 'Entre com o seu nome e a senha da organização.'
       : contexto === 'banca' ? 'Avalie cada projeto em 6 critérios, de 1 a 5, e confirme.'
       : contexto === 'mc' ? 'Suas falas slide a slide e o controle do telão. Entre com a senha da apresentadora.'
+      : ENCERRADO ? 'Acesso da organização. Use o seu nome e a senha da organização.'
       : 'Acesso da organização e da banca. Use o seu nome completo e a senha que você recebeu.');
     var status = (jaAdm || jaBan) ? '<div class="entrar-status">' +
         (jaAdm ? '<div><b>Organização</b><span class="tiny">' + esc(localState.name || 'conectado') + '</span></div><button class="btn btn-primary btn-sm" data-go="admin">Abrir o painel</button>' : '') +
@@ -4099,6 +4411,7 @@
     entrada.ocupado = true; entrada.erro = ''; render();
     function papel(p) {
       entrada.ocupado = false;
+      if (ENCERRADO && (p === 'banca' || p === 'mc')) p = null;   // a banca e a apresentadora encerraram
       if (p === 'admin') {
         localState.admin = true; localState.adminKey = senha;
         if (nome) localState.name = nome;
@@ -5792,7 +6105,7 @@
       var e = b.querySelector('.ctl-escala'); if (e) e.style.transform = 'scale(' + (b.clientWidth / 1280).toFixed(4) + ')';
     });
   }
-  window.addEventListener('resize', function () { if (route.name === 'controle' || route.name === 'mc') ajustarPrevias(); });
+  window.addEventListener('resize', function () { if (route.name === 'controle' || route.name === 'mc' || (route.name === 'admin' && admin.tab === 'a2026')) ajustarPrevias(); });
 
   /* ===================== ROTEIRO DA APRESENTADORA (#/mc) =====================
      Página da apresentadora (tablet ou notebook no púlpito): a fala de cada
@@ -7422,6 +7735,7 @@
      Quando a organização liga "Herói vencedor no site", o Início ganha um
      primeiro banner com o vencedor (sem números de votos).                 */
   function vencedoresPublicos() {
+    if (ENCERRADO) return VENC_2026.heroi.map(function (id) { return heroById(id); }).filter(Boolean);
     if (!remote.on || !remote.resultadoPublico) return [];
     if (!pubRes.dados && !pubRes.carregando && !pubRes.pediu) { pubRes.pediu = true; setTimeout(loadPublicResult, 0); }
     var d = pubRes.dados;
@@ -7436,7 +7750,7 @@
     var vs = vencedoresPublicos();
     if (!vs.length) return '';
     var um = vs.length === 1 ? vs[0] : null;
-    var bs = ((pubRes.dados && pubRes.dados.banca) || []).slice().sort(function (a, b) { return (a.pos || 9) - (b.pos || 9); }).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
+    var bs = bancaPublica().slice().sort(function (a, b) { return (a.pos || 9) - (b.pos || 9); }).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
     var imgs = vs.map(function (x) { return x.hero.image; });
     bs.forEach(function (o) { if (o.image && imgs.indexOf(o.image) < 0) imgs.push(o.image); });
     return '<section class="faixa fx-escuro dobra dobra-venc car-slide' + (ativo ? ' is-ativo' : '') + '" aria-roledescription="slide">' +
@@ -7481,6 +7795,7 @@
       case 'heroi': return viewHeroi(route.param);
       case 'votacao': return mostraVotacao() ? viewVotacao() : viewHome();
       case 'trilha2026': return viewRetro();
+      case 'formatura': return viewFormatura();
       case 'trilhei': return viewTrilhei();
       case 'resultado': return viewResultado(localState.admin);
       case 'admin': return viewAdmin();
@@ -7681,7 +7996,7 @@
 
   // chamada fixa para votar, em todas as telas, enquanto a votação estiver aberta
   function ctaVotar() {
-    if (!votacaoAberta() || localState.voted) return '';
+    if (ENCERRADO || !votacaoAberta() || localState.voted) return '';
     if (/^(votacao|admin|telao|resultado|banca|decisao|mesa|mosaico|controle)$/.test(route.name)) return '';
     return '<a class="cta-votar" href="#/votacao"><span class="cta-ponto" aria-hidden="true"></span>' +
       '<span><b>A votação está aberta</b><span class="cta-sub">Toque para escolher o seu Herói</span></span>' + ico('i-chev') + '</a>';
@@ -7744,6 +8059,7 @@
     countUp();
     if (route.name === 'controle') { ajustarPrevias(); ctlRolarRoteiro(); }
     if (route.name === 'mc') mcDepois();
+    if (route.name === 'admin' && admin.tab === 'a2026') ajustarPrevias();
     tickLive();
     telaoMontar();
     pausaMontar();
@@ -7785,6 +8101,7 @@
   var lb = { i: null, escopo: 'aba' };
   // fotos que o visor percorre: as da aba Fotos (com o filtro escolhido) ou as de uma equipe
   function listaLb() {
+    if (lb.escopo === 'formatura') return fotosDoProjeto('formatura');
     if (/^prj:/.test(lb.escopo || '')) return fotosDoProjeto(lb.escopo.slice(4));
     return fotosDaAba();
   }
@@ -8483,6 +8800,21 @@
       toast(urls.length === 1 ? 'Foto acrescentada.' : urls.length + ' fotos acrescentadas.');
       render();
     }
+    else if (act === 'arqAba') { arq.aba = el.getAttribute('data-a'); render(); }
+    else if (act === 'arqRecarregar') { arq.erro = ''; arqCarregar(); }
+    else if (act === 'arqSlide') { arq.slide = Math.max(0, arq.slide + (+el.getAttribute('data-d') || 0)); render(); }
+    else if (act === 'arqPlanilha') { if (arq.dados) XL.baixar('arquivo-2026-banca-idl.xlsx', planilhaArquivo()); }
+    else if (act === 'arqJson') { if (arq.dados) offerFile('arquivo-2026-banca-idl.json', JSON.stringify({ ano: 2026, gravado_em: arq.criado, dados: arq.dados }, null, 2), 'application/json'); }
+    else if (act === 'fotoMover') {
+      var alvoMv = fotosDoEscopo(escFoto)[+el.getAttribute('data-i')];
+      if (!alvoMv) return;
+      var paraMv = escFoto === 'formatura' ? '' : 'formatura';
+      if (usaNuvem()) {
+        rpcFoto('atualizar_fotos', { p_itens: [{ id: alvoMv[3], projeto: paraMv }] })
+          .then(function () { return depoisDeFoto(paraMv ? 'Foto passada para as Fotos da formatura.' : 'Foto passada para as Fotos da Trilha.'); })
+          .catch(function (e) { toast(erroFoto(e && e.message)); });
+      } else { alvoMv[5] = paraMv; save(); toast('Foto passada para o outro álbum.'); }
+    }
     else if (act === 'fotoApaga') {
       var iDel = +el.getAttribute('data-i');
       var alvoDel = fotosDoEscopo(escFoto)[iDel];
@@ -8620,6 +8952,7 @@
     }
 
     var act = t.getAttribute && t.getAttribute('data-act');
+    if (act === 'arqSlideIr') { arq.slide = +t.value || 0; render(); return; }
     if (act === 'filtroFotos') { filtFotos = t.value || 'todas'; render(); var sel = $('#filtroFotos'); if (sel) sel.focus({ preventScroll: true }); return; }
     if (act === 'setPalavra') { flow.palavra = t.value; }
     else if (act === 'palcoEscolher') { definirPalco(t.value || null); }
@@ -8812,6 +9145,12 @@
     if (f.id === 'kwAdminForm') {
       db.voting.keyword = String(new FormData(f).get('kwv') || '').trim().toUpperCase();
       save(); toast('Palavra-chave salva.');
+      return;
+    }
+    if (f.id === 'formForm') {
+      var fdF = new FormData(f);
+      db.formatura = { title: String(fdF.get('ftitle') || '').trim(), lead: String(fdF.get('flead') || '').trim() };
+      save(); toast('Título e texto salvos.');
       return;
     }
     if (f.id === 'retroForm') {
