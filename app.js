@@ -580,7 +580,7 @@
   var ENCERRADO = true;
   var VENC_2026 = {
     heroi: ['her_samantha'],                                  // Herói da Trilha, escolhido pelo público
-    banca: [{ id: 'prj_som_neo', pos: 1 }, { id: 'prj_acolher', pos: 2 }, { id: 'prj_reciclagem', pos: 3 }]   // Projetos destaque da banca
+    banca: [{ id: 'prj_reciclagem', pos: 1 }, { id: 'prj_som_neo', pos: 2 }, { id: 'prj_acolher', pos: 3 }]   // Projetos destaque da banca
   };
   var ROTAS_DO_EVENTO = /^(programacao|votacao|banca|decisao|mesa|telao|controle|mc|mosaico)$/;
   function posBanca(pid) { var v = VENC_2026.banca.filter(function (x) { return x.id === pid; })[0]; return ENCERRADO && v ? v.pos : 0; }
