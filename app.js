@@ -3734,6 +3734,7 @@
      O retrato gravado no banco no fim da Banca (tabela arquivo, ano 2026):
      votos do público, notas e decisão da banca, apresentação, roteiro da
      apresentadora, pulseiras e camisas. Só leitura.                       */
+  var ARQ_DOWNLOADS = false;
   var arq = { dados: null, criado: null, carregando: false, erro: '', aba: 'resumo', slide: 0 };
   function arqCarregar() {
     if (!remote.on || !localState.adminKey || arq.carregando) return;
@@ -3764,8 +3765,9 @@
     var abas = [['resumo', 'Resumo'], ['publico', 'Votos do público'], ['banca', 'Banca'], ['apres', 'Apresentação e roteiro'], ['pulseiras', 'Pulseiras e camisas']];
     var topo = '<section class="stack"><div class="row-between wrap" style="gap:10px"><div><h2 class="h2">Arquivo 2026</h2>' +
       '<p class="small" style="margin-top:4px">Banca Final e Formatura · 14/11/2026. Retrato gravado em ' + esc(arqData(arq.criado)) + '. Só leitura: nada aqui muda o site.</p></div>' +
-      '<div class="row wrap" style="gap:8px"><button class="btn btn-sm btn-primary" data-act="arqPlanilha">' + ico('i-save') + ' Baixar planilha</button>' +
-      '<button class="btn btn-sm btn-outline" data-act="arqJson">' + ico('i-save') + ' Baixar tudo (JSON)</button></div></div>' +
+      // botões de baixar (planilha e JSON) ocultos a pedido; para voltar, troque ARQ_DOWNLOADS para true
+      (ARQ_DOWNLOADS ? '<div class="row wrap" style="gap:8px"><button class="btn btn-sm btn-primary" data-act="arqPlanilha">' + ico('i-save') + ' Baixar planilha</button>' +
+      '<button class="btn btn-sm btn-outline" data-act="arqJson">' + ico('i-save') + ' Baixar tudo (JSON)</button></div>' : '') + '</div>' +
       '<div class="segmento cam-filtro arq-abas">' + abas.map(function (a) { return '<button type="button" data-act="arqAba" data-a="' + a[0] + '" aria-pressed="' + (arq.aba === a[0]) + '">' + a[1] + '</button>'; }).join('') + '</div></section>';
     var corpo = '';
     var totVotos = +pub.total || 0;
