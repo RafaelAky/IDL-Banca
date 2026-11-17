@@ -7749,19 +7749,27 @@
   function slideVencedor(ativo) {
     var vs = vencedoresPublicos();
     if (!vs.length) return '';
-    var um = vs.length === 1 ? vs[0] : null;
-    var bs = bancaPublica().slice().sort(function (a, b) { return (a.pos || 9) - (b.pos || 9); }).map(function (v) { return vencBancaOpcao(v.id); }).filter(Boolean);
-    var imgs = vs.map(function (x) { return x.hero.image; });
-    bs.forEach(function (o) { if (o.image && imgs.indexOf(o.image) < 0) imgs.push(o.image); });
-    return '<section class="faixa fx-escuro dobra dobra-venc car-slide' + (ativo ? ' is-ativo' : '') + '" aria-roledescription="slide">' +
-      '<div class="dv-figs" aria-hidden="true">' + imgs.filter(Boolean).map(function (src) { return '<img src="' + esc(src) + '" alt="">'; }).join('') + '</div>' +
+    var bs = bancaPublica().slice().sort(function (a, b) { return (a.pos || 9) - (b.pos || 9); }).map(function (v, k) {
+      var o = vencBancaOpcao(v.id); if (o) o.pos = v.pos || k + 1; return o; }).filter(Boolean);
+    // 4 cartões do mesmo tamanho: o Herói do público e os 3 Projetos destaque da banca
+    var itens = vs.map(function (x) {
+      return { img: x.hero.image, tag: 'Público', nome: String(x.hero.name).split(/\s+[—–-]\s+/)[0], go: 'heroi/' + x.hero.id };
+    }).concat(bs.map(function (o) { return { img: o.image, tag: o.pos + 'º lugar', nome: o.name, go: o.go }; }));
+    // ao lado: as fotos da formatura (enquanto não houver, as fotos da Trilha)
+    var fotos = fotosDoProjeto('formatura');
+    if (!fotos.length) fotos = fotosGerais();
+    var lado = fotos.length
+      ? '<div class="dv-fotos n' + Math.min(3, fotos.length) + '" aria-hidden="true">' + fotos.slice(0, 3).map(function (p, k) { return '<span class="dv-foto f' + (k + 1) + '">' + imgFoto(p, '') + '</span>'; }).join('') + '</div>'
+      : '';
+    return '<section class="faixa fx-escuro dobra dobra-venc car-slide' + (ativo ? ' is-ativo' : '') + '" aria-roledescription="slide">' + lado +
       '<div class="cont dobra-txt">' +
-        '<span class="eyebrow">Os vencedores da Trilha 2026</span>' +
-        '<h1 class="mega">' + esc(vs.map(function (x) { return String(x.hero.name).split(/\s+[—–-]\s+/)[0]; }).join(' e ')) + '</h1>' +
-        '<p class="dobra-sub">' + esc(um ? 'Herói escolhido pelo público' : 'Heróis escolhidos pelo público') +
-          (bs.length ? '<br><span class="dv-banca">' + (bs.length > 1 ? 'Projetos destaque da banca: ' : 'Projeto destaque da banca: ') + bs.map(function (o, k) { return (bs.length > 1 ? (k + 1) + 'º ' : '') + '<b>' + esc(o.name) + '</b>'; }).join(' · ') + '</span>' : '') + '</p>' +
-        '<div class="dobra-chamada"><p>Obrigado a todos que votaram e acompanharam a Trilha 2026.</p>' +
-        '<button class="btn btn-lg btn-laranja inst-btn" data-go="resultado">Ver os vencedores</button></div>' +
+        '<span class="eyebrow">Banca Final e Formatura · ' + esc(db.event.dateLabel || '14/11/2026') + '</span>' +
+        '<h1 class="mega">Os vencedores da Trilha 2026</h1>' +
+        '<div class="dv-cards">' + itens.map(function (x) {
+          return '<button type="button" class="dv-card" data-go="' + esc(x.go) + '">' + (x.img ? '<img src="' + esc(mini(x.img)) + '" alt="" loading="lazy">' : '') +
+            '<em>' + esc(x.tag) + '</em><b>' + esc(x.nome) + '</b></button>';
+        }).join('') + '</div>' +
+        '<div class="dobra-chamada"><button class="btn btn-lg btn-laranja inst-btn" data-go="resultado">Ver os vencedores</button></div>' +
       '</div></section>';
   }
 
